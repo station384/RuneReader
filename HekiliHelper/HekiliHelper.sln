@@ -1,0 +1,57 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.5.002.0
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "HekiliHelper", "HekiliHelper.csproj", "{F1064129-10B6-4F68-B332-48E698C2B785}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "ScreenCapture.net", "ScreenCapture.net", "{6FA1F86B-B9E2-4C1B-A910-0F42222FBC83}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ScreenCapture.NET", "ScreenCapture.net\ScreenCapture.NET\ScreenCapture.NET.csproj", "{CEE5B785-7D67-44B0-9E0B-2709B16D18E9}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ScreenCapture.NET.DX11", "ScreenCapture.net\ScreenCapture.NET.DX11\ScreenCapture.NET.DX11.csproj", "{D6C66B89-EE85-4BC8-8C18-67902DBF08CB}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ScreenCapture.NET.DX9", "ScreenCapture.net\ScreenCapture.NET.DX9\ScreenCapture.NET.DX9.csproj", "{09CE7F8F-AE75-4F7C-A73F-FDE8FE47B064}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ScreenCapture.NET.X11", "ScreenCapture.net\ScreenCapture.NET.X11\ScreenCapture.NET.X11.csproj", "{4FB1FF9E-6584-4292-AB4B-F849F2D23D03}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{F1064129-10B6-4F68-B332-48E698C2B785}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F1064129-10B6-4F68-B332-48E698C2B785}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F1064129-10B6-4F68-B332-48E698C2B785}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F1064129-10B6-4F68-B332-48E698C2B785}.Release|Any CPU.Build.0 = Release|Any CPU
+		{CEE5B785-7D67-44B0-9E0B-2709B16D18E9}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{CEE5B785-7D67-44B0-9E0B-2709B16D18E9}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{CEE5B785-7D67-44B0-9E0B-2709B16D18E9}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{CEE5B785-7D67-44B0-9E0B-2709B16D18E9}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D6C66B89-EE85-4BC8-8C18-67902DBF08CB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D6C66B89-EE85-4BC8-8C18-67902DBF08CB}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D6C66B89-EE85-4BC8-8C18-67902DBF08CB}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D6C66B89-EE85-4BC8-8C18-67902DBF08CB}.Release|Any CPU.Build.0 = Release|Any CPU
+		{09CE7F8F-AE75-4F7C-A73F-FDE8FE47B064}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{09CE7F8F-AE75-4F7C-A73F-FDE8FE47B064}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{09CE7F8F-AE75-4F7C-A73F-FDE8FE47B064}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{09CE7F8F-AE75-4F7C-A73F-FDE8FE47B064}.Release|Any CPU.Build.0 = Release|Any CPU
+		{4FB1FF9E-6584-4292-AB4B-F849F2D23D03}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4FB1FF9E-6584-4292-AB4B-F849F2D23D03}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4FB1FF9E-6584-4292-AB4B-F849F2D23D03}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4FB1FF9E-6584-4292-AB4B-F849F2D23D03}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{CEE5B785-7D67-44B0-9E0B-2709B16D18E9} = {6FA1F86B-B9E2-4C1B-A910-0F42222FBC83}
+		{D6C66B89-EE85-4BC8-8C18-67902DBF08CB} = {6FA1F86B-B9E2-4C1B-A910-0F42222FBC83}
+		{09CE7F8F-AE75-4F7C-A73F-FDE8FE47B064} = {6FA1F86B-B9E2-4C1B-A910-0F42222FBC83}
+		{4FB1FF9E-6584-4292-AB4B-F849F2D23D03} = {6FA1F86B-B9E2-4C1B-A910-0F42222FBC83}
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {1B90CBD5-5FE7-4616-B5D8-F32584A1129A}
+	EndGlobalSection
+EndGlobal
