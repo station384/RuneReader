@@ -34,13 +34,16 @@ namespace HekiliHelper
     {
         public static string Extract(this string input, int len)
         {
-            return input?[0..Math.Min(input.Length, len)];
+            return input[0..Math.Min(input.Length, len)];
         }
     }
 
 
-public static class VirtualKeyCodeMapper
+    // This is the list of acceptable keys we can send to the game and the associated Windows virtual key to send.
+    // We can use this for comparison or use it for looking up the matching key
+    public static class VirtualKeyCodeMapper
     {
+
         private static readonly Dictionary<string, int> KeyMappings = new Dictionary<string, int>
     {
         {"1", (int)VirtualKeyCodes.VirtualKeyStates.VK_Alphanumeric_1},
@@ -53,6 +56,24 @@ public static class VirtualKeyCodeMapper
         {"8", (int)VirtualKeyCodes.VirtualKeyStates.VK_Alphanumeric_8},
         {"9", (int)VirtualKeyCodes.VirtualKeyStates.VK_Alphanumeric_9},
         {"0", (int)VirtualKeyCodes.VirtualKeyStates.VK_Alphanumeric_0},
+        // Had to remove these keys as that can't be detected using OCR very well.   only about a 30% accuarcy
+        // {"-", (int)VirtualKeyCodes.VirtualKeyStates.VK_OEM_MINUS},
+        //  {"=", 187}, // This key can be different depending on country, i.e.  US its the = key,  Spanish is the ? (upside down)
+        {"F1", (int)VirtualKeyCodes.VirtualKeyStates.VK_F1},
+        {"F2", (int)VirtualKeyCodes.VirtualKeyStates.VK_F2},
+        {"F3", (int)VirtualKeyCodes.VirtualKeyStates.VK_F3},
+        {"F4", (int)VirtualKeyCodes.VirtualKeyStates.VK_F4},
+        {"F5", (int)VirtualKeyCodes.VirtualKeyStates.VK_F5},
+        {"F6", (int)VirtualKeyCodes.VirtualKeyStates.VK_F6},
+        {"F7", (int)VirtualKeyCodes.VirtualKeyStates.VK_F7},
+        {"F8", (int)VirtualKeyCodes.VirtualKeyStates.VK_F8},
+        {"F9", (int)VirtualKeyCodes.VirtualKeyStates.VK_F9},
+        {"F10", (int)VirtualKeyCodes.VirtualKeyStates.VK_F10},
+        {"F11", (int)VirtualKeyCodes.VirtualKeyStates.VK_F11},
+        {"F12", (int)VirtualKeyCodes.VirtualKeyStates.VK_F12},
+        
+        // This is here just for future,  to accually use these key the value in the key value pair of the diction would need to be an object 
+        // to store the CTRL, ALT, SHIFT states
         {"C1", (int)VirtualKeyCodes.VirtualKeyStates.VK_Alphanumeric_1},
         {"C2", (int)VirtualKeyCodes.VirtualKeyStates.VK_Alphanumeric_2},
         {"C3", (int)VirtualKeyCodes.VirtualKeyStates.VK_Alphanumeric_3},
@@ -73,21 +94,7 @@ public static class VirtualKeyCodeMapper
         {"A8", (int)VirtualKeyCodes.VirtualKeyStates.VK_Alphanumeric_8},
         {"A9", (int)VirtualKeyCodes.VirtualKeyStates.VK_Alphanumeric_9},
         {"A0", (int)VirtualKeyCodes.VirtualKeyStates.VK_Alphanumeric_0},
-      // {"-", (int)VirtualKeyCodes.VirtualKeyStates.VK_OEM_MINUS},
-      //  {"=", 187}, // There seems to be a direct integer mapping here
-        {"F1", (int)VirtualKeyCodes.VirtualKeyStates.VK_F1},
-        {"F2", (int)VirtualKeyCodes.VirtualKeyStates.VK_F2},
-        {"F3", (int)VirtualKeyCodes.VirtualKeyStates.VK_F3},
-        {"F4", (int)VirtualKeyCodes.VirtualKeyStates.VK_F4},
-        {"F5", (int)VirtualKeyCodes.VirtualKeyStates.VK_F5},
-        {"F6", (int)VirtualKeyCodes.VirtualKeyStates.VK_F6},
-        {"F7", (int)VirtualKeyCodes.VirtualKeyStates.VK_F7},
-        {"F8", (int)VirtualKeyCodes.VirtualKeyStates.VK_F8},
-        {"F9", (int)VirtualKeyCodes.VirtualKeyStates.VK_F9},
-        {"F10", (int)VirtualKeyCodes.VirtualKeyStates.VK_F10},
-        {"F11", (int)VirtualKeyCodes.VirtualKeyStates.VK_F11},
-        {"F12", (int)VirtualKeyCodes.VirtualKeyStates.VK_F12},
-        // ... add additional key mappings as needed
+                // ... add additional key mappings as needed
     };
 
         public static int GetVirtualKeyCode(string key)
@@ -175,11 +182,11 @@ public static class VirtualKeyCodeMapper
 
     
 
-        public static string GetActiveWindowTitle()
+        public  string GetActiveWindowTitle()
         {
             IntPtr hwnd = GetForegroundWindow();
-            if (hwnd == null)
-                return null;
+
+            if (hwnd == null)  return null;
 
             int length = GetWindowTextLength(hwnd);
             StringBuilder sb = new StringBuilder(length + 1);
@@ -187,32 +194,14 @@ public static class VirtualKeyCodeMapper
             return sb.ToString();
         }
 
-        public static bool IsCurrentWindowWithTitle(string title)
+        public  bool IsCurrentWindowWithTitle(string title)
         {
             var currentTitle = GetActiveWindowTitle();
             return currentTitle?.Equals(title, StringComparison.OrdinalIgnoreCase) ?? false;
         }
 
 
-        private void Window_Closed(object sender, EventArgs e)
-        {
 
-
-       
-            Properties.Settings.Default.CapX = magnifier.Left ;
-            Properties.Settings.Default.CapY = magnifier.Top ;
-            Properties.Settings.Default.CapWidth = magnifier.Width;
-            Properties.Settings.Default.CapHeight = magnifier.Height;
-            Properties.Settings.Default.AppStartX = this.Left ;
-            Properties.Settings.Default.AppStartY = this.Top;
-            Properties.Settings.Default.Save();
-
-
-            CloseMagnifierWindow();
-
-            // Make sure we stop trapping the keyboard
-            UnhookWindowsHookEx(_hookID);
-        }
 
         private IntPtr SetHook(KeyboardHookProc proc)
         {
@@ -239,6 +228,7 @@ public static class VirtualKeyCodeMapper
                 {
                     _timer.Stop();
                     _lastKeyToSend = string.Empty; 
+                    // Let the key event go thru so the new focused app can handle it
                     handled = false;
                 }
                 else
@@ -254,6 +244,7 @@ public static class VirtualKeyCodeMapper
                         if (_wowWindowHandle != IntPtr.Zero && !_timer.IsEnabled)
                         {
                             _timer.Start();
+                            // Don't let the message go thru.  this blocks the game from seeing the key press
                             handled = true;
                         }
 
@@ -262,7 +253,6 @@ public static class VirtualKeyCodeMapper
                     {
                         _timer.Stop();
                         handled = true;
-
                     }
                 }
             }
@@ -316,6 +306,7 @@ public static class VirtualKeyCodeMapper
                 Dispatcher,
                 captureScreen
             );
+
             // Assign a handler to the UpdateUIImage event
             screenCapture.UpdateUIImage += (Bitmap image) =>
             {
@@ -323,44 +314,40 @@ public static class VirtualKeyCodeMapper
                 double BlurRadius = sliderBlur.Value;
                 double UnsharpPower = sliderAmount.Value;
                 double Threshold = sliderThreshold.Value;
-                // Update the UI with the captured image
-                // For example: myImageControl.Source = image;
 
-                //  // b = ImageHelpers.UnsharpMask(b, (int)BlurRadius, UnsharpPower, (int)Threshold);
-                // //  b = ImageHelpers.GaussianBlur(b, 5);
                 var origWidth = b.Width;
                 var origHeight = b.Height;
+
+                //Remember this is running in the background and every CPU cycle counts!!
+                //This has to be FAST it is executing every 250 miliseconds 4 times a second
+                //The faster this is the more times per second we can evaluate and react faster
+                
+                
+
+
+                // It is expected that in the game the font on the hotkey text will be set to R:25 B:255 G:255 The font set to mica, and the size set to 40.
+                // We filter out everying that isn't close to the color we want.
+                // Doing it this way because it was FAST.  This could be doing by doing a find conture and area but that takes alot more caculation than just a simple color filter
                 b = ImageHelpers.FilterByColor(b, System.Drawing.Color.FromArgb(25, 255, 255), 0.95);
                 b = ImageHelpers.RescaleImageToDpi(b, 300);
 
+                // Bring the levels to somthing predictable, to simplify we convert it to greyscale
                 b = ImageHelpers.ConvertToGrayscaleFast(b);
-                //         b = ImageHelpers.RemoveRedComponent(b);
                 b = ImageHelpers.BumpToBlack(b, 170);
                 b = ImageHelpers.BumpToWhite(b, 180);
       
-                //b = ImageHelpers.BumpToBlack(b, 0);
     
-
+                // For tesseract it doesn't like HUGE text so we bring it back down to the original size
                 b = ImageHelpers.ResizeImage(b, origWidth, origHeight);
   
-                //     
-                //     b = ImageHelpers.InvertImageColors(b);
 
-
-                //                b = ImageHelpers.RemoveNoise(b, 3);
-
-
-
-
-
-                // //b = ImageHelpers.ConvertToGrayscaleAndBumpWhite(b,50);
-                //         b = ImageHelpers.ConvertToBlackAndWhite(b,1);
 
 
                 Bitmap DisplayImage = b;
 
 
-                //todo:  Work Contourse later to find the main text and crop it out
+                // Work Contourse later to find the main text and crop it out
+                // Just leaving the code here  just incase I can come up with a fast way of doing this
                 //var points = ImageHelpers.FindContours(b,128);
                 //foreach (var contour in points)
                 //{
@@ -407,42 +394,9 @@ public static class VirtualKeyCodeMapper
             magnifier.Show();
         }
 
-        private void Magnifier_LocationChanged(object? sender, EventArgs e)
-        {
-            if (screenCapture == null) return;
-            if (screenCapture.IsCapturing)
-            {
-                //screenCapture.StopCapture();
-          
-            screenCapture.CaptureRegion = magnifier.CurrrentLocationValue;
-                //screenCapture.StartCapture();
-            }
-            else
-            {
-                screenCapture.CaptureRegion = magnifier.CurrrentLocationValue;
-
-            }
 
 
-        }
 
-        private void Magnifier_SizeChanged(object sender, SizeChangedEventArgs e)
-        {
-            if (screenCapture == null) return;
-            if (screenCapture.IsCapturing)
-            {
-         //       screenCapture.StopCapture();
-
-                screenCapture.CaptureRegion = magnifier.CurrrentLocationValue;
-           //     screenCapture.StartCapture();
-            }
-            else
-            {
-                screenCapture.CaptureRegion = magnifier.CurrrentLocationValue;
-
-            }
-
-        }
 
         // Method to retrieve properties from the MagnifierWindow
         private void RetrieveMagnifierProperties()
@@ -459,12 +413,14 @@ public static class VirtualKeyCodeMapper
                                 $"Magnified Size: {width} x {height}");
             }
         }
+
         private void CloseMagnifierWindow()
         {
             if (magnifier != null)
             {
                 magnifier.Close();
-                //magnifier = null;
+                // May want to destroy the window on close to free up the resources and everything tied to it
+                // but have to update the code that reads the chords directly from the magnifier so use the last values stored local
             }
         }
 
@@ -473,6 +429,7 @@ public static class VirtualKeyCodeMapper
         public MainWindow()
         {
             InitializeComponent();
+
             magnifier = new MagnifierWindow();
             magnifier.SizeChanged += Magnifier_SizeChanged;
             magnifier.LocationChanged += Magnifier_LocationChanged;
@@ -500,11 +457,13 @@ public static class VirtualKeyCodeMapper
 
             StartCaptureProcess();
 
+
+            // This timer handles the key sending
             _timer = new System.Windows.Threading.DispatcherTimer();
             _timer.Interval = TimeSpan.FromMilliseconds(250);
             _timer.Tick += async (sender, args) =>
             {
-
+                // Check the key dictionary if the key is one we should handle
                 if (!VirtualKeyCodeMapper.HasKey(_currentKeyToSend)) return;
                 int vkCode = 0;
                 // Tranlate the char to the virtual Key Code
@@ -513,6 +472,9 @@ public static class VirtualKeyCodeMapper
                 //KeyInterop.VirtualKeyFromKey(e.Key)
                 if (_wowWindowHandle != IntPtr.Zero)
                 {
+                    // I keep poking at this trying to figure out how to only send the key press again if a new key is to me pressed.
+                    // It fails if the next key to press is the same.
+                    // There would have to some logic in the capture to say its a new detection
                    // if (_lastKeyToSend != _currentKeyToSend)
                     {
                         _lastKeyToSend = _currentKeyToSend;
@@ -522,7 +484,12 @@ public static class VirtualKeyCodeMapper
                         await Task.Delay(Random.Shared.Next() % 15 + 8); 
                         PostMessage(_wowWindowHandle, WM_KEYUP, vkCode, 0);
                         _lastKeyToSend =  _currentKeyToSend;
-                        _currentKeyToSend = "";
+
+                        // this stops the sending of the key till the timer is almost up.  
+                        // it takes advantage of the cooldown visual cue in the game that darkens the font (changes the color)
+                        // the OCR doesn't see a new char until it is almost times out, at that point it can be pressed and would be added to the action queue
+                        _currentKeyToSend = ""; 
+                    
                     }
                 }
             };
@@ -532,7 +499,7 @@ public static class VirtualKeyCodeMapper
 
         }
 
-
+        #region UI Event handlers
         private void button_Click(object sender, RoutedEventArgs e)
         {
             this.Topmost = !this.Topmost;
@@ -623,5 +590,38 @@ public static class VirtualKeyCodeMapper
                 magnifier.Visibility = Visibility.Visible;
             }
         }
+
+        private void Magnifier_LocationChanged(object? sender, EventArgs e)
+        {
+            if (screenCapture == null) return;
+            screenCapture.CaptureRegion = magnifier.CurrrentLocationValue;
+        }
+
+        private void Magnifier_SizeChanged(object sender, SizeChangedEventArgs e)
+        {
+            if (screenCapture == null) return;
+            screenCapture.CaptureRegion = magnifier.CurrrentLocationValue;
+        }
+
+        private void Window_Closed(object sender, EventArgs e)
+        {
+
+
+
+            Properties.Settings.Default.CapX = magnifier.Left;
+            Properties.Settings.Default.CapY = magnifier.Top;
+            Properties.Settings.Default.CapWidth = magnifier.Width;
+            Properties.Settings.Default.CapHeight = magnifier.Height;
+            Properties.Settings.Default.AppStartX = this.Left;
+            Properties.Settings.Default.AppStartY = this.Top;
+            Properties.Settings.Default.Save();
+
+
+            CloseMagnifierWindow();
+
+            // Make sure we stop trapping the keyboard
+            UnhookWindowsHookEx(_hookID);
+        }
+        #endregion
     }
 }
