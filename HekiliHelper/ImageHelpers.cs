@@ -12,7 +12,83 @@ namespace HekiliHelper
 {
     public class ImageHelpers
     {
+        public  Bitmap CreateBitmap(int width, int height, Color color)
+        {
+            // Create a new bitmap with the specified size and format.
+            Bitmap coloredBitmap = new Bitmap(width, height, PixelFormat.Format32bppArgb);
 
+            // Create a Graphics object for drawing.
+            using (Graphics gfx = Graphics.FromImage(coloredBitmap))
+            {
+                // Create a brush with the specified color.
+                using (Brush brush = new SolidBrush(color))
+                {
+                    // Use the Graphics object to fill the bitmap with the specified color.
+                    gfx.FillRectangle(brush, 0, 0, width, height);
+                }
+            }
+
+            return coloredBitmap;
+        }
+
+        public  bool FindColorInFirstQuarter(Bitmap image, Color targetColor, double tolerance)
+        {
+            // Calculate the tolerance for each color component.
+            int toleranceR = (int)(255 * tolerance);
+            int toleranceG = (int)(255 * tolerance);
+            int toleranceB = (int)(255 * tolerance);
+
+            // Determine the area to search (first quarter of the image).
+            Rectangle rect = new Rectangle(0, 0, image.Width / 6, image.Height / 6);
+              BitmapData bmpData = image.LockBits(rect, ImageLockMode.ReadOnly, image.PixelFormat);
+
+            try
+            {
+                // Declare an array to hold the bytes of the bitmap.
+                int bytesPerPixel = Image.GetPixelFormatSize(image.PixelFormat) / 8;
+                int byteCount = bmpData.Stride * bmpData.Height;
+                byte[] pixels = new byte[byteCount];
+
+                // Copy the RGB values into the array.
+                Marshal.Copy(bmpData.Scan0, pixels, 0, byteCount);
+
+                for (int y = 0; y < bmpData.Height; y++)
+                {
+                    for (int x = 0; x < bmpData.Width; x++)
+                    {
+                        // Calculate the index of the pixel's byte.
+                        int idx = (y * bmpData.Stride) + (x * bytesPerPixel);
+
+                        // Extract the pixel's components. The order of these bytes depends on the PixelFormat.
+                        int B = pixels[idx];
+                        int G = pixels[idx + 1];
+                        int R = pixels[idx + 2];
+
+                        // Check if the color is within the tolerance for each component.
+                        if (R-5 + (targetColor.R - toleranceR) >= toleranceR ||
+                            G-5 + (targetColor.G - toleranceR) >= toleranceG ||
+                            B-5+ (targetColor.B - toleranceR) >= toleranceB)
+                        {
+                            return true; // The color is within the tolerance range.
+                        }
+
+                        if (Math.Abs(R - toleranceR) >= targetColor.R &&
+                            Math.Abs(G - toleranceR) >= targetColor.G &&
+                            Math.Abs(B - toleranceR) >= targetColor.B )
+                        {
+                            return true; // The color is within the tolerance range.
+                        }
+                    }
+                }
+            }
+            finally
+            {
+                // Ensure to unlock the bits even if an exception occurs.
+                image.UnlockBits(bmpData);
+            }
+
+            return false; // The color was not found within the tolerance range.
+        }
         public  Bitmap RemoveRedComponent(Bitmap original)
         {
             // Lock the bitmap's bits. 
