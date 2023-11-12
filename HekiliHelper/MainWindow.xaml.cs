@@ -24,7 +24,10 @@ using System.Windows.Navigation;
 using System.Windows.Shapes;
 using static System.Net.Mime.MediaTypeNames;
 using static System.Runtime.InteropServices.JavaScript.JSType;
-
+using OpenCvSharp;
+using OpenCvSharp.WpfExtensions;
+using Tesseract;
+using Vortice.Mathematics;
 
 namespace HekiliHelper
 {
@@ -59,7 +62,7 @@ namespace HekiliHelper
         {"0", (int)VirtualKeyCodes.VirtualKeyStates.VK_Alphanumeric_0},
         // Had to remove these keys as that can't be detected using OCR very well.   only about a 30% accuarcy
         // {"-", (int)VirtualKeyCodes.VirtualKeyStates.VK_OEM_MINUS},
-        //  {"=", 187}, // This key can be different depending on country, i.e.  US its the = key,  Spanish is the ? (upside down)
+          {"=", 187}, // This key can be different depending on country, i.e.  US its the = key,  Spanish is the ? (upside down)
         {"F1", (int)VirtualKeyCodes.VirtualKeyStates.VK_F1},
         {"F2", (int)VirtualKeyCodes.VirtualKeyStates.VK_F2},
         {"F3", (int)VirtualKeyCodes.VirtualKeyStates.VK_F3},
@@ -113,7 +116,7 @@ namespace HekiliHelper
         }
     }
 
-    public partial class MainWindow : Window
+    public partial class MainWindow : System.Windows.Window
     {
 
 
@@ -172,6 +175,8 @@ namespace HekiliHelper
         private string CurrentKeyToPress { get; set; }
         private volatile string _currentKeyToSend = string.Empty; // Default key to send, can be changed dynamically
         private volatile string _lastKeyToSend = string.Empty; // Default key to send, can be changed dynamically
+        private volatile string _DetectedValue = string.Empty;
+        private volatile int _DetectedSameCount = 0;
         private IntPtr _hookID = IntPtr.Zero;
         private KeyboardHookProc _proc;
         private IntPtr _wowWindowHandle = IntPtr.Zero;
@@ -179,11 +184,12 @@ namespace HekiliHelper
         private ContinuousScreenCapture screenCapture;
         private ImageHelpers ImageHelpers = new ImageHelpers();
         private delegate IntPtr KeyboardHookProc(int nCode, IntPtr wParam, IntPtr lParam);
+        private OcrModule ocr = new OcrModule();
 
 
-    
 
-        public  string GetActiveWindowTitle()
+
+        public string GetActiveWindowTitle()
         {
             IntPtr hwnd = GetForegroundWindow();
 
@@ -285,8 +291,258 @@ namespace HekiliHelper
                 image.EndInit();
                 return image;
             }
-       
 
+        private string OCRProcess(Bitmap b)
+        {
+            string Result = "";
+            string s = ocr.PerformOcr(b).Replace("\n", "");
+            if (VirtualKeyCodeMapper.HasKey(s))
+            {
+                CurrentKeyToPress = StringExtensions.Extract(s, 3);
+                if (!string.IsNullOrEmpty(CurrentKeyToPress.Trim()))
+                {
+                    _currentKeyToSend = CurrentKeyToPress;
+                    Result = CurrentKeyToPress;
+                }
+            }
+         return Result;
+
+        }
+
+
+        private void ProcessImageLocal(Bitmap image)
+        {
+            // This only works with non HDR,  for now.
+
+            Bitmap b = image;
+            double BlurRadius = sliderBlur.Value;
+            double UnsharpPower = sliderAmount.Value;
+            double Threshold = sliderThreshold.Value;
+
+            var origWidth = b.Width;
+            var origHeight = b.Height;
+
+            //Remember this is running in the background and every CPU cycle counts!!
+            //This has to be FAST it is executing every 250 miliseconds 4 times a second
+            //The faster this is the more times per second we can evaluate and react faster
+
+
+
+
+            // It is expected that in the game the font on the hotkey text will be set to R:25 B:255 G:255 The font set to mica, and the size set to 40.
+            // We filter out everying that isn't close to the color we want.
+            // Doing it this way because it wwwas FAST.  This could be doing by doing a find conture and area but that takes alot more caculation than just a simple color filter
+
+            b = ImageHelpers.FilterByColor(b, System.Drawing.Color.FromArgb(25, 255, 255), 0.90);
+            b = ImageHelpers.RescaleImageToDpi(b, 300);
+            //UpdateImageControl(Convert(b));
+            // Bring the levels to somthing predictable, to simplify we convert it to greyscale
+            b = ImageHelpers.ConvertToGrayscaleFast(b);
+            b = ImageHelpers.BumpToBlack(b, 160);
+
+            if (ImageHelpers.FindColorInFirstQuarter(b, System.Drawing.Color.White, 0.80))
+            {
+                b = ImageHelpers.BumpToWhite(b, 180);
+
+                // For tesseract it doesn't like HUGE text so we bring it back down to the original size
+                b = ImageHelpers.ResizeImage(b, origWidth, origHeight);
+
+                // Bitmap DisplayImage = b;
+
+
+                // Work Contourse later to find the main text and crop it out
+                // Just leaving the code here  just incase I can come up with a fast way of doing this
+                //var points = ImageHelpers.FindContours(b,128);
+                //foreach (var contour in points)
+                //{
+                //    System.Console.WriteLine("Contour found with points:");
+                //    var area = ImageHelpers.CalculateContourArea(contour);
+                //    var BoundingRect = ImageHelpers.GetBoundingRect(contour);
+                //    var ar = BoundingRect.Width / (float)(BoundingRect.Height);
+                //    if (area > 200 & ar > .25 & ar < 1.2)
+                //    {
+                //        DisplayImage = ImageHelpers.DrawRectangle(b, BoundingRect, System.Drawing.Color.Red);
+                //    }
+                //}
+
+
+                UpdateImageControl(Convert(b));
+
+                string s = OCRProcess(b);
+                lDetectedValue.Content = s;
+            }
+            else
+            {
+                // nothing found
+                UpdateImageControl(Convert(_holderBitmap));
+                lDetectedValue.Content = "";
+
+            }
+
+        }
+
+        private Scalar ConvertRgbToHsvRange(Scalar rgbColor, Scalar rgbColorTolerance, bool isLowerBound)
+        {
+            Mat rgbMat = new Mat(1, 1, MatType.CV_8UC3, rgbColor);
+            Mat hsvMat = new Mat();
+            Cv2.CvtColor(rgbMat, hsvMat, ColorConversionCodes.BGR2HSV);
+            Vec3b hsvColor = hsvMat.Get<Vec3b>(0, 0);
+
+            // Adjust the HSV range based on the tolerance
+            int h = hsvColor[0];
+            int s = hsvColor[1];
+            int v = hsvColor[2];
+            int hTol = (int)rgbColorTolerance[0];
+            int sTol = (int)rgbColorTolerance[1];
+            int vTol = (int)rgbColorTolerance[2];
+
+            return new Scalar(
+                isLowerBound ? h - hTol : h + hTol,
+                isLowerBound ? s - sTol : s + sTol,
+                isLowerBound ? v - vTol : v + vTol);
+        }
+        public Mat IsolateColor(Mat src, Scalar rgbColor, Scalar rgbColorTolerance)
+        {
+            // Convert the RGB color and tolerance to HSV
+            Scalar lowerBound = ConvertRgbToHsvRange(rgbColor, rgbColorTolerance, true);
+            Scalar upperBound = ConvertRgbToHsvRange(rgbColor, rgbColorTolerance, false);
+
+            // Convert the image to HSV color space
+            Mat hsv = new Mat();
+            Cv2.CvtColor(src, hsv, ColorConversionCodes.BGR2HSV);
+
+            // Create a mask for the desired color range
+            Mat mask = new Mat();
+            Cv2.InRange(hsv, lowerBound, upperBound, mask);
+
+            // Bitwise-AND mask and original image to isolate the color
+            Mat result = new Mat();
+            Cv2.BitwiseAnd(src, src, result, mask);
+
+            return result;
+        }
+
+        public Mat RescaleImageToNewDpi(Mat src, double currentDpi, double newDpi)
+        {
+        
+            // Calculate the scaling factor
+            double scaleFactor = newDpi / currentDpi;
+
+            // Calculate the new dimensions
+            int newWidth = (int)(src.Width * scaleFactor);
+            int newHeight = (int)(src.Height * scaleFactor);
+
+            // Resize the image
+            Mat resizedImage = new Mat();
+            Cv2.Resize(src, resizedImage, new OpenCvSharp.Size(newWidth, newHeight));
+
+            return resizedImage;
+        }
+        public bool IsThereAnImageInFirstQuarter(Mat src)
+        {
+            // Define the region of interest (ROI) as the first quarter of the image
+            OpenCvSharp.Rect roi = new OpenCvSharp.Rect(0, 0, src.Width / 3, src.Height / 3);
+            Mat firstQuarter = new Mat(src, roi);
+
+            // Convert to grayscale
+            //Mat gray = new Mat();
+            //Cv2.CvtColor(firstQuarter, gray, ColorConversionCodes.BGR2GRAY);
+
+            // Apply edge detection (e.g., using Canny)
+            Mat edges = new Mat();
+            Cv2.Canny(firstQuarter, edges, 100, 200); // Thresholds may need adjustment
+
+            // Check if there are significant edges
+            int numberOfNonZeroPixels = Cv2.CountNonZero(edges);
+
+            // Define a threshold for what you consider 'significant'
+            // This threshold depends on your specific requirements
+            int threshold = (int)(0.01 * edges.Rows * edges.Cols); // Example threshold: 1% of the area
+
+            return numberOfNonZeroPixels > threshold;
+        }
+
+        private void ProcessImageOpenCV (Bitmap image)
+        {
+            var origWidth = image.Width;
+            var origHeight = image.Height;
+     
+
+            var  CVMat = BitmapSourceConverter.ToMat(Convert(image));
+            var IsolatedColor = IsolateColor(CVMat, Scalar.FromRgb(25, 255, 255), Scalar.FromRgb(15, 20, 20));
+
+
+
+            Mat gray = new Mat();
+            Cv2.CvtColor(IsolatedColor, gray, ColorConversionCodes.BGR2GRAY);
+
+            // Apply Otsu's thresholding
+            Cv2.Threshold(gray, gray, 250, 255, ThresholdTypes.Otsu | ThresholdTypes.BinaryInv);
+
+            //Mat invertedMask = new Mat();
+            //Cv2.BitwiseNot(gray, invertedMask);
+
+            if (!IsThereAnImageInFirstQuarter(gray))
+            {
+                var OutImageSource = BitmapSourceConverter.ToBitmapSource(gray);
+                UpdateImageControl(OutImageSource);
+                lDetectedValue.Content = "";
+                return;
+            }
+            Mat resizedMat;
+            resizedMat = RescaleImageToNewDpi(gray, image.HorizontalResolution, 300);
+     
+
+
+            //This  currently not working and just taking up CPU cycles.  Not sure what is going on.
+            //Will figure this out later.
+
+            // Dilation
+            Mat kernel = Cv2.GetStructuringElement(MorphShapes.Rect, new OpenCvSharp.Size(20, 20));
+            Mat dilation = new Mat();
+            Cv2.Dilate(resizedMat, dilation, kernel, new OpenCvSharp.Point(-1,-1), 1);
+            //var OutImageSource = BitmapSourceConverter.ToBitmapSource(dilation);
+            //UpdateImageControl(OutImageSource);
+
+            // Find contours
+            OpenCvSharp.Point[][] contours;
+            HierarchyIndex[] hierarchy;
+            Cv2.FindContours(dilation, out  contours, out  hierarchy, RetrievalModes.External, ContourApproximationModes.ApproxNone);
+
+            foreach (var contour in contours)
+            {
+                OpenCvSharp.Rect rect = Cv2.BoundingRect(contour);
+               // Cv2.Rectangle(CVMat, rect, new Scalar(0, 255, 0), 2);
+
+                // Crop and OCR
+                Mat cropped = new Mat(resizedMat, rect);
+                var OutImage = OpenCvSharp.Extensions.BitmapConverter.ToBitmap(cropped);
+                var OutImageSource = BitmapSourceConverter.ToBitmapSource(OutImage);
+                UpdateImageControl(OutImageSource);
+                string s = OCRProcess(OpenCvSharp.Extensions.BitmapConverter.ToBitmap(resizedMat));
+                if (s == (string)lDetectedValue.Content && _DetectedSameCount >= 5)
+                {
+                    lDetectedValue.Content = s;
+                    _DetectedValue = s;
+                    _DetectedSameCount = 0;
+                }
+                else
+                {
+
+                    lDetectedValue.Content = s;
+                    _DetectedSameCount++;
+                }
+                
+            }
+
+
+
+           // var OutImage = BitmapSourceConverter.ToBitmapSource(gray);
+
+            
+            //string s = OCRProcess(OpenCvSharp.Extensions.BitmapConverter.ToBitmap(gray));
+            //lDetectedValue.Content = s;
+        }
 
         public void StartCaptureProcess()
         {
@@ -298,12 +554,11 @@ namespace HekiliHelper
 
             // Initialize CaptureScreen with the dispatcher and the UI update action
             captureScreen = new CaptureScreen(x, y, width, height,0);
-            var ocr = new OcrModule();
             //  image.Source = Convert(captureScreen.CapturedImage);
 
             // Create an instance of ContinuousScreenCapture with the CaptureScreen object
             screenCapture = new ContinuousScreenCapture(
-                150,
+                200,
                 Dispatcher,
                 captureScreen
             );
@@ -311,99 +566,8 @@ namespace HekiliHelper
             // Assign a handler to the UpdateUIImage event
             screenCapture.UpdateUIImage += (Bitmap image) =>
             {
-                Bitmap b = image;
-                double BlurRadius = sliderBlur.Value;
-                double UnsharpPower = sliderAmount.Value;
-                double Threshold = sliderThreshold.Value;
-
-                var origWidth = b.Width;
-                var origHeight = b.Height;
-
-                //Remember this is running in the background and every CPU cycle counts!!
-                //This has to be FAST it is executing every 250 miliseconds 4 times a second
-                //The faster this is the more times per second we can evaluate and react faster
-
-
-
-
-                // It is expected that in the game the font on the hotkey text will be set to R:25 B:255 G:255 The font set to mica, and the size set to 40.
-                // We filter out everying that isn't close to the color we want.
-                // Doing it this way because it wwwas FAST.  This could be doing by doing a find conture and area but that takes alot more caculation than just a simple color filter
-             
-                b = ImageHelpers.FilterByColor(b, System.Drawing.Color.FromArgb(25, 255, 255), 1);
-                b = ImageHelpers.RescaleImageToDpi(b, 300);
-                //UpdateImageControl(Convert(b));
-                // Bring the levels to somthing predictable, to simplify we convert it to greyscale
-                b = ImageHelpers.ConvertToGrayscaleFast(b);
-                b = ImageHelpers.BumpToBlack(b, 160);
-          
-        
-
-
-
-
-
-
-
-
-
-
-                if (ImageHelpers.FindColorInFirstQuarter(b, System.Drawing.Color.White, 0.80))
-                {
-                    b = ImageHelpers.BumpToWhite(b, 180);
-                    //               UpdateImageControl(Convert(b));
-
-                    // For tesseract it doesn't like HUGE text so we bring it back down to the original size
-                    b = ImageHelpers.ResizeImage(b, origWidth, origHeight);
-
-                    // Bitmap DisplayImage = b;
-
-
-                    // Work Contourse later to find the main text and crop it out
-                    // Just leaving the code here  just incase I can come up with a fast way of doing this
-                    //var points = ImageHelpers.FindContours(b,128);
-                    //foreach (var contour in points)
-                    //{
-                    //    System.Console.WriteLine("Contour found with points:");
-                    //    var area = ImageHelpers.CalculateContourArea(contour);
-                    //    var BoundingRect = ImageHelpers.GetBoundingRect(contour);
-                    //    var ar = BoundingRect.Width / (float)(BoundingRect.Height);
-                    //    if (area > 200 & ar > .25 & ar < 1.2)
-                    //    {
-
-                    //        DisplayImage = ImageHelpers.DrawRectangle(b, BoundingRect, System.Drawing.Color.Red);
-                    //    }
-
-                    //}
-
-
-                    UpdateImageControl(Convert(b));
-                    //                imageCap.Source = Convert(DisplayImage);
-
-                    string s = ocr.PerformOcr(b).Replace("\n", "");
-                    if (VirtualKeyCodeMapper.HasKey(s))
-                    {
-                        CurrentKeyToPress = StringExtensions.Extract(s, 3);
-                        if (!string.IsNullOrEmpty(CurrentKeyToPress.Trim()))
-                        {
-                            _currentKeyToSend = CurrentKeyToPress;
-                        }
-                        else
-                        {
-                            _currentKeyToSend = "";
-                        }
-                        // Console.WriteLine(s);
-
-                    }
-                    lDetectedValue.Content = s;
-                }
-                else
-                {
-                    // nothing found
-                    UpdateImageControl(Convert(_holderBitmap));
-                    lDetectedValue.Content = "";
-
-                }
+                //ProcessImageLocal(image);
+                ProcessImageOpenCV(image);
             };
         }
 
@@ -511,7 +675,7 @@ namespace HekiliHelper
                         PostMessage(_wowWindowHandle, WM_KEYDOWN, vkCode, 0);
                         // It may not be necessary to send WM_KEYUP immediately after WM_KEYDOWN
                         // because it simulates a very quick key tap rather than a sustained key press.
-                        await Task.Delay(Random.Shared.Next() % 15 + 8); 
+                        await Task.Delay(Random.Shared.Next() % 15 + 50); 
                         PostMessage(_wowWindowHandle, WM_KEYUP, vkCode, 0);
                         _lastKeyToSend =  _currentKeyToSend;
 
@@ -647,7 +811,7 @@ namespace HekiliHelper
                 magnifier.Height = scaledHeight;
 
 
-                screenCapture.CaptureRegion = new Rect(scaledLeft, scaledTop, scaledWidth, scaledHeight);
+                screenCapture.CaptureRegion = new System.Windows.Rect(scaledLeft, scaledTop, scaledWidth, scaledHeight);
                 //screenCapture.CaptureRegion = magnifier.CurrrentLocationValue;
 
             }
@@ -677,7 +841,7 @@ namespace HekiliHelper
                 var scaledWidth = width * dpiX;
                 var scaledHeight = height * dpiY;
 
-                screenCapture.CaptureRegion = new Rect(scaledLeft, scaledTop, scaledWidth, scaledHeight);
+                screenCapture.CaptureRegion = new System.Windows.Rect(scaledLeft, scaledTop, scaledWidth, scaledHeight);
                 //screenCapture.CaptureRegion = magnifier.CurrrentLocationValue;
 
             }
@@ -705,7 +869,7 @@ namespace HekiliHelper
                 var scaledWidth = width * dpiX;
                 var scaledHeight = height * dpiY;
 
-                screenCapture.CaptureRegion = new Rect(scaledLeft, scaledTop, scaledWidth, scaledHeight);
+                screenCapture.CaptureRegion = new System.Windows.Rect(scaledLeft, scaledTop, scaledWidth, scaledHeight);
                 //screenCapture.CaptureRegion = magnifier.CurrrentLocationValue;
 
             }

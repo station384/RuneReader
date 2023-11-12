@@ -130,5 +130,77 @@ namespace HekiliHelper.Properties {
                 this["SaveFontSizeY"] = value;
             }
         }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("0")]
+        public int TargetR {
+            get {
+                return ((int)(this["TargetR"]));
+            }
+            set {
+                this["TargetR"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("0")]
+        public int TargetG {
+            get {
+                return ((int)(this["TargetG"]));
+            }
+            set {
+                this["TargetG"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("0")]
+        public int TargetB {
+            get {
+                return ((int)(this["TargetB"]));
+            }
+            set {
+                this["TargetB"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("5")]
+        public double VariancePerceent {
+            get {
+                return ((double)(this["VariancePerceent"]));
+            }
+            set {
+                this["VariancePerceent"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("200")]
+        public int CaptureRateMS {
+            get {
+                return ((int)(this["CaptureRateMS"]));
+            }
+            set {
+                this["CaptureRateMS"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("100")]
+        public int KeyPressSpeedMS {
+            get {
+                return ((int)(this["KeyPressSpeedMS"]));
+            }
+            set {
+                this["KeyPressSpeedMS"] = value;
+            }
+        }
     }
 }
