@@ -126,7 +126,15 @@ namespace HekiliHelper
 
         [DllImport("USER32.dll")]
         static extern short GetKeyState(VirtualKeyCodes.VirtualKeyStates nVirtKey);
+        
+        [DllImport("user32.dll", SetLastError = true)]
+        private static extern IntPtr SetSystemCursor(IntPtr hcur, uint id);
 
+        [DllImport("user32.dll", SetLastError = true)]
+        private static extern IntPtr LoadCursor(IntPtr hInstance, int lpCursorName);
+
+        private const uint OCR_NORMAL = 32512;
+        private const int IDC_HAND = 32649;
 
         // Windows message constants
         const uint WM_KEYDOWN = 0x0100;
@@ -922,15 +930,6 @@ namespace HekiliHelper
             // Other application logic
         }
 
-
-        [DllImport("user32.dll", SetLastError = true)]
-        private static extern IntPtr SetSystemCursor(IntPtr hcur, uint id);
-
-        [DllImport("user32.dll", SetLastError = true)]
-        private static extern IntPtr LoadCursor(IntPtr hInstance, int lpCursorName);
-
-        private const uint OCR_NORMAL = 32512;
-        private const int IDC_HAND = 32649;
 
 
         public static void ChangeCursor()
