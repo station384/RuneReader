@@ -170,12 +170,12 @@ namespace HekiliHelper.Properties {
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
         [global::System.Configuration.DefaultSettingValueAttribute("5")]
-        public double VariancePerceent {
+        public double VariancePercent {
             get {
-                return ((double)(this["VariancePerceent"]));
+                return ((double)(this["VariancePercent"]));
             }
             set {
-                this["VariancePerceent"] = value;
+                this["VariancePercent"] = value;
             }
         }
         
@@ -200,6 +200,18 @@ namespace HekiliHelper.Properties {
             }
             set {
                 this["KeyPressSpeedMS"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("255")]
+        public int TargetA {
+            get {
+                return ((int)(this["TargetA"]));
+            }
+            set {
+                this["TargetA"] = value;
             }
         }
     }

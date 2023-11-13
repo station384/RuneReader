@@ -6,28 +6,16 @@ using System.Diagnostics;
 using System.Diagnostics.Eventing.Reader;
 using System.Drawing;
 using System.IO;
-using System.Linq;
-using System.Numerics;
-using System.Reflection.Emit;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows;
-using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Documents;
 using System.Windows.Input;
-using System.Windows.Media;
 using System.Windows.Media.Imaging;
-using System.Windows.Media.Media3D;
-using System.Windows.Navigation;
-using System.Windows.Shapes;
-using static System.Net.Mime.MediaTypeNames;
-using static System.Runtime.InteropServices.JavaScript.JSType;
 using OpenCvSharp;
 using OpenCvSharp.WpfExtensions;
-using Tesseract;
-using Vortice.Mathematics;
+using System.Text.RegularExpressions;
+using static System.Net.Mime.MediaTypeNames;
 
 namespace HekiliHelper
 {
@@ -143,6 +131,8 @@ namespace HekiliHelper
         // Windows message constants
         const uint WM_KEYDOWN = 0x0100;
         const uint WM_KEYUP = 0x0101;
+        private const int WH_MOUSE_LL = 14;
+        private const int WM_LBUTTONDOWN = 0x0201;
 
         // Virtual-Key codes for numeric keys "1" to "0"
         const int VK_1 = 0x31;
@@ -160,7 +150,7 @@ namespace HekiliHelper
 
 
         [DllImport("user32.dll", CharSet = CharSet.Auto, SetLastError = true)]
-        private static extern IntPtr SetWindowsHookEx(int idHook, KeyboardHookProc lpfn, IntPtr hMod, uint dwThreadId);
+        private static extern IntPtr SetWindowsHookEx(int idHook, WindowsMessageProc lpfn, IntPtr hMod, uint dwThreadId);
 
         [DllImport("user32.dll", CharSet = CharSet.Auto, SetLastError = true)]
         private static extern bool UnhookWindowsHookEx(IntPtr hhk);
@@ -170,6 +160,20 @@ namespace HekiliHelper
 
         [DllImport("kernel32.dll", CharSet = CharSet.Auto, SetLastError = true)]
         private static extern IntPtr GetModuleHandle(string lpModuleName);
+        private struct POINT
+        {
+            public int x;
+            public int y;
+        }
+
+        private struct MSLLHOOKSTRUCT
+        {
+            public POINT pt;
+            public uint mouseData;
+            public uint flags;
+            public uint time;
+            public IntPtr dwExtraInfo;
+        }
         #endregion
 
         private string CurrentKeyToPress { get; set; }
@@ -177,14 +181,28 @@ namespace HekiliHelper
         private volatile string _lastKeyToSend = string.Empty; // Default key to send, can be changed dynamically
         private volatile string _DetectedValue = string.Empty;
         private volatile int _DetectedSameCount = 0;
-        private IntPtr _hookID = IntPtr.Zero;
-        private KeyboardHookProc _proc;
+        private static IntPtr _hookID = IntPtr.Zero;
+        private static IntPtr _MouseHookID = IntPtr.Zero;
+        private WindowsMessageProc _proc;
+        private WindowsMessageProc _mouseProc ;
         private IntPtr _wowWindowHandle = IntPtr.Zero;
         private CaptureScreen captureScreen;
         private ContinuousScreenCapture screenCapture;
         private ImageHelpers ImageHelpers = new ImageHelpers();
-        private delegate IntPtr KeyboardHookProc(int nCode, IntPtr wParam, IntPtr lParam);
+        private delegate IntPtr WindowsMessageProc(int nCode, IntPtr wParam, IntPtr lParam);
         private OcrModule ocr = new OcrModule();
+     
+        private int CurrentR = 25;
+        private int CurrentG = 255;
+        private int CurrentB = 255;
+        private int CurrentA = 255;
+        private double CurrentThreshold = 0.3;
+        private int CurrentCaptureRateMS = 100;
+        private int CurrentKeyPressSpeedMS = 125;
+        private int CurrentKeyDownDelayMS = 25;
+
+
+
 
 
 
@@ -210,13 +228,12 @@ namespace HekiliHelper
 
 
 
-        private IntPtr SetHook(KeyboardHookProc proc)
+        private IntPtr SetHook(WindowsMessageProc proc)
         {
             using (Process curProcess = Process.GetCurrentProcess())
             using (ProcessModule curModule = curProcess.MainModule)
             {
-                return SetWindowsHookEx(WH_KEYBOARD_LL, proc,
-                    GetModuleHandle(curModule.ModuleName), 0);
+                return SetWindowsHookEx(WH_KEYBOARD_LL, proc, GetModuleHandle(curModule.ModuleName), 0);
             }
         }
 
@@ -315,9 +332,7 @@ namespace HekiliHelper
             // This only works with non HDR,  for now.
 
             Bitmap b = image;
-            double BlurRadius = sliderBlur.Value;
-            double UnsharpPower = sliderAmount.Value;
-            double Threshold = sliderThreshold.Value;
+
 
             var origWidth = b.Width;
             var origHeight = b.Height;
@@ -333,14 +348,14 @@ namespace HekiliHelper
             // We filter out everying that isn't close to the color we want.
             // Doing it this way because it wwwas FAST.  This could be doing by doing a find conture and area but that takes alot more caculation than just a simple color filter
 
-            b = ImageHelpers.FilterByColor(b, System.Drawing.Color.FromArgb(25, 255, 255), 0.90);
+            b = ImageHelpers.FilterByColor(b, System.Drawing.Color.FromArgb(CurrentA, CurrentR, CurrentG, CurrentB), CurrentThreshold);
             b = ImageHelpers.RescaleImageToDpi(b, 300);
             //UpdateImageControl(Convert(b));
             // Bring the levels to somthing predictable, to simplify we convert it to greyscale
             b = ImageHelpers.ConvertToGrayscaleFast(b);
             b = ImageHelpers.BumpToBlack(b, 160);
 
-            if (ImageHelpers.FindColorInFirstQuarter(b, System.Drawing.Color.White, 0.80))
+            if (ImageHelpers.FindColorInFirstQuarter(b, System.Drawing.Color.White, CurrentThreshold))
             {
                 b = ImageHelpers.BumpToWhite(b, 180);
 
@@ -441,7 +456,7 @@ namespace HekiliHelper
         public bool IsThereAnImageInFirstQuarter(Mat src)
         {
             // Define the region of interest (ROI) as the first quarter of the image
-            OpenCvSharp.Rect roi = new OpenCvSharp.Rect(0, 0, src.Width / 3, src.Height / 3);
+            OpenCvSharp.Rect roi = new OpenCvSharp.Rect(0, 0, src.Width / 4, src.Height / 4);
             Mat firstQuarter = new Mat(src, roi);
 
             // Convert to grayscale
@@ -466,10 +481,15 @@ namespace HekiliHelper
         {
             var origWidth = image.Width;
             var origHeight = image.Height;
-     
+            double trasThreshold = CurrentThreshold == 0 ? 0.0 : CurrentThreshold / 100;
+            int Rscale = (int)(CurrentR * ((CurrentR * trasThreshold) / CurrentR));
+            int Gscale = (int)(CurrentG * ((CurrentG * trasThreshold) / CurrentG));
+            int Bscale = (int)(CurrentB * ((CurrentB * trasThreshold) / CurrentB));
+
 
             var  CVMat = BitmapSourceConverter.ToMat(Convert(image));
-            var IsolatedColor = IsolateColor(CVMat, Scalar.FromRgb(25, 255, 255), Scalar.FromRgb(15, 20, 20));
+
+            var IsolatedColor = IsolateColor(CVMat, Scalar.FromRgb(CurrentR, CurrentG, CurrentB), Scalar.FromRgb(Rscale, Gscale, Bscale));
 
 
 
@@ -558,7 +578,7 @@ namespace HekiliHelper
 
             // Create an instance of ContinuousScreenCapture with the CaptureScreen object
             screenCapture = new ContinuousScreenCapture(
-                200,
+                CurrentCaptureRateMS,
                 Dispatcher,
                 captureScreen
             );
@@ -626,13 +646,12 @@ namespace HekiliHelper
             magnifier.Width = Properties.Settings.Default.CapWidth;
             magnifier.Height = Properties.Settings.Default.CapHeight;
 
-            //setMagnifierPosition(Properties.Settings.Default.CapX > SystemParameters.PrimaryScreenWidth ? 100 : Properties.Settings.Default.CapX
-            //    , Properties.Settings.Default.CapY > SystemParameters.PrimaryScreenHeight ? 100 : Properties.Settings.Default.CapY
-            //    , Properties.Settings.Default.CapWidth5
-            //    , Properties.Settings.Default.CapHeight
-            //    );
-
+            //TargetColorPicker.ColorState =  new ColorPicker.Models.ColorState();
+            TargetColorPicker.SelectedColor = System.Windows.Media.Color.FromArgb(255,25,255,255);
             _holderBitmap = ImageHelpers.CreateBitmap(60, 60, System.Drawing.Color.Black);
+
+            sliderColorVariancePercent.Value = Properties.Settings.Default.VariancePercent;
+
             OpenMagnifierWindow();
 
             this.Left = Properties.Settings.Default.AppStartX;
@@ -641,12 +660,10 @@ namespace HekiliHelper
             CurrentKeyToPress = "";
             _proc = HookCallback;
 
+            _mouseProc = MouseHookCallback;
 
-            sliderBlur.Value = 100;
-            sliderAmount.Value = 1;
-            sliderThreshold.Value = 1;
 
-            _wowWindowHandle = FindWindow(null, "World of Warcraft");
+        _wowWindowHandle = FindWindow(null, "World of Warcraft");
 
 
             StartCaptureProcess();
@@ -675,7 +692,7 @@ namespace HekiliHelper
                         PostMessage(_wowWindowHandle, WM_KEYDOWN, vkCode, 0);
                         // It may not be necessary to send WM_KEYUP immediately after WM_KEYDOWN
                         // because it simulates a very quick key tap rather than a sustained key press.
-                        await Task.Delay(Random.Shared.Next() % 15 + 50); 
+                        await Task.Delay(Random.Shared.Next() % 15 + CurrentKeyDownDelayMS); 
                         PostMessage(_wowWindowHandle, WM_KEYUP, vkCode, 0);
                         _lastKeyToSend =  _currentKeyToSend;
 
@@ -732,20 +749,7 @@ namespace HekiliHelper
             imageCap.Source = bitmapSource;
         }
 
-        private void sliderBlur_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
-        {
-            textBoxBlur.Text = e.NewValue.ToString();
-        }
 
-        private void sliderAmount_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
-        {
-            textBoxAmount.Text = e.NewValue.ToString();
-        }
-
-        private void sliderThreshold_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
-        {
-            textBoxThreshold.Text = e.NewValue.ToString();
-        }
 
         private void Capture_Click(object sender, RoutedEventArgs e)
         {
@@ -895,5 +899,179 @@ namespace HekiliHelper
             UnhookWindowsHookEx(_hookID);
         }
         #endregion
+
+        private void sliderTargetR_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+        {
+
+        }
+
+        private void sliderTargetG_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+        {
+
+        }
+
+        private void sliderTargetB_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+        {
+
+        }
+ 
+        private void buPicker_Click(object sender, RoutedEventArgs e)
+        {
+            _MouseHookID = MouseSetHook(_mouseProc);
+            ChangeCursor();
+            // Other application logic
+        }
+
+
+        [DllImport("user32.dll", SetLastError = true)]
+        private static extern IntPtr SetSystemCursor(IntPtr hcur, uint id);
+
+        [DllImport("user32.dll", SetLastError = true)]
+        private static extern IntPtr LoadCursor(IntPtr hInstance, int lpCursorName);
+
+        private const uint OCR_NORMAL = 32512;
+        private const int IDC_HAND = 32649;
+
+
+        public static void ChangeCursor()
+        {
+            // Load the custom cursor
+            IntPtr customCursor = LoadCursor(IntPtr.Zero, IDC_HAND);
+
+            // Set the system cursor to the custom cursor
+           // SetSystemCursor(customCursor, OCR_NORMAL);
+        }
+
+        public static void RestoreCursor()
+        {
+            // Load the default arrow cursor
+            IntPtr defaultCursor = LoadCursor(IntPtr.Zero, 32512); // 32512 is the ID for the standard arrow
+
+            // Restore the system cursor to the default
+            SetSystemCursor(defaultCursor, OCR_NORMAL);
+        }
+
+        private static IntPtr MouseSetHook(WindowsMessageProc proc)
+        {
+            using (Process curProcess = Process.GetCurrentProcess())
+            using (ProcessModule curModule = curProcess.MainModule)
+            {
+                return SetWindowsHookEx(WH_MOUSE_LL, proc, GetModuleHandle(curModule.ModuleName), 0);
+            }
+        }
+
+        private  IntPtr MouseHookCallback(int nCode, IntPtr wParam, IntPtr lParam)
+        {
+            if (nCode >= 0 && wParam == (IntPtr)WM_LBUTTONDOWN)
+            {
+                MSLLHOOKSTRUCT hookStruct = Marshal.PtrToStructure<MSLLHOOKSTRUCT>(lParam);
+                Console.WriteLine($"{hookStruct.pt.x}, {hookStruct.pt.y}");
+                int x = hookStruct.pt.x;
+                int y = hookStruct.pt.y;
+
+                using (Bitmap bmp = new Bitmap(1, 1))
+                {
+                    using (Graphics g = Graphics.FromImage(bmp))
+                    {
+                        // Copy the pixel's color into the bitmap
+                        g.CopyFromScreen(x, y, 0, 0, new System.Drawing.Size(1, 1));
+                    }
+
+                    // Get the color of the pixel
+                    System.Drawing.Color pixelColor = bmp.GetPixel(0, 0);
+
+                    // Convert System.Drawing.Color to System.Windows.Media.Color
+                    this.TargetColorPicker.SelectedColor = System.Windows.Media.Color.FromArgb(pixelColor.A, pixelColor.R, pixelColor.G, pixelColor.B);
+                    Properties.Settings.Default.TargetR = pixelColor.R;
+                    Properties.Settings.Default.TargetG = pixelColor.G;
+                    Properties.Settings.Default.TargetB = pixelColor.B;
+                    Properties.Settings.Default.TargetA = pixelColor.A;
+                    CurrentR = pixelColor.R;
+                    CurrentG = pixelColor.G;
+                    CurrentB = pixelColor.B;
+
+
+                }
+
+        
+
+      
+
+                UnhookWindowsHookEx(_MouseHookID);
+                _MouseHookID = IntPtr.Zero;
+
+            }
+            return CallNextHookEx(_MouseHookID, nCode, wParam, lParam);
+        }
+
+        private void sliderColorVariance_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+        {
+            Properties.Settings.Default.VariancePercent = (int)sliderColorVariancePercent.Value;
+            CurrentThreshold = (int)sliderColorVariancePercent.Value;
+            if (tbVariance != null)
+                tbVariance.Text = ((int)sliderColorVariancePercent.Value).ToString();
+
+            
+        }
+
+        private void sliderCaptureRateMS_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+        {
+            Properties.Settings.Default.CaptureRateMS = (int)sliderCaptureRateMS.Value;
+            CurrentCaptureRateMS = (int)sliderCaptureRateMS.Value;
+            if (tbCaptureRateMS != null)
+            tbCaptureRateMS.Text = ((int)sliderCaptureRateMS.Value).ToString();
+            if (screenCapture != null)
+            screenCapture.CaptureInterval = (int)sliderCaptureRateMS.Value;
+        }
+
+        private void sliderKeyRateMS_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+        {
+            Properties.Settings.Default.KeyPressSpeedMS = (int)sliderKeyRateMS.Value;
+            CurrentKeyDownDelayMS = (int)sliderKeyRateMS.Value;
+            if (tbKeyRateMS != null)
+            tbKeyRateMS.Text = ((int)sliderKeyRateMS.Value).ToString();
+
+        }
+
+        private static readonly Regex _regex = new Regex("[^0-9.-]+"); //regex that matches disallowed text
+        private static bool IsTextAllowed(string text)
+        {
+            return !_regex.IsMatch(text);
+        }
+
+        private void PreviewTextInput(object sender, TextCompositionEventArgs e)
+        {
+            e.Handled = _regex.IsMatch(e.Text);
+        }
+        private void TextBoxPasting(object sender, DataObjectPastingEventArgs e)
+        {
+            if (e.DataObject.GetDataPresent(typeof(String)))
+            {
+                String text = (String)e.DataObject.GetData(typeof(String));
+                if (!IsTextAllowed(text))
+                {
+                    e.CancelCommand();
+                }
+            }
+            else
+            {
+                e.CancelCommand();
+            }
+        }
+
+        private void tbKeyRateMS_TextChanged(object sender, System.Windows.Controls.TextChangedEventArgs e)
+        {
+            sliderKeyRateMS.Value = int.Parse(((System.Windows.Controls.TextBox)e.Source).Text.ToString());
+        }
+
+        private void tbCaptureRateMS_TextChanged(object sender, System.Windows.Controls.TextChangedEventArgs e)
+        {
+            sliderCaptureRateMS.Value = int.Parse(((System.Windows.Controls.TextBox)e.Source).Text.ToString());
+        }
+
+        private void tbVariance_TextChanged(object sender, System.Windows.Controls.TextChangedEventArgs e)
+        {
+            sliderColorVariancePercent.Value = int.Parse(((System.Windows.Controls.TextBox)e.Source).Text.ToString());
+        }
     }
 }

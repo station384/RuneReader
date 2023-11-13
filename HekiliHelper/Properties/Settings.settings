@@ -38,7 +38,7 @@
     <Setting Name="TargetB" Type="System.Int32" Scope="User">
       <Value Profile="(Default)">0</Value>
     </Setting>
-    <Setting Name="VariancePerceent" Type="System.Double" Scope="User">
+    <Setting Name="VariancePercent" Type="System.Double" Scope="User">
       <Value Profile="(Default)">5</Value>
     </Setting>
     <Setting Name="CaptureRateMS" Type="System.Int32" Scope="User">
@@ -46,6 +46,9 @@
     </Setting>
     <Setting Name="KeyPressSpeedMS" Type="System.Int32" Scope="User">
       <Value Profile="(Default)">100</Value>
+    </Setting>
+    <Setting Name="TargetA" Type="System.Int32" Scope="User">
+      <Value Profile="(Default)">255</Value>
     </Setting>
   </Settings>
 </SettingsFile>
