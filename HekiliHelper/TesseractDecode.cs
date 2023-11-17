@@ -16,20 +16,19 @@ namespace HekiliHelper
             
             try
             {
-                _tesseractEngine = new TesseractEngine(@"./tessdata", "en3", EngineMode.LstmOnly);
-                _tesseractEngine.SetVariable("tessedit_char_whitelist", "0123456789F=");
+                _tesseractEngine = new TesseractEngine(@"./tessdata", "en3", EngineMode.Default,@"./tessdata/config.cfg");
+                //_tesseractEngine.SetVariable("tessedit_char_whitelist", "0123456789FCA");
+
+                //_tesseractEngine.SetVariable("language_model_penalty_non_dict_word", 0.975); //default:0.15
+                //_tesseractEngine.SetVariable("language_model_penalty_non_freq_dict_word", 0.575); //0.1
+                //_tesseractEngine.SetVariable("segment_penalty_dict_case_bad", 1.3125); //1.3125
+                //_tesseractEngine.SetVariable("segment_penalty_dict_case_ok", 1.1); //1.1
+                //_tesseractEngine.SetVariable("segment_penalty_dict_nonword", 10.25); //10.25
+
                 //_tesseractEngine.SetVariable("tessedit_pageseg_mode", 6);
                 //   result = _tesseractEngine.SetVariable("tessedit_preserve_min_wd_len", 1);
-                _tesseractEngine.SetVariable("language_model_penalty_non_dict_word", 0.975); //default:0.15
-                _tesseractEngine.SetVariable("language_model_penalty_non_freq_dict_word", 0.575); //0.1
-                _tesseractEngine.SetVariable("segment_penalty_dict_case_bad", 1.3125); //1.3125
-                _tesseractEngine.SetVariable("segment_penalty_dict_case_ok", 1.1); //1.1
-                _tesseractEngine.SetVariable("segment_penalty_dict_nonword", 10.25); //10.25
-                                                                                     //_tesseractEngine.SetVariable("textord_min_xheight", 30.0);
-                //_tesseractEngine.SetVariable("min_sane_x_ht_pixels", 60.0);
-                //_tesseractEngine.SetVariable("min_sane_x_ht_pixels", 30.0);
-                _tesseractEngine.SetVariable("min_sane_x_ht_pixels", 80.0);
-                _tesseractEngine.SetVariable("min_sane_x_ht_pixels", 50.0);
+                //_tesseractEngine.SetVariable("min_sane_x_ht_pixels", 80.0);
+                //_tesseractEngine.SetVariable("min_sane_x_ht_pixels", 50.0);
 
 
 

@@ -16,6 +16,10 @@ using OpenCvSharp;
 using OpenCvSharp.WpfExtensions;
 using System.Text.RegularExpressions;
 using static System.Net.Mime.MediaTypeNames;
+using System.Windows.Controls;
+using System.Linq;
+using System.Collections.ObjectModel;
+using Vortice.Mathematics;
 
 namespace HekiliHelper
 {
@@ -31,61 +35,96 @@ namespace HekiliHelper
     }
 
 
+    public static class ActivationKeyCodeMapper
+    {
+
+        private static readonly Dictionary<string, int> KeyMappings = new Dictionary<string, int>
+        {
+            {"1", (int)Key.D1 },
+            {"2", (int)Key.D2 },
+            {"3", (int)Key.D3 },
+            {"'", (int)Key.Oem3 },
+            {"W", (int)Key.D},
+            {"Q", (int)Key.Q},
+            {"E", (int)Key.E},
+            
+                // ... add additional key mappings as needed
+        };
+
+        public static int GetVirtualKeyCode(string key)
+        {
+            if (KeyMappings.TryGetValue(key, out int vkCode))
+            {
+                return vkCode;
+            }
+            throw new ArgumentException("Key not found.", nameof(key));
+        }
+
+        public static bool HasKey(string key)
+        {
+            return KeyMappings.ContainsKey(key);
+        }
+    }
+
     // This is the list of acceptable keys we can send to the game and the associated Windows virtual key to send.
     // We can use this for comparison or use it for looking up the matching key
     public static class VirtualKeyCodeMapper
     {
 
         private static readonly Dictionary<string, int> KeyMappings = new Dictionary<string, int>
-    {
-        {"1", (int)VirtualKeyCodes.VirtualKeyStates.VK_Alphanumeric_1},
-        {"2", (int)VirtualKeyCodes.VirtualKeyStates.VK_Alphanumeric_2},
-        {"3", (int)VirtualKeyCodes.VirtualKeyStates.VK_Alphanumeric_3},
-        {"4", (int)VirtualKeyCodes.VirtualKeyStates.VK_Alphanumeric_4},
-        {"5", (int)VirtualKeyCodes.VirtualKeyStates.VK_Alphanumeric_5},
-        {"6", (int)VirtualKeyCodes.VirtualKeyStates.VK_Alphanumeric_6},
-        {"7", (int)VirtualKeyCodes.VirtualKeyStates.VK_Alphanumeric_7},
-        {"8", (int)VirtualKeyCodes.VirtualKeyStates.VK_Alphanumeric_8},
-        {"9", (int)VirtualKeyCodes.VirtualKeyStates.VK_Alphanumeric_9},
-        {"0", (int)VirtualKeyCodes.VirtualKeyStates.VK_Alphanumeric_0},
-        // Had to remove these keys as that can't be detected using OCR very well.   only about a 30% accuarcy
-        // {"-", (int)VirtualKeyCodes.VirtualKeyStates.VK_OEM_MINUS},
-          {"=", 187}, // This key can be different depending on country, i.e.  US its the = key,  Spanish is the ? (upside down)
-        {"F1", (int)VirtualKeyCodes.VirtualKeyStates.VK_F1},
-        {"F2", (int)VirtualKeyCodes.VirtualKeyStates.VK_F2},
-        {"F3", (int)VirtualKeyCodes.VirtualKeyStates.VK_F3},
-        {"F4", (int)VirtualKeyCodes.VirtualKeyStates.VK_F4},
-        {"F5", (int)VirtualKeyCodes.VirtualKeyStates.VK_F5},
-        {"F6", (int)VirtualKeyCodes.VirtualKeyStates.VK_F6},
-        {"F7", (int)VirtualKeyCodes.VirtualKeyStates.VK_F7},
-        {"F8", (int)VirtualKeyCodes.VirtualKeyStates.VK_F8},
-        {"F9", (int)VirtualKeyCodes.VirtualKeyStates.VK_F9},
-        {"F10", (int)VirtualKeyCodes.VirtualKeyStates.VK_F10},
-        {"F11", (int)VirtualKeyCodes.VirtualKeyStates.VK_F11},
-        {"F12", (int)VirtualKeyCodes.VirtualKeyStates.VK_F12},
+        {
+           // {"1", (int)VirtualKeyCodes.VirtualKeyStates.VK_Alphanumeric_1},
+           // {"2", (int)VirtualKeyCodes.VirtualKeyStates.VK_Alphanumeric_2},
+           // {"3", (int)VirtualKeyCodes.VirtualKeyStates.VK_Alphanumeric_3},
+          //  {"4", (int)VirtualKeyCodes.VirtualKeyStates.VK_Alphanumeric_4},
+          //  {"5", (int)VirtualKeyCodes.VirtualKeyStates.VK_Alphanumeric_5},
+          //  {"6", (int)VirtualKeyCodes.VirtualKeyStates.VK_Alphanumeric_6},
+          //  {"7", (int)VirtualKeyCodes.VirtualKeyStates.VK_Alphanumeric_7},
+          //  {"8", (int)VirtualKeyCodes.VirtualKeyStates.VK_Alphanumeric_8},
+          //  {"9", (int)VirtualKeyCodes.VirtualKeyStates.VK_Alphanumeric_9},
+          //  {"0", (int)VirtualKeyCodes.VirtualKeyStates.VK_Alphanumeric_0},
+            // Had to remove these keys as that can't be detected using OCR very well.   only about a 30% accuarcy
+            // {"-", (int)VirtualKeyCodes.VirtualKeyStates.VK_OEM_MINUS},
+          //    {"=", 187}, // This key can be different depending on country, i.e.  US its the = key,  Spanish is the ? (upside down)
+            {"F1", (int)VirtualKeyCodes.VirtualKeyStates.VK_F1},
+            {"F2", (int)VirtualKeyCodes.VirtualKeyStates.VK_F2},
+            {"F3", (int)VirtualKeyCodes.VirtualKeyStates.VK_F3},
+            {"F4", (int)VirtualKeyCodes.VirtualKeyStates.VK_F4},
+            {"F5", (int)VirtualKeyCodes.VirtualKeyStates.VK_F5},
+            {"F6", (int)VirtualKeyCodes.VirtualKeyStates.VK_F6},
+            {"F7", (int)VirtualKeyCodes.VirtualKeyStates.VK_F7},
+            {"F8", (int)VirtualKeyCodes.VirtualKeyStates.VK_F8},
+            {"F9", (int)VirtualKeyCodes.VirtualKeyStates.VK_F9},
+            {"F10", (int)VirtualKeyCodes.VirtualKeyStates.VK_F10},
+            {"F11", (int)VirtualKeyCodes.VirtualKeyStates.VK_F11},
+            {"F12", (int)VirtualKeyCodes.VirtualKeyStates.VK_F12},
         
-        // This is here just for future,  to accually use these key the value in the key value pair of the diction would need to be an object 
-        // to store the CTRL, ALT, SHIFT states
-        {"C1", (int)VirtualKeyCodes.VirtualKeyStates.VK_Alphanumeric_1},
-        {"C2", (int)VirtualKeyCodes.VirtualKeyStates.VK_Alphanumeric_2},
-        {"C3", (int)VirtualKeyCodes.VirtualKeyStates.VK_Alphanumeric_3},
-        {"C4", (int)VirtualKeyCodes.VirtualKeyStates.VK_Alphanumeric_4},
-        {"C5", (int)VirtualKeyCodes.VirtualKeyStates.VK_Alphanumeric_5},
-        {"C6", (int)VirtualKeyCodes.VirtualKeyStates.VK_Alphanumeric_6},
-        {"C7", (int)VirtualKeyCodes.VirtualKeyStates.VK_Alphanumeric_7},
-        {"C8", (int)VirtualKeyCodes.VirtualKeyStates.VK_Alphanumeric_8},
-        {"C9", (int)VirtualKeyCodes.VirtualKeyStates.VK_Alphanumeric_9},
-        {"C0", (int)VirtualKeyCodes.VirtualKeyStates.VK_Alphanumeric_0},
-        {"A1", (int)VirtualKeyCodes.VirtualKeyStates.VK_Alphanumeric_1},
-        {"A2", (int)VirtualKeyCodes.VirtualKeyStates.VK_Alphanumeric_2},
-        {"A3", (int)VirtualKeyCodes.VirtualKeyStates.VK_Alphanumeric_3},
-        {"A4", (int)VirtualKeyCodes.VirtualKeyStates.VK_Alphanumeric_4},
-        {"A5", (int)VirtualKeyCodes.VirtualKeyStates.VK_Alphanumeric_5},
-        {"A6", (int)VirtualKeyCodes.VirtualKeyStates.VK_Alphanumeric_6},
-        {"A7", (int)VirtualKeyCodes.VirtualKeyStates.VK_Alphanumeric_7},
-        {"A8", (int)VirtualKeyCodes.VirtualKeyStates.VK_Alphanumeric_8},
-        {"A9", (int)VirtualKeyCodes.VirtualKeyStates.VK_Alphanumeric_9},
-        {"A0", (int)VirtualKeyCodes.VirtualKeyStates.VK_Alphanumeric_0},
+            // This is here just for future,  to accually use these key the value in the key value pair of the diction would need to be an object 
+            // to store the CTRL, ALT, SHIFT states
+            {"CF1", (int)VirtualKeyCodes.VirtualKeyStates.VK_F1},
+            {"CF2", (int)VirtualKeyCodes.VirtualKeyStates.VK_F2},
+            {"CF3", (int)VirtualKeyCodes.VirtualKeyStates.VK_F3},
+            {"CF4", (int)VirtualKeyCodes.VirtualKeyStates.VK_F4},
+            {"CF5", (int)VirtualKeyCodes.VirtualKeyStates.VK_F5},
+            {"CF6", (int)VirtualKeyCodes.VirtualKeyStates.VK_F6},
+            {"CF7", (int)VirtualKeyCodes.VirtualKeyStates.VK_F7},
+            {"CF8", (int)VirtualKeyCodes.VirtualKeyStates.VK_F8},
+            {"CF9", (int)VirtualKeyCodes.VirtualKeyStates.VK_F9},
+            {"CF10", (int)VirtualKeyCodes.VirtualKeyStates.VK_F10},
+            {"CF11", (int)VirtualKeyCodes.VirtualKeyStates.VK_F11},
+                        {"CF12", (int)VirtualKeyCodes.VirtualKeyStates.VK_F12},
+            {"AF1", (int)VirtualKeyCodes.VirtualKeyStates.VK_F1},
+            {"AF2", (int)VirtualKeyCodes.VirtualKeyStates.VK_F2},
+            {"AF3", (int)VirtualKeyCodes.VirtualKeyStates.VK_F3},
+            {"AF4", (int)VirtualKeyCodes.VirtualKeyStates.VK_F4},
+            {"AF5", (int)VirtualKeyCodes.VirtualKeyStates.VK_F5},
+            {"AF6", (int)VirtualKeyCodes.VirtualKeyStates.VK_F6},
+            {"AF7", (int)VirtualKeyCodes.VirtualKeyStates.VK_F7},
+            {"AF8", (int)VirtualKeyCodes.VirtualKeyStates.VK_F8},
+            {"AF9", (int)VirtualKeyCodes.VirtualKeyStates.VK_F9},
+            {"AF10", (int)VirtualKeyCodes.VirtualKeyStates.VK_F10},
+                        {"AF11", (int)VirtualKeyCodes.VirtualKeyStates.VK_F11},
+                                    {"AF12", (int)VirtualKeyCodes.VirtualKeyStates.VK_F12},
                 // ... add additional key mappings as needed
     };
 
@@ -141,6 +180,8 @@ namespace HekiliHelper
         const uint WM_KEYUP = 0x0101;
         private const int WH_MOUSE_LL = 14;
         private const int WM_LBUTTONDOWN = 0x0201;
+        public const int VK_CONTROL = 0x11;
+        public const int VK_MENU = 0x12; // Alt key
 
         // Virtual-Key codes for numeric keys "1" to "0"
         const int VK_1 = 0x31;
@@ -236,7 +277,7 @@ namespace HekiliHelper
 
 
 
-        private IntPtr SetHook(WindowsMessageProc proc)
+        private IntPtr SetHookActionKey(WindowsMessageProc proc)
         {
             using (Process curProcess = Process.GetCurrentProcess())
             using (ProcessModule curModule = curProcess.MainModule)
@@ -247,7 +288,7 @@ namespace HekiliHelper
 
 
 
-        private IntPtr HookCallback(int nCode, IntPtr wParam, IntPtr lParam)
+        private IntPtr HookCallbackActionKey(int nCode, IntPtr wParam, IntPtr lParam)
         {
             bool handled = false;
 
@@ -265,8 +306,8 @@ namespace HekiliHelper
                 }
                 else
                 {
-
-                    if (wParam == (IntPtr)WM_KEYDOWN && key == Key.D1) // Replace SomeCapturedKey with the actual captured key
+                    var item = ActivationKeyCodeMapper.GetVirtualKeyCode(Properties.Settings.Default.ActivationKey);
+                    if (wParam == (IntPtr)WM_KEYDOWN && (int)key == item) // Replace SomeCapturedKey with the actual captured key
                     {
                         // Find the window with the title "wow" only if we haven't already found it
                         if (_wowWindowHandle == IntPtr.Zero)
@@ -281,7 +322,7 @@ namespace HekiliHelper
                         }
 
                     }
-                    else if (wParam == (IntPtr)WM_KEYUP && key == Key.D1) // Replace SomeCapturedKey with the actual captured key
+                    else if (wParam == (IntPtr)WM_KEYUP && (int)key == item) // Replace SomeCapturedKey with the actual captured key
                     {
                         _timer.Stop();
                         handled = true;
@@ -323,7 +364,7 @@ namespace HekiliHelper
             string s = ocr.PerformOcr(b).Replace("\n", "");
             if (VirtualKeyCodeMapper.HasKey(s))
             {
-                CurrentKeyToPress = StringExtensions.Extract(s, 3);
+                CurrentKeyToPress = StringExtensions.Extract(s, 4);
                 if (!string.IsNullOrEmpty(CurrentKeyToPress.Trim()))
                 {
                     _currentKeyToSend = CurrentKeyToPress;
@@ -457,14 +498,16 @@ namespace HekiliHelper
 
             // Resize the image
             Mat resizedImage = new Mat();
-            Cv2.Resize(src, resizedImage, new OpenCvSharp.Size(newWidth, newHeight));
+            Cv2.Resize(src, resizedImage, new OpenCvSharp.Size(newWidth, newHeight), interpolation: InterpolationFlags.Cubic);
 
             return resizedImage;
         }
+
+
         public bool IsThereAnImageInFirstQuarter(Mat src)
         {
             // Define the region of interest (ROI) as the first quarter of the image
-            OpenCvSharp.Rect roi = new OpenCvSharp.Rect(0, 0, src.Width / 4, src.Height / 4);
+            OpenCvSharp.Rect roi = new OpenCvSharp.Rect(0, 0, (src.Width / 3), (src.Height / 3));
             Mat firstQuarter = new Mat(src, roi);
 
             // Convert to grayscale
@@ -473,7 +516,7 @@ namespace HekiliHelper
 
             // Apply edge detection (e.g., using Canny)
             Mat edges = new Mat();
-            Cv2.Canny(firstQuarter, edges, 100, 200); // Thresholds may need adjustment
+            Cv2.Canny(firstQuarter, edges, 255, 255); // Thresholds may need adjustment
 
             // Check if there are significant edges
             int numberOfNonZeroPixels = Cv2.CountNonZero(edges);
@@ -485,6 +528,31 @@ namespace HekiliHelper
             return numberOfNonZeroPixels > threshold;
         }
 
+        public bool IsThereAnImageInSecondQuarter(Mat src)
+        {
+            // Define the region of interest (ROI) as the first quarter of the image
+            OpenCvSharp.Rect roi = new OpenCvSharp.Rect((src.Width / 3), (src.Height / 3), src.Width - (src.Width / 3), src.Height - (src.Height / 3));
+            Mat firstQuarter = new Mat(src, roi);
+
+            // Convert to grayscale
+            //Mat gray = new Mat();
+            //Cv2.CvtColor(firstQuarter, gray, ColorConversionCodes.BGR2GRAY);
+
+            // Apply edge detection (e.g., using Canny)
+            Mat edges = new Mat();
+            Cv2.Canny(firstQuarter, edges, 255, 255); // Thresholds may need adjustment
+
+            // Check if there are significant edges
+            int numberOfNonZeroPixels = Cv2.CountNonZero(edges);
+
+            // Define a threshold for what you consider 'significant'
+            // This threshold depends on your specific requirements
+            int threshold = (int)(0.01 * edges.Rows * edges.Cols); // Example threshold: 1% of the area
+
+            return numberOfNonZeroPixels > threshold;
+        }
+
+
         private void ProcessImageOpenCV (Bitmap image)
         {
             var origWidth = image.Width;
@@ -494,43 +562,49 @@ namespace HekiliHelper
             int Gscale = (int)(CurrentG * ((CurrentG * trasThreshold) / CurrentG));
             int Bscale = (int)(CurrentB * ((CurrentB * trasThreshold) / CurrentB));
 
+      
+            var CVMat = BitmapSourceConverter.ToMat(Convert(image));
+            Mat resizedMat;
+            resizedMat = RescaleImageToNewDpi(CVMat, image.HorizontalResolution, 300);
 
-            var  CVMat = BitmapSourceConverter.ToMat(Convert(image));
-
-            var IsolatedColor = IsolateColor(CVMat, Scalar.FromRgb(CurrentR, CurrentG, CurrentB), Scalar.FromRgb(Rscale, Gscale, Bscale));
 
 
+            var IsolatedColor = IsolateColor(resizedMat, Scalar.FromRgb(CurrentR, CurrentG, CurrentB), Scalar.FromRgb(Rscale, Gscale, Bscale));
 
+           
             Mat gray = new Mat();
             Cv2.CvtColor(IsolatedColor, gray, ColorConversionCodes.BGR2GRAY);
-
+   
             // Apply Otsu's thresholding
             Cv2.Threshold(gray, gray, 250, 255, ThresholdTypes.Otsu | ThresholdTypes.BinaryInv);
 
             //Mat invertedMask = new Mat();
             //Cv2.BitwiseNot(gray, invertedMask);
-
-            if (!IsThereAnImageInFirstQuarter(gray))
+            if (IsThereAnImageInSecondQuarter(gray) ) 
+            if (!IsThereAnImageInFirstQuarter(gray) )
             {
-                var OutImageSource = BitmapSourceConverter.ToBitmapSource(gray);
-                UpdateImageControl(OutImageSource);
+                    Cv2.Line(gray, (int)(resizedMat.Width / 2), 0, (int)(resizedMat.Width / 2), resizedMat.Height, Scalar.FromRgb(255, 0, 0), 1, LineTypes.Link8);
+                    Cv2.Line(gray, 0, (int)(resizedMat.Height / 2), resizedMat.Width, (int)(resizedMat.Height / 2), Scalar.FromRgb(255, 0, 0), 1, LineTypes.Link8);
+                    var OutImageSource = BitmapSourceConverter.ToBitmapSource(gray);
+
+                    UpdateImageControl(OutImageSource);
                 lDetectedValue.Content = "";
                 return;
             }
-            Mat resizedMat;
-            resizedMat = RescaleImageToNewDpi(gray, image.HorizontalResolution, 300);
-     
+             resizedMat = gray;
+           // resizedMat = RescaleImageToNewDpi(gray, image.HorizontalResolution, 300);
 
+         
 
             //This  currently not working and just taking up CPU cycles.  Not sure what is going on.
             //Will figure this out later.
 
             // Dilation
-            Mat kernel = Cv2.GetStructuringElement(MorphShapes.Rect, new OpenCvSharp.Size(20, 20));
+            Mat kernel = Cv2.GetStructuringElement(MorphShapes.Rect, new OpenCvSharp.Size(3, 3));
             Mat dilation = new Mat();
-            Cv2.Dilate(resizedMat, dilation, kernel, new OpenCvSharp.Point(-1,-1), 1);
+            Cv2.Dilate(resizedMat, dilation, kernel);
             //var OutImageSource = BitmapSourceConverter.ToBitmapSource(dilation);
-            //UpdateImageControl(OutImageSource);
+      
 
             // Find contours
             OpenCvSharp.Point[][] contours;
@@ -545,10 +619,17 @@ namespace HekiliHelper
                 // Crop and OCR
                 Mat cropped = new Mat(resizedMat, rect);
                 var OutImage = OpenCvSharp.Extensions.BitmapConverter.ToBitmap(cropped);
-                var OutImageSource = BitmapSourceConverter.ToBitmapSource(OutImage);
-                UpdateImageControl(OutImageSource);
+    
+   
                 string s = OCRProcess(OpenCvSharp.Extensions.BitmapConverter.ToBitmap(resizedMat));
-                if (s == (string)lDetectedValue.Content && _DetectedSameCount >= 5)
+                Cv2.CvtColor(resizedMat, resizedMat, ColorConversionCodes.BayerBG2RGB);
+                Cv2.Line(resizedMat, (int)(resizedMat.Width / 2), 0, (int)(resizedMat.Width / 2), resizedMat.Height, Scalar.FromRgb(255, 0, 0), 1, LineTypes.Link8);
+                Cv2.Line(resizedMat, 0, (int)(resizedMat.Height / 2), resizedMat.Width, (int)(resizedMat.Height / 2), Scalar.FromRgb(255, 0, 0), 1, LineTypes.Link8);
+                var OutImageSource = BitmapSourceConverter.ToBitmapSource(resizedMat);
+
+                UpdateImageControl(OutImageSource);
+                //if ( _DetectedSameCount >= (int)(Properties.Settings.Default.CaptureRateMS * 0.05))
+                if ( _DetectedSameCount >= 2)
                 {
                     lDetectedValue.Content = s;
                     _DetectedValue = s;
@@ -556,8 +637,8 @@ namespace HekiliHelper
                 }
                 else
                 {
-
-                    lDetectedValue.Content = s;
+                    if (lDetectedValue.Content.ToString() != s)
+                    lDetectedValue.Content = "";
                     _DetectedSameCount++;
                 }
                 
@@ -658,7 +739,25 @@ namespace HekiliHelper
             TargetColorPicker.SelectedColor = System.Windows.Media.Color.FromArgb(255,25,255,255);
             _holderBitmap = ImageHelpers.CreateBitmap(60, 60, System.Drawing.Color.Black);
 
+            tbVariance.Text = Properties.Settings.Default.VariancePercent.ToString();
             sliderColorVariancePercent.Value = Properties.Settings.Default.VariancePercent;
+
+            tbCaptureRateMS.Text = Properties.Settings.Default.CaptureRateMS.ToString();
+            sliderCaptureRateMS.Value = Properties.Settings.Default.CaptureRateMS;
+
+            tbKeyRateMS.Text = Properties.Settings.Default.KeyPressSpeedMS.ToString();
+            sliderKeyRateMS.Value = Properties.Settings.Default.KeyPressSpeedMS;
+
+            //Properties.Settings.Default.ActivationKey
+
+            foreach (var x in cbActivationKey.Items)
+            {
+
+               if ( ((ComboBoxItem)x).Content.ToString() == Properties.Settings.Default.ActivationKey)
+                    {
+                    cbActivationKey.SelectedItem = x;
+                }
+            }
 
             OpenMagnifierWindow();
 
@@ -666,7 +765,7 @@ namespace HekiliHelper
             this.Top = Properties.Settings.Default.AppStartY;
 
             CurrentKeyToPress = "";
-            _proc = HookCallback;
+            _proc = HookCallbackActionKey;
 
             _mouseProc = MouseHookCallback;
 
@@ -684,9 +783,10 @@ namespace HekiliHelper
             {
                 // Check the key dictionary if the key is one we should handle
                 if (!VirtualKeyCodeMapper.HasKey(_currentKeyToSend)) return;
+                var l_currentKeyToSend = _currentKeyToSend;
                 int vkCode = 0;
                 // Tranlate the char to the virtual Key Code
-                vkCode = VirtualKeyCodeMapper.GetVirtualKeyCode(_currentKeyToSend);
+                vkCode = VirtualKeyCodeMapper.GetVirtualKeyCode(l_currentKeyToSend);
                // int vkCode = _currentKeyToSend + 0x30; // 0x30 is the virtual-key code for "0"
                 //KeyInterop.VirtualKeyFromKey(e.Key)
                 if (_wowWindowHandle != IntPtr.Zero)
@@ -696,19 +796,42 @@ namespace HekiliHelper
                     // There would have to some logic in the capture to say its a new detection
                    // if (_lastKeyToSend != _currentKeyToSend)
                     {
-                        _lastKeyToSend = _currentKeyToSend;
+                        if (l_currentKeyToSend[0] == 'C')
+                        {
+                            PostMessage(_wowWindowHandle, WM_KEYDOWN, VK_CONTROL, 0);
+                        }
+                        if (l_currentKeyToSend[0] == 'A')
+                        {
+                            PostMessage(_wowWindowHandle, WM_KEYDOWN, VK_MENU, 0);
+                        }
+
+
                         PostMessage(_wowWindowHandle, WM_KEYDOWN, vkCode, 0);
                         // It may not be necessary to send WM_KEYUP immediately after WM_KEYDOWN
                         // because it simulates a very quick key tap rather than a sustained key press.
-                        await Task.Delay(Random.Shared.Next() % 15 + CurrentKeyDownDelayMS); 
+                        await Task.Delay(Random.Shared.Next() % 5 + CurrentKeyDownDelayMS); 
                         PostMessage(_wowWindowHandle, WM_KEYUP, vkCode, 0);
-                        _lastKeyToSend =  _currentKeyToSend;
+
+                        if (l_currentKeyToSend[0] == 'C')
+                        {
+                            PostMessage(_wowWindowHandle, WM_KEYUP, VK_CONTROL, 0);
+                        }
+                        if (l_currentKeyToSend[0] == 'A')
+                        {
+                            PostMessage(_wowWindowHandle, WM_KEYUP, VK_MENU, 0);
+                        }
+
+
+                        _lastKeyToSend = l_currentKeyToSend;
 
                         // this stops the sending of the key till the timer is almost up.  
                         // it takes advantage of the cooldown visual cue in the game that darkens the font (changes the color)
                         // the OCR doesn't see a new char until it is almost times out, at that point it can be pressed and would be added to the action queue
-                        _currentKeyToSend = ""; 
-                    
+                        _currentKeyToSend = "";
+                        _DetectedValue = "";
+
+
+
                     }
                 }
             };
@@ -721,7 +844,14 @@ namespace HekiliHelper
         #region UI Event handlers
         private void button_Click(object sender, RoutedEventArgs e)
         {
-            this.Topmost = !this.Topmost;
+            if (cbStayOnTop.IsChecked == true)
+            {
+                this.Topmost = true;
+            }
+            else
+            {
+                this.Topmost = false;
+            }
         }
 
         private void StartButton_Click(object sender, RoutedEventArgs e)
@@ -735,7 +865,9 @@ namespace HekiliHelper
                     Magnifier_LocationChanged(sender, e);
                     screenCapture.StartCapture();
 
-                    _hookID = _hookID == 0 ? SetHook(_proc) : 0; 
+                    _hookID = _hookID == 0 ? SetHookActionKey(_proc) : 0; 
+                    button_Start.IsEnabled = false;
+                    button_Stop.IsEnabled = true;
                 }
             }
  
@@ -748,6 +880,8 @@ namespace HekiliHelper
                 screenCapture.StopCapture();
                 UnhookWindowsHookEx(_hookID);
                 _hookID = 0;
+                button_Start.IsEnabled = true;
+                button_Stop.IsEnabled = false;
             }
         }
 
@@ -1021,6 +1155,7 @@ namespace HekiliHelper
             tbCaptureRateMS.Text = ((int)sliderCaptureRateMS.Value).ToString();
             if (screenCapture != null)
             screenCapture.CaptureInterval = (int)sliderCaptureRateMS.Value;
+       
         }
 
         private void sliderKeyRateMS_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
@@ -1071,6 +1206,11 @@ namespace HekiliHelper
         private void tbVariance_TextChanged(object sender, System.Windows.Controls.TextChangedEventArgs e)
         {
             sliderColorVariancePercent.Value = int.Parse(((System.Windows.Controls.TextBox)e.Source).Text.ToString());
+        }
+
+        private void cbActivationKey_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+        {
+            Properties.Settings.Default.ActivationKey = ((ComboBoxItem)cbActivationKey.SelectedItem).Content.ToString();
         }
     }
 }

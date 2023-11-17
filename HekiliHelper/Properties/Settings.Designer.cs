@@ -169,7 +169,43 @@ namespace HekiliHelper.Properties {
         
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("5")]
+        [global::System.Configuration.DefaultSettingValueAttribute("255")]
+        public int TargetA {
+            get {
+                return ((int)(this["TargetA"]));
+            }
+            set {
+                this["TargetA"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("1")]
+        public string ActivationKey {
+            get {
+                return ((string)(this["ActivationKey"]));
+            }
+            set {
+                this["ActivationKey"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("True")]
+        public bool ActivationModeSendOnPress {
+            get {
+                return ((bool)(this["ActivationModeSendOnPress"]));
+            }
+            set {
+                this["ActivationModeSendOnPress"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("20")]
         public double VariancePercent {
             get {
                 return ((double)(this["VariancePercent"]));
@@ -181,7 +217,7 @@ namespace HekiliHelper.Properties {
         
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("200")]
+        [global::System.Configuration.DefaultSettingValueAttribute("100")]
         public int CaptureRateMS {
             get {
                 return ((int)(this["CaptureRateMS"]));
@@ -193,25 +229,13 @@ namespace HekiliHelper.Properties {
         
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("100")]
+        [global::System.Configuration.DefaultSettingValueAttribute("50")]
         public int KeyPressSpeedMS {
             get {
                 return ((int)(this["KeyPressSpeedMS"]));
             }
             set {
                 this["KeyPressSpeedMS"] = value;
-            }
-        }
-        
-        [global::System.Configuration.UserScopedSettingAttribute()]
-        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("255")]
-        public int TargetA {
-            get {
-                return ((int)(this["TargetA"]));
-            }
-            set {
-                this["TargetA"] = value;
             }
         }
     }
