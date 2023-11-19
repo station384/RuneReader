@@ -15,7 +15,7 @@ namespace HekiliHelper
     public class ContinuousScreenCapture
     {
         private Thread captureThread;
-        private bool isCapturing;
+        private volatile bool isCapturing;
         private int captureInterval; // Interval in milliseconds
         private Dispatcher uiDispatcher;
         private CaptureScreen screenCapture; // Instance of CaptureScreen class
@@ -68,43 +68,58 @@ namespace HekiliHelper
 
         public void StartCapture()
         {
+            if (isCapturing == false)
+            { 
             isCapturing = true;
             captureThread = new Thread(CaptureLoop)
             {
                 IsBackground = true // Set the thread as a background thread
             };
             captureThread.Start();
+            }
         }
 
         public void StopCapture()
         {
-            isCapturing = false;
-            if (captureThread != null && captureThread.IsAlive)
+            if (isCapturing == true)
             {
-                captureThread.Join(); // Wait for the thread to finish
+
+                isCapturing = false;
+                if (captureThread != null && captureThread.IsAlive)
+                {
+                   // captureThread.Join(); // Wait for the thread to finish
+                }
             }
         }
 
         private void CaptureLoop()
         {
+      
             while (isCapturing)
             {
                 screenCapture.GrabScreen();
                  Bitmap capturedImage = screenCapture.CapturedImage; // Implement this to capture the screen
-
-                uiDispatcher.Invoke(() =>
+                try
                 {
-                    UpdateUIImage?.Invoke(capturedImage);
-                });
-
+                    uiDispatcher.Invoke(() =>
+                    {
+                        UpdateUIImage?.Invoke(capturedImage);
+                    });
+                }
+                catch (Exception ex)
+                {
+                    isCapturing = true;
+                }
                 // Use the latest interval value
                 int sleepTime;
                 lock (intervalLock)
                 {
                     sleepTime = captureInterval;
                 }
+    
                 Thread.Sleep(sleepTime);
             }
+           // Thread.Sleep(100);
         }
     }
 }

@@ -16,7 +16,7 @@ namespace HekiliHelper
             
             try
             {
-                _tesseractEngine = new TesseractEngine(@"./tessdata", "en3", EngineMode.Default,@"./tessdata/config.cfg");
+                _tesseractEngine = new TesseractEngine(@"./tessdata", "en3", EngineMode.TesseractOnly,@"./tessdata/config.cfg");
                 //_tesseractEngine.SetVariable("tessedit_char_whitelist", "0123456789FCA");
 
                 //_tesseractEngine.SetVariable("language_model_penalty_non_dict_word", 0.975); //default:0.15
@@ -55,7 +55,7 @@ namespace HekiliHelper
             // Rect Area = new Rect(Region.X, Region.Y, Region.Width, Region.Height);
             // Initialize the OCR engine with the path to the tessdata and the language.
             // Process the image with OCR.
-            using (var page = _tesseractEngine.Process(ocrBitmap, PageSegMode.SingleBlock))
+            using (var page = _tesseractEngine.Process(ocrBitmap, PageSegMode.SingleWord))
             {
                 // Return the recognized text.
                 return page.GetText();

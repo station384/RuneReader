@@ -20,6 +20,7 @@ using System.Windows.Controls;
 using System.Linq;
 using System.Collections.ObjectModel;
 using Vortice.Mathematics;
+using Tesseract;
 
 namespace HekiliHelper
 {
@@ -504,11 +505,26 @@ namespace HekiliHelper
         }
 
 
-        public bool IsThereAnImageInFirstQuarter(Mat src)
+        public bool IsThereAnImageInTopLeftQuarter(Mat src)
         {
             // Define the region of interest (ROI) as the first quarter of the image
-            OpenCvSharp.Rect roi = new OpenCvSharp.Rect(0, 0, (src.Width / 3), (src.Height / 3));
-            Mat firstQuarter = new Mat(src, roi);
+            //OpenCvSharp.Rect roi = new OpenCvSharp.Rect(0, 0, (src.Width / 3), (src.Height / 3));
+            //OpenCvSharp.Rect roi = new OpenCvSharp.Rect( (int)((src.Width / 2) / 2.5), 0, (int)((src.Width / 2) / 1.2), (src.Height / 3) );
+
+
+            //       Cv2.Rectangle(resizedMat,
+            //new OpenCvSharp.Point((resizedMat.Width / 4), 0),
+            //new OpenCvSharp.Point((resizedMat.Width / 8) + (resizedMat.Width / 4), (resizedMat.Height / 3)),
+
+            var x = (src.Width / 8) + (src.Width / 16);
+            var y = (src.Height / 16);
+            var width = (src.Width / 2) - (src.Width / 5);
+            var height = (src.Height / 2) / 2;
+            OpenCvSharp.Rect roi = new OpenCvSharp.Rect(
+                x, y, width, height 
+    );
+
+            Mat firstQuarter = src.Clone( roi);// new Mat(src, roi);
 
             // Convert to grayscale
             //Mat gray = new Mat();
@@ -516,23 +532,38 @@ namespace HekiliHelper
 
             // Apply edge detection (e.g., using Canny)
             Mat edges = new Mat();
-            Cv2.Canny(firstQuarter, edges, 255, 255); // Thresholds may need adjustment
+            //        Cv2.BitwiseNot(firstQuarter, edges);
+            var x1 = Cv2.Mean(firstQuarter);
+            if (x1.Val0 <= 250)
+                return true;
+            else
+                return false;
 
-            // Check if there are significant edges
-            int numberOfNonZeroPixels = Cv2.CountNonZero(edges);
-
-            // Define a threshold for what you consider 'significant'
-            // This threshold depends on your specific requirements
-            int threshold = (int)(0.01 * edges.Rows * edges.Cols); // Example threshold: 1% of the area
-
-            return numberOfNonZeroPixels > threshold;
         }
 
-        public bool IsThereAnImageInSecondQuarter(Mat src)
+        public bool IsThereAnImageInTopRightQuarter(Mat src)
         {
             // Define the region of interest (ROI) as the first quarter of the image
-            OpenCvSharp.Rect roi = new OpenCvSharp.Rect((src.Width / 3), (src.Height / 3), src.Width - (src.Width / 3), src.Height - (src.Height / 3));
-            Mat firstQuarter = new Mat(src, roi);
+            //OpenCvSharp.Rect roi = new OpenCvSharp.Rect((src.Width / 3), (src.Height / 3), src.Width - (src.Width / 3), src.Height - (src.Height / 3));
+
+            //OpenCvSharp.Rect roi = new OpenCvSharp.Rect(
+
+            //    (int)(src.Width / 2.3), 
+            //    0,
+
+            //    (int)(src.Width / 1.3), 
+            //    src.Height / 3 
+
+            //    );
+
+            var x1 = (src.Width / 2) + (src.Width / 32);
+            var y1 = (src.Height / 16);
+            var width1 = (src.Width / 2) - (src.Width / 5);
+            var height1 = (src.Height / 2) / 2;
+            OpenCvSharp.Rect roi1 = new OpenCvSharp.Rect(x1, y1, width1, height1);
+
+
+            Mat firstQuarter = new Mat(src, roi1);
 
             // Convert to grayscale
             //Mat gray = new Mat();
@@ -540,16 +571,13 @@ namespace HekiliHelper
 
             // Apply edge detection (e.g., using Canny)
             Mat edges = new Mat();
-            Cv2.Canny(firstQuarter, edges, 255, 255); // Thresholds may need adjustment
 
-            // Check if there are significant edges
-            int numberOfNonZeroPixels = Cv2.CountNonZero(edges);
+            var x2 = Cv2.Mean(firstQuarter);
+            if (x2.Val0 <= 250)
+                return true;
+            else
+                return false;
 
-            // Define a threshold for what you consider 'significant'
-            // This threshold depends on your specific requirements
-            int threshold = (int)(0.01 * edges.Rows * edges.Cols); // Example threshold: 1% of the area
-
-            return numberOfNonZeroPixels > threshold;
         }
 
 
@@ -574,18 +602,37 @@ namespace HekiliHelper
            
             Mat gray = new Mat();
             Cv2.CvtColor(IsolatedColor, gray, ColorConversionCodes.BGR2GRAY);
-   
+        
             // Apply Otsu's thresholding
-            Cv2.Threshold(gray, gray, 250, 255, ThresholdTypes.Otsu | ThresholdTypes.BinaryInv);
+            Cv2.Threshold(gray, gray, 1, 255, ThresholdTypes.Otsu | ThresholdTypes.BinaryInv); //
 
             //Mat invertedMask = new Mat();
             //Cv2.BitwiseNot(gray, invertedMask);
-            if (IsThereAnImageInSecondQuarter(gray) ) 
-            if (!IsThereAnImageInFirstQuarter(gray) )
+            if (IsThereAnImageInTopRightQuarter(gray) ) 
+            if (!IsThereAnImageInTopLeftQuarter(gray) )
             {
-                    Cv2.Line(gray, (int)(resizedMat.Width / 2), 0, (int)(resizedMat.Width / 2), resizedMat.Height, Scalar.FromRgb(255, 0, 0), 1, LineTypes.Link8);
-                    Cv2.Line(gray, 0, (int)(resizedMat.Height / 2), resizedMat.Width, (int)(resizedMat.Height / 2), Scalar.FromRgb(255, 0, 0), 1, LineTypes.Link8);
-                    var OutImageSource = BitmapSourceConverter.ToBitmapSource(gray);
+                Cv2.CvtColor(gray, gray, ColorConversionCodes.BayerBG2RGB);
+                Cv2.Line(gray, (int)(gray.Width / 2), 0, (int)(gray.Width / 2), gray.Height, Scalar.FromRgb(255, 0, 0), 1, LineTypes.Link8);
+                Cv2.Line(gray, 0, (int)(gray.Height / 2), gray.Width, (int)(gray.Height / 2), Scalar.FromRgb(255, 0, 0), 1, LineTypes.Link8);
+
+
+                //Draw top left sensor
+                var x = (gray.Width / 8) + (gray.Width / 16);
+                var y = (gray.Height / 16);
+                var width = (gray.Width / 2)- (gray.Width / 5);
+                var height = (gray.Height / 2) / 2;
+                OpenCvSharp.Rect roi = new OpenCvSharp.Rect(x, y, width, height);
+                Cv2.Rectangle(gray, roi, Scalar.Red, 1, LineTypes.Link8);
+
+                //Draw top right sensor
+                var x1 = (gray.Width / 2) + (gray.Width / 32);
+                var y1 = (gray.Height / 16);
+                var width1 = (gray.Width / 2) - (gray.Width / 5);
+                var height1 = (gray.Height / 2) / 2;
+                OpenCvSharp.Rect roi1 = new OpenCvSharp.Rect(x1, y1, width1, height1);
+                Cv2.Rectangle(gray, roi1, Scalar.Red, 1, LineTypes.Link8);
+
+                var OutImageSource = BitmapSourceConverter.ToBitmapSource(gray);
 
                     UpdateImageControl(OutImageSource);
                 lDetectedValue.Content = "";
@@ -624,7 +671,35 @@ namespace HekiliHelper
                 string s = OCRProcess(OpenCvSharp.Extensions.BitmapConverter.ToBitmap(resizedMat));
                 Cv2.CvtColor(resizedMat, resizedMat, ColorConversionCodes.BayerBG2RGB);
                 Cv2.Line(resizedMat, (int)(resizedMat.Width / 2), 0, (int)(resizedMat.Width / 2), resizedMat.Height, Scalar.FromRgb(255, 0, 0), 1, LineTypes.Link8);
-                Cv2.Line(resizedMat, 0, (int)(resizedMat.Height / 2), resizedMat.Width, (int)(resizedMat.Height / 2), Scalar.FromRgb(255, 0, 0), 1, LineTypes.Link8);
+               Cv2.Line(resizedMat, 0, (int)(resizedMat.Height / 2), resizedMat.Width, (int)(resizedMat.Height / 2), Scalar.FromRgb(255, 0, 0), 1, LineTypes.Link8);
+
+                //Draw top left sensor
+                var x = (resizedMat.Width / 8) + (resizedMat.Width / 16);
+                var y = (resizedMat.Height / 16);
+                var width = (resizedMat.Width / 2) - (resizedMat.Width / 5);
+                var height = (resizedMat.Height / 2) / 2;
+                OpenCvSharp.Rect roi = new OpenCvSharp.Rect(x, y, width, height);
+                Cv2.Rectangle(resizedMat, roi, Scalar.Red, 1, LineTypes.Link8);
+
+                //Draw top right sensor
+                var x1 = (resizedMat.Width / 2) + (resizedMat.Width / 32);
+                var y1 = (resizedMat.Height / 16);
+                var width1 = (resizedMat.Width / 2) - (resizedMat.Width / 5);
+                var height1 = (resizedMat.Height / 2) / 2;
+                OpenCvSharp.Rect roi1 = new OpenCvSharp.Rect(x1, y1, width1, height1);
+                Cv2.Rectangle(resizedMat, roi1, Scalar.Red, 1, LineTypes.Link8);
+                //Cv2.Rectangle(resizedMat,
+                //    new OpenCvSharp.Point((resizedMat.Width / 4), 0),
+                //    new OpenCvSharp.Point((resizedMat.Width / 8)+(resizedMat.Width / 4), (resizedMat.Height / 3)),
+
+                //    Scalar.Red, 1, LineTypes.Link8);
+
+                //Cv2.Rectangle(resizedMat,
+                //         new OpenCvSharp.Point((resizedMat.Width / 2) + (resizedMat.Width / 8), 0),
+                //         new OpenCvSharp.Point((resizedMat.Width / 2) + (resizedMat.Width / 4), (resizedMat.Height / 3)),
+                //         Scalar.Red, 1, LineTypes.Link8);
+
+
                 var OutImageSource = BitmapSourceConverter.ToBitmapSource(resizedMat);
 
                 UpdateImageControl(OutImageSource);
@@ -736,7 +811,12 @@ namespace HekiliHelper
             magnifier.Height = Properties.Settings.Default.CapHeight;
 
             //TargetColorPicker.ColorState =  new ColorPicker.Models.ColorState();
-            TargetColorPicker.SelectedColor = System.Windows.Media.Color.FromArgb(255,25,255,255);
+            TargetColorPicker.SelectedColor = System.Windows.Media.Color.FromArgb((byte)Properties.Settings.Default.TargetA, (byte)Properties.Settings.Default.TargetR, (byte)Properties.Settings.Default.TargetG, (byte)Properties.Settings.Default.TargetB);
+            CurrentR = Properties.Settings.Default.TargetR;
+            CurrentG = Properties.Settings.Default.TargetG;
+            CurrentB = Properties.Settings.Default.TargetB;
+            CurrentA = Properties.Settings.Default.TargetA; 
+
             _holderBitmap = ImageHelpers.CreateBitmap(60, 60, System.Drawing.Color.Black);
 
             tbVariance.Text = Properties.Settings.Default.VariancePercent.ToString();
@@ -1032,13 +1112,24 @@ namespace HekiliHelper
             Properties.Settings.Default.CapHeight = magnifier.Height;
             Properties.Settings.Default.AppStartX = this.Left;
             Properties.Settings.Default.AppStartY = this.Top;
+            Properties.Settings.Default.TargetR = CurrentR;
+            Properties.Settings.Default.TargetG = CurrentG;
+            Properties.Settings.Default.TargetB = CurrentB;
+            Properties.Settings.Default.TargetA = 255;
+
             Properties.Settings.Default.Save();
 
 
+            if (screenCapture.IsCapturing)
+            {
+                screenCapture.StopCapture();
+                UnhookWindowsHookEx(_hookID);
+                _hookID = 0;
+            }
+        
             CloseMagnifierWindow();
-
             // Make sure we stop trapping the keyboard
-            UnhookWindowsHookEx(_hookID);
+            // UnhookWindowsHookEx(_hookID);
         }
         #endregion
 
