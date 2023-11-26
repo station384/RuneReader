@@ -37,9 +37,10 @@ Height="Auto"
             <Label Name="LabelDecoded" Content="Decoded Values" HorizontalAlignment="Center"></Label>
             <Label x:Name="lDetectedValue" Content="" HorizontalAlignment="Center"  VerticalAlignment="Top"  Width="50"/>
             <Button x:Name="button_Capture" Content="Capture" HorizontalAlignment="Center"  VerticalAlignment="Top"  Click="Capture_Click" Visibility="Hidden"/>
-            <Button x:Name="bToggleMagBorder" Content="ScanSelection" HorizontalAlignment="Center" VerticalAlignment="Top" Click="bToggleMagBorder_Click" />
-            
-            <StackPanel Orientation="Horizontal">
+            <Button x:Name="bToggleMagBorder" Content="Scan Selection" HorizontalAlignment="Center" VerticalAlignment="Top" Click="bToggleMagBorder_Click" />
+            <Button x:Name="bResetMagPosition" Content="Reset Selection" HorizontalAlignment="Center" VerticalAlignment="Top" Click="bResetMagPosition_Click" Margin="0,5,0,0"/>
+
+            <StackPanel Orientation="Horizontal" Margin="0,5,0,0">
                 <Label Content="Key"></Label>
                 <ComboBox x:Name="cbActivationKey" SelectionChanged="cbActivationKey_SelectionChanged" Width="120">
                     <ComboBoxItem Content="1"/>
@@ -51,6 +52,7 @@ Height="Auto"
                     <ComboBoxItem Content="W"/>
                 </ComboBox>
             </StackPanel>
+            <CheckBox Name="cbPushRelease" Content="Push And Release mode" IsChecked="False" Checked="cbPushRelease_Checked" Unchecked="cbPushRelease_Unchecked"></CheckBox>
 
 
         </StackPanel>

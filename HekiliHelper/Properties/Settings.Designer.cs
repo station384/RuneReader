@@ -238,5 +238,17 @@ namespace HekiliHelper.Properties {
                 this["KeyPressSpeedMS"] = value;
             }
         }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("False")]
+        public bool PushAndRelease {
+            get {
+                return ((bool)(this["PushAndRelease"]));
+            }
+            set {
+                this["PushAndRelease"] = value;
+            }
+        }
     }
 }

@@ -252,9 +252,12 @@ namespace HekiliHelper
         private int CurrentKeyDownDelayMS = 25;
 
 
+        private volatile bool _keyPressMode = false;
 
-
-
+        private  bool keyPressMode { 
+            get { return _keyPressMode; }
+            set { _keyPressMode = value; } 
+        }
 
 
         public string GetActiveWindowTitle()
@@ -292,8 +295,8 @@ namespace HekiliHelper
         private IntPtr HookCallbackActionKey(int nCode, IntPtr wParam, IntPtr lParam)
         {
             bool handled = false;
-
-            if (nCode >= 0)
+      
+            if (nCode >= 0 )
             {
                 int vkCode = Marshal.ReadInt32(lParam);
                 Key key = KeyInterop.KeyFromVirtualKey(vkCode);
@@ -334,8 +337,9 @@ namespace HekiliHelper
 
             // If the keypress has been handled, return a non-zero value.
             // Otherwise, call the next hook in the chain.
-            return handled ? (IntPtr)1 : CallNextHookEx(_hookID, nCode, wParam, lParam);
-        
+            // return handled ? (IntPtr)0:CallNextHookEx(_hookID, nCode, wParam, lParam); // Locks explorer
+             return CallNextHookEx(_hookID, nCode, wParam, lParam); // Doesn't lock explorer
+          //   return handled ? (IntPtr)1:CallNextHookEx(_hookID, nCode, wParam, lParam); // Blocks input to game does not block windowss
 
         }
 
@@ -828,6 +832,7 @@ namespace HekiliHelper
             tbKeyRateMS.Text = Properties.Settings.Default.KeyPressSpeedMS.ToString();
             sliderKeyRateMS.Value = Properties.Settings.Default.KeyPressSpeedMS;
 
+            cbPushRelease.IsChecked = Properties.Settings.Default.PushAndRelease;
             //Properties.Settings.Default.ActivationKey
 
             foreach (var x in cbActivationKey.Items)
@@ -858,10 +863,11 @@ namespace HekiliHelper
 
             // This timer handles the key sending
             _timer = new System.Windows.Threading.DispatcherTimer();
-            _timer.Interval = TimeSpan.FromMilliseconds(80);
+            _timer.Interval = TimeSpan.FromMilliseconds(100);
             _timer.Tick += async (sender, args) =>
             {
                 // Check the key dictionary if the key is one we should handle
+        
                 if (!VirtualKeyCodeMapper.HasKey(_currentKeyToSend)) return;
                 var l_currentKeyToSend = _currentKeyToSend;
                 int vkCode = 0;
@@ -885,13 +891,7 @@ namespace HekiliHelper
                             PostMessage(_wowWindowHandle, WM_KEYDOWN, VK_MENU, 0);
                         }
 
-
                         PostMessage(_wowWindowHandle, WM_KEYDOWN, vkCode, 0);
-                        // It may not be necessary to send WM_KEYUP immediately after WM_KEYDOWN
-                        // because it simulates a very quick key tap rather than a sustained key press.
-                        await Task.Delay(Random.Shared.Next() % 5 + CurrentKeyDownDelayMS); 
-                        PostMessage(_wowWindowHandle, WM_KEYUP, vkCode, 0);
-
                         if (l_currentKeyToSend[0] == 'C')
                         {
                             PostMessage(_wowWindowHandle, WM_KEYUP, VK_CONTROL, 0);
@@ -900,6 +900,19 @@ namespace HekiliHelper
                         {
                             PostMessage(_wowWindowHandle, WM_KEYUP, VK_MENU, 0);
                         }
+
+                        while ((!VirtualKeyCodeMapper.HasKey(_currentKeyToSend) || _currentKeyToSend == "") && _keyPressMode)
+                        {
+                            
+                        }
+
+                            // It may not be necessary to send WM_KEYUP immediately after WM_KEYDOWN
+                            // because it simulates a very quick key tap rather than a sustained key press.
+                            await Task.Delay(Random.Shared.Next() % 5 + CurrentKeyDownDelayMS);
+                            PostMessage(_wowWindowHandle, WM_KEYUP, vkCode, 0);
+  
+
+
 
 
                         _lastKeyToSend = l_currentKeyToSend;
@@ -958,8 +971,10 @@ namespace HekiliHelper
             if (screenCapture.IsCapturing)
             {
                 screenCapture.StopCapture();
-                UnhookWindowsHookEx(_hookID);
-                _hookID = 0;
+                if (_hookID == 0) { 
+                    UnhookWindowsHookEx(_hookID);
+                    _hookID = 0;
+                }
                 button_Start.IsEnabled = true;
                 button_Stop.IsEnabled = false;
             }
@@ -1119,15 +1134,24 @@ namespace HekiliHelper
 
             Properties.Settings.Default.Save();
 
-
+            magnifier.Close();  
             if (screenCapture.IsCapturing)
             {
                 screenCapture.StopCapture();
-                UnhookWindowsHookEx(_hookID);
-                _hookID = 0;
             }
-        
-            CloseMagnifierWindow();
+            if (_hookID != 0) { 
+            UnhookWindowsHookEx(_hookID);
+            _hookID = 0;
+            }
+            
+  
+
+            if (_MouseHookID != IntPtr.Zero)
+            {
+
+                UnhookWindowsHookEx(_MouseHookID);
+                _MouseHookID = IntPtr.Zero;
+            }
             // Make sure we stop trapping the keyboard
             // UnhookWindowsHookEx(_hookID);
         }
@@ -1302,6 +1326,35 @@ namespace HekiliHelper
         private void cbActivationKey_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
         {
             Properties.Settings.Default.ActivationKey = ((ComboBoxItem)cbActivationKey.SelectedItem).Content.ToString();
+        }
+
+        private void bResetMagPosition_Click(object sender, RoutedEventArgs e)
+        {
+            Properties.Settings.Default.CapX = 50;
+            Properties.Settings.Default.CapY = 50;
+            Properties.Settings.Default.CapWidth = 100;
+            Properties.Settings.Default.CapHeight = 100 ;
+
+            magnifier.Left = Properties.Settings.Default.CapX > SystemParameters.PrimaryScreenWidth ? 100 : Properties.Settings.Default.CapX;
+            magnifier.Top = Properties.Settings.Default.CapY > SystemParameters.PrimaryScreenHeight ? 100 : Properties.Settings.Default.CapY;
+            magnifier.Width = Properties.Settings.Default.CapWidth;
+            magnifier.Height = Properties.Settings.Default.CapHeight;
+
+        }
+
+        private void cbPushRelease_Checked(object sender, RoutedEventArgs e)
+        {
+
+            _keyPressMode = true;
+            Properties.Settings.Default.PushAndRelease = _keyPressMode;
+
+        }
+
+        private void cbPushRelease_Unchecked(object sender, RoutedEventArgs e)
+        {
+            _keyPressMode = false;
+            Properties.Settings.Default.PushAndRelease = _keyPressMode;
+
         }
     }
 }
