@@ -72,6 +72,26 @@ namespace HekiliHelper
     public static class VirtualKeyCodeMapper
     {
 
+
+        private static readonly Dictionary<string, int> KeyMappingsExclude = new Dictionary<string, int>
+        {
+            {"1", (int)VirtualKeyCodes.VirtualKeyStates.VK_Alphanumeric_1},
+            {"2", (int)VirtualKeyCodes.VirtualKeyStates.VK_Alphanumeric_2},
+            {"3", (int)VirtualKeyCodes.VirtualKeyStates.VK_Alphanumeric_3},
+            {"4", (int)VirtualKeyCodes.VirtualKeyStates.VK_Alphanumeric_4},
+            {"5", (int)VirtualKeyCodes.VirtualKeyStates.VK_Alphanumeric_5},
+            {"6", (int)VirtualKeyCodes.VirtualKeyStates.VK_Alphanumeric_6},
+            {"7", (int)VirtualKeyCodes.VirtualKeyStates.VK_Alphanumeric_7},
+            {"8", (int)VirtualKeyCodes.VirtualKeyStates.VK_Alphanumeric_8},
+            {"9", (int)VirtualKeyCodes.VirtualKeyStates.VK_Alphanumeric_9},
+            {"0", (int)VirtualKeyCodes.VirtualKeyStates.VK_Alphanumeric_0},
+            // Had to remove these keys as that can't be detected using OCR very well.   only about a 30% accuarcy
+            {"-", (int)VirtualKeyCodes.VirtualKeyStates.VK_OEM_MINUS},
+            {"=", 187}, // This key can be different depending on country, i.e.  US its the = key,  Spanish is the ? (upside down)
+        };
+
+
+
         private static readonly Dictionary<string, int> KeyMappings = new Dictionary<string, int>
         {
            // {"1", (int)VirtualKeyCodes.VirtualKeyStates.VK_Alphanumeric_1},
@@ -138,10 +158,16 @@ namespace HekiliHelper
             throw new ArgumentException("Key not found.", nameof(key));
         }
 
+        public static bool HasExcludeKey (string key)
+        {
+            return KeyMappingsExclude.ContainsKey(key);
+        }
+
         public static bool HasKey(string key)
         {
             return KeyMappings.ContainsKey(key);
         }
+
     }
 
     public partial class MainWindow : System.Windows.Window
@@ -367,7 +393,7 @@ namespace HekiliHelper
         {
             string Result = "";
             string s = ocr.PerformOcr(b).Replace("\n", "");
-            if (VirtualKeyCodeMapper.HasKey(s))
+            if (VirtualKeyCodeMapper.HasKey(s) && (!VirtualKeyCodeMapper.HasExcludeKey(s)) )
             {
                 CurrentKeyToPress = StringExtensions.Extract(s, 4);
                 if (!string.IsNullOrEmpty(CurrentKeyToPress.Trim()))
@@ -708,7 +734,7 @@ namespace HekiliHelper
 
                 UpdateImageControl(OutImageSource);
                 //if ( _DetectedSameCount >= (int)(Properties.Settings.Default.CaptureRateMS * 0.05))
-                if ( _DetectedSameCount >= 2)
+                if ( _DetectedSameCount >= 1)
                 {
                     lDetectedValue.Content = s;
                     _DetectedValue = s;
@@ -863,12 +889,12 @@ namespace HekiliHelper
 
             // This timer handles the key sending
             _timer = new System.Windows.Threading.DispatcherTimer();
-            _timer.Interval = TimeSpan.FromMilliseconds(100);
+            _timer.Interval = TimeSpan.FromMilliseconds(50);
             _timer.Tick += async (sender, args) =>
             {
                 // Check the key dictionary if the key is one we should handle
         
-                if (!VirtualKeyCodeMapper.HasKey(_currentKeyToSend)) return;
+                if ((!VirtualKeyCodeMapper.HasKey(_currentKeyToSend)) || (VirtualKeyCodeMapper.HasExcludeKey(_currentKeyToSend) )) return;
                 var l_currentKeyToSend = _currentKeyToSend;
                 int vkCode = 0;
                 // Tranlate the char to the virtual Key Code
@@ -880,7 +906,7 @@ namespace HekiliHelper
                     // I keep poking at this trying to figure out how to only send the key press again if a new key is to me pressed.
                     // It fails if the next key to press is the same.
                     // There would have to some logic in the capture to say its a new detection
-                   // if (_lastKeyToSend != _currentKeyToSend)
+                    // if (_lastKeyToSend != _currentKeyToSend)
                     {
                         if (l_currentKeyToSend[0] == 'C')
                         {
@@ -892,6 +918,30 @@ namespace HekiliHelper
                         }
 
                         PostMessage(_wowWindowHandle, WM_KEYDOWN, vkCode, 0);
+
+
+                        while (
+                            (
+                                (
+                                 (!VirtualKeyCodeMapper.HasKey(_currentKeyToSend)) || VirtualKeyCodeMapper.HasExcludeKey(_currentKeyToSend)
+                                )
+                                || _currentKeyToSend == ""
+                             )
+
+                            && _keyPressMode
+                        )
+                        {
+
+                        }
+
+                        // It may not be necessary to send WM_KEYUP immediately after WM_KEYDOWN
+                        // because it simulates a very quick key tap rather than a sustained key press.
+
+                        if (!_keyPressMode)
+                        {
+                            await Task.Delay(Random.Shared.Next() % 5 + CurrentKeyDownDelayMS);
+                        }
+                            PostMessage(_wowWindowHandle, WM_KEYUP, vkCode, 0);
                         if (l_currentKeyToSend[0] == 'C')
                         {
                             PostMessage(_wowWindowHandle, WM_KEYUP, VK_CONTROL, 0);
@@ -901,17 +951,10 @@ namespace HekiliHelper
                             PostMessage(_wowWindowHandle, WM_KEYUP, VK_MENU, 0);
                         }
 
-                        while ((!VirtualKeyCodeMapper.HasKey(_currentKeyToSend) || _currentKeyToSend == "") && _keyPressMode)
+                        if (_keyPressMode)
                         {
-                            
+                            await Task.Delay(150);
                         }
-
-                            // It may not be necessary to send WM_KEYUP immediately after WM_KEYDOWN
-                            // because it simulates a very quick key tap rather than a sustained key press.
-                            await Task.Delay(Random.Shared.Next() % 5 + CurrentKeyDownDelayMS);
-                            PostMessage(_wowWindowHandle, WM_KEYUP, vkCode, 0);
-  
-
 
 
 
@@ -1082,7 +1125,7 @@ namespace HekiliHelper
                 var scaledWidth = width * dpiX;
                 var scaledHeight = height * dpiY;
 
-                screenCapture.CaptureRegion = new System.Windows.Rect(scaledLeft, scaledTop, scaledWidth, scaledHeight);
+                screenCapture.CaptureRegion = new System.Windows.Rect(scaledLeft+1, scaledTop+1, scaledWidth-1, scaledHeight-1);
                 //screenCapture.CaptureRegion = magnifier.CurrrentLocationValue;
 
             }
@@ -1110,7 +1153,7 @@ namespace HekiliHelper
                 var scaledWidth = width * dpiX;
                 var scaledHeight = height * dpiY;
 
-                screenCapture.CaptureRegion = new System.Windows.Rect(scaledLeft, scaledTop, scaledWidth, scaledHeight);
+                screenCapture.CaptureRegion = new System.Windows.Rect(scaledLeft + 1, scaledTop + 1, scaledWidth - 1, scaledHeight - 1);
                 //screenCapture.CaptureRegion = magnifier.CurrrentLocationValue;
 
             }
