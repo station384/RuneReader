@@ -476,7 +476,7 @@ namespace HekiliHelper
 
         }
 
-        private Scalar ConvertRgbToHsvRange(Scalar rgbColor, Scalar rgbColorTolerance, bool isLowerBound)
+        private Scalar ConvertRgbToHsvRange(Scalar rgbColor, Scalar rgbColorTolerance, bool? isLowerBound)
         {
             Mat rgbMat = new Mat(1, 1, MatType.CV_8UC3, rgbColor);
             Mat hsvMat = new Mat();
@@ -490,28 +490,70 @@ namespace HekiliHelper
             int hTol = (int)rgbColorTolerance[0];
             int sTol = (int)rgbColorTolerance[1];
             int vTol = (int)rgbColorTolerance[2];
+            if (isLowerBound == null)
+            {
+                return new Scalar(
+                    h ,
+                    s ,
+                    v );
+
+            } else
 
             return new Scalar(
-                isLowerBound ? h - hTol : h + hTol,
-                isLowerBound ? s - sTol : s + sTol,
-                isLowerBound ? v - vTol : v + vTol);
+                isLowerBound.Value ? h : h + hTol,
+                isLowerBound.Value ? s - sTol : s + sTol,
+                isLowerBound.Value ? v - vTol : v + vTol);
         }
-        public Mat IsolateColor(Mat src, Scalar rgbColor, Scalar rgbColorTolerance)
+
+
+        private Scalar ConvertRgbToHsvRange(Scalar rgbColor, double Threshold, bool? isLowerBound)
+        {
+            Mat rgbMat = new Mat(1, 1, MatType.CV_8UC3, rgbColor);
+            Mat hsvMat = new Mat();
+            Cv2.CvtColor(rgbMat, hsvMat, ColorConversionCodes.BGR2HSV_FULL);
+            Vec3b hsvColor = hsvMat.Get<Vec3b>(0, 0);
+
+            // Adjust the HSV range based on the tolerance
+            int h = hsvColor[0];
+            int s = hsvColor[1];
+            int v = hsvColor[2];
+            int hTol = (int)(h * Threshold);
+            int sTol = (int)(s * Threshold);
+            int vTol = (int)(v * Threshold);
+            if (isLowerBound == null)
+            {
+                return new Scalar(
+                    h,
+                    s,
+                    v);
+
+            }
+            else
+
+                return new Scalar(
+                    isLowerBound.Value ? h - hTol : h + hTol,
+                    isLowerBound.Value ? s - sTol : s + sTol,
+                    isLowerBound.Value ? v - vTol : v + vTol);
+        }
+
+        public Mat IsolateColor(Mat src, Scalar rgbColor, Scalar rgbColorTolerance, double Threshold)
         {
             // Convert the RGB color and tolerance to HSV
-            Scalar upperBound = ConvertRgbToHsvRange(rgbColor, rgbColorTolerance, false);
-            Scalar lowerBound = ConvertRgbToHsvRange(rgbColor, rgbColorTolerance, true);
-
+            Scalar upperBound = ConvertRgbToHsvRange(rgbColor, Threshold, false);
+            Scalar lowerBound = ConvertRgbToHsvRange(rgbColor, Threshold, true);
+            Scalar centerBound = ConvertRgbToHsvRange(rgbColor, Threshold, null);
             //Scalar lowerBound = new Scalar(
-            //    80,//upperBound.Val0,
-            //    100,upperBound.Val1,
-            //   20//upperBound.Val2
+            //    centerBound.Val0,
+            //    centerBound.Val1 - 10,
+            //   centerBound.Val2
             //    );
 
 
             // Convert the image to HSV color space
             Mat hsv = new Mat();
             Cv2.CvtColor(src, hsv, ColorConversionCodes.BGR2HSV_FULL);
+
+
 
             // Create a mask for the desired color range
             Mat mask = new Mat();
@@ -645,9 +687,9 @@ namespace HekiliHelper
             var origWidth = image.Width;
             var origHeight = image.Height;
             double trasThreshold = CurrentThreshold == 0 ? 0.0 : CurrentThreshold / 100;
-            int Rscale = (int)(CurrentR * ((CurrentR * trasThreshold) / CurrentR));
-            int Gscale = (int)(CurrentG * ((CurrentG * trasThreshold) / CurrentG));
-            int Bscale = (int)(CurrentB * ((CurrentB * trasThreshold) / CurrentB));
+            int Rscale =  ((int)(CurrentR * ((CurrentR * trasThreshold) / CurrentR)));
+            int Gscale =  ((int)(CurrentG * ((CurrentG * trasThreshold) / CurrentG)));
+            int Bscale =  ((int)(CurrentB * ((CurrentB * trasThreshold) / CurrentB)));
 
       
             var CVMat = BitmapSourceConverter.ToMat(Convert(image));
@@ -656,7 +698,7 @@ namespace HekiliHelper
 
 
 
-            var IsolatedColor = IsolateColor(resizedMat, Scalar.FromRgb(CurrentR, CurrentG, CurrentB), Scalar.FromRgb(Rscale, Gscale, Bscale));
+            var IsolatedColor = IsolateColor(resizedMat, Scalar.FromRgb(CurrentR, CurrentG, CurrentB), Scalar.FromRgb(Rscale, Gscale, Bscale), trasThreshold);
 
            
             Mat gray = new Mat();
@@ -1164,12 +1206,17 @@ namespace HekiliHelper
                 var height = magnifier.CurrrentLocationValue.Height;
 
                 // Adjust for DPI scaling
-                var scaledLeft = left * dpiX;
-                var scaledTop = top * dpiY;
-                var scaledWidth = width * dpiX;
-                var scaledHeight = height * dpiY;
+                var scaledLeft = (left * dpiX) + 1;
+                var scaledTop = (top * dpiY) + 1;
+                var scaledWidth = (width * dpiX) - 1;
+                var scaledHeight = (height * dpiY) - 15;
 
-                screenCapture.CaptureRegion = new System.Windows.Rect(scaledLeft + 1, scaledTop + 1, scaledWidth - 1, scaledHeight - 1);
+                scaledWidth = scaledWidth < 0 ? 1 : scaledWidth;
+                scaledHeight = scaledHeight < 0 ? 1 : scaledHeight;
+                
+                
+
+                screenCapture.CaptureRegion = new System.Windows.Rect(scaledLeft , scaledTop, scaledWidth , scaledHeight);
                 //screenCapture.CaptureRegion = magnifier.CurrrentLocationValue;
 
             }
