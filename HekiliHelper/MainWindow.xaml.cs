@@ -480,7 +480,7 @@ namespace HekiliHelper
         {
             Mat rgbMat = new Mat(1, 1, MatType.CV_8UC3, rgbColor);
             Mat hsvMat = new Mat();
-            Cv2.CvtColor(rgbMat, hsvMat, ColorConversionCodes.BGR2HSV);
+            Cv2.CvtColor(rgbMat, hsvMat, ColorConversionCodes.BGR2HSV_FULL);
             Vec3b hsvColor = hsvMat.Get<Vec3b>(0, 0);
 
             // Adjust the HSV range based on the tolerance
@@ -499,12 +499,19 @@ namespace HekiliHelper
         public Mat IsolateColor(Mat src, Scalar rgbColor, Scalar rgbColorTolerance)
         {
             // Convert the RGB color and tolerance to HSV
-            Scalar lowerBound = ConvertRgbToHsvRange(rgbColor, rgbColorTolerance, true);
             Scalar upperBound = ConvertRgbToHsvRange(rgbColor, rgbColorTolerance, false);
+            Scalar lowerBound = ConvertRgbToHsvRange(rgbColor, rgbColorTolerance, true);
+
+            //Scalar lowerBound = new Scalar(
+            //    80,//upperBound.Val0,
+            //    100,upperBound.Val1,
+            //   20//upperBound.Val2
+            //    );
+
 
             // Convert the image to HSV color space
             Mat hsv = new Mat();
-            Cv2.CvtColor(src, hsv, ColorConversionCodes.BGR2HSV);
+            Cv2.CvtColor(src, hsv, ColorConversionCodes.BGR2HSV_FULL);
 
             // Create a mask for the desired color range
             Mat mask = new Mat();
@@ -610,7 +617,29 @@ namespace HekiliHelper
 
         }
 
+        private void DrawMarkers (ref Mat src)
+        {
+            Cv2.Line(src, (int)(src.Width / 2), 0, (int)(src.Width / 2), src.Height, Scalar.FromRgb(255, 0, 0), 1, LineTypes.Link8);
+            Cv2.Line(src, 0, (int)(src.Height / 2), src.Width, (int)(src.Height / 2), Scalar.FromRgb(255, 0, 0), 1, LineTypes.Link8);
 
+
+            //Draw top left sensor
+            var x = (src.Width / 8) + (src.Width / 16);
+            var y = (src.Height / 16);
+            var width = (src.Width / 2) - (src.Width / 5);
+            var height = (src.Height / 2) / 2;
+            OpenCvSharp.Rect roi = new OpenCvSharp.Rect(x, y, width, height);
+            Cv2.Rectangle(src, roi, Scalar.Red, 1, LineTypes.Link8);
+
+            //Draw top right sensor
+            var x1 = (src.Width / 2) + (src.Width / 32);
+            var y1 = (src.Height / 16);
+            var width1 = (src.Width / 2) - (src.Width / 5);
+            var height1 = (src.Height / 2) / 2;
+            OpenCvSharp.Rect roi1 = new OpenCvSharp.Rect(x1, y1, width1, height1);
+            Cv2.Rectangle(src, roi1, Scalar.Red, 1, LineTypes.Link8);
+
+        }
         private void ProcessImageOpenCV (Bitmap image)
         {
             var origWidth = image.Width;
@@ -642,27 +671,9 @@ namespace HekiliHelper
             if (!IsThereAnImageInTopLeftQuarter(gray) )
             {
                 Cv2.CvtColor(gray, gray, ColorConversionCodes.BayerBG2RGB);
-                Cv2.Line(gray, (int)(gray.Width / 2), 0, (int)(gray.Width / 2), gray.Height, Scalar.FromRgb(255, 0, 0), 1, LineTypes.Link8);
-                Cv2.Line(gray, 0, (int)(gray.Height / 2), gray.Width, (int)(gray.Height / 2), Scalar.FromRgb(255, 0, 0), 1, LineTypes.Link8);
+                    DrawMarkers(ref  gray);
 
-
-                //Draw top left sensor
-                var x = (gray.Width / 8) + (gray.Width / 16);
-                var y = (gray.Height / 16);
-                var width = (gray.Width / 2)- (gray.Width / 5);
-                var height = (gray.Height / 2) / 2;
-                OpenCvSharp.Rect roi = new OpenCvSharp.Rect(x, y, width, height);
-                Cv2.Rectangle(gray, roi, Scalar.Red, 1, LineTypes.Link8);
-
-                //Draw top right sensor
-                var x1 = (gray.Width / 2) + (gray.Width / 32);
-                var y1 = (gray.Height / 16);
-                var width1 = (gray.Width / 2) - (gray.Width / 5);
-                var height1 = (gray.Height / 2) / 2;
-                OpenCvSharp.Rect roi1 = new OpenCvSharp.Rect(x1, y1, width1, height1);
-                Cv2.Rectangle(gray, roi1, Scalar.Red, 1, LineTypes.Link8);
-
-                var OutImageSource = BitmapSourceConverter.ToBitmapSource(gray);
+                      var OutImageSource = BitmapSourceConverter.ToBitmapSource(gray);
 
                     UpdateImageControl(OutImageSource);
                 lDetectedValue.Content = "";
@@ -700,24 +711,29 @@ namespace HekiliHelper
    
                 string s = OCRProcess(OpenCvSharp.Extensions.BitmapConverter.ToBitmap(resizedMat));
                 Cv2.CvtColor(resizedMat, resizedMat, ColorConversionCodes.BayerBG2RGB);
-                Cv2.Line(resizedMat, (int)(resizedMat.Width / 2), 0, (int)(resizedMat.Width / 2), resizedMat.Height, Scalar.FromRgb(255, 0, 0), 1, LineTypes.Link8);
-               Cv2.Line(resizedMat, 0, (int)(resizedMat.Height / 2), resizedMat.Width, (int)(resizedMat.Height / 2), Scalar.FromRgb(255, 0, 0), 1, LineTypes.Link8);
 
-                //Draw top left sensor
-                var x = (resizedMat.Width / 8) + (resizedMat.Width / 16);
-                var y = (resizedMat.Height / 16);
-                var width = (resizedMat.Width / 2) - (resizedMat.Width / 5);
-                var height = (resizedMat.Height / 2) / 2;
-                OpenCvSharp.Rect roi = new OpenCvSharp.Rect(x, y, width, height);
-                Cv2.Rectangle(resizedMat, roi, Scalar.Red, 1, LineTypes.Link8);
+                DrawMarkers(ref resizedMat);
 
-                //Draw top right sensor
-                var x1 = (resizedMat.Width / 2) + (resizedMat.Width / 32);
-                var y1 = (resizedMat.Height / 16);
-                var width1 = (resizedMat.Width / 2) - (resizedMat.Width / 5);
-                var height1 = (resizedMat.Height / 2) / 2;
-                OpenCvSharp.Rect roi1 = new OpenCvSharp.Rect(x1, y1, width1, height1);
-                Cv2.Rectangle(resizedMat, roi1, Scalar.Red, 1, LineTypes.Link8);
+                //Cv2.Line(resizedMat, (int)(resizedMat.Width / 2), 0, (int)(resizedMat.Width / 2), resizedMat.Height, Scalar.FromRgb(255, 0, 0), 1, LineTypes.Link8);
+                //Cv2.Line(resizedMat, 0, (int)(resizedMat.Height / 2), resizedMat.Width, (int)(resizedMat.Height / 2), Scalar.FromRgb(255, 0, 0), 1, LineTypes.Link8);
+
+                ////Draw top left sensor
+                //var x = (resizedMat.Width / 8) + (resizedMat.Width / 16);
+                //var y = (resizedMat.Height / 16);
+                //var width = (resizedMat.Width / 2) - (resizedMat.Width / 5);
+                //var height = (resizedMat.Height / 2) / 2;
+                //OpenCvSharp.Rect roi = new OpenCvSharp.Rect(x, y, width, height);
+                //Cv2.Rectangle(resizedMat, roi, Scalar.Red, 1, LineTypes.Link8);
+
+                ////Draw top right sensor
+                //var x1 = (resizedMat.Width / 2) + (resizedMat.Width / 32);
+                //var y1 = (resizedMat.Height / 16);
+                //var width1 = (resizedMat.Width / 2) - (resizedMat.Width / 5);
+                //var height1 = (resizedMat.Height / 2) / 2;
+                //OpenCvSharp.Rect roi1 = new OpenCvSharp.Rect(x1, y1, width1, height1);
+                //Cv2.Rectangle(resizedMat, roi1, Scalar.Red, 1, LineTypes.Link8);
+                
+                
                 //Cv2.Rectangle(resizedMat,
                 //    new OpenCvSharp.Point((resizedMat.Width / 4), 0),
                 //    new OpenCvSharp.Point((resizedMat.Width / 8)+(resizedMat.Width / 4), (resizedMat.Height / 3)),
