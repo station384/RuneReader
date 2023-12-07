@@ -250,5 +250,17 @@ namespace HekiliHelper.Properties {
                 this["PushAndRelease"] = value;
             }
         }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("False")]
+        public bool QuickDecode {
+            get {
+                return ((bool)(this["QuickDecode"]));
+            }
+            set {
+                this["QuickDecode"] = value;
+            }
+        }
     }
 }

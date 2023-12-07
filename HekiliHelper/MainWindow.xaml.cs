@@ -710,7 +710,7 @@ namespace HekiliHelper
             //Mat invertedMask = new Mat();
             //Cv2.BitwiseNot(gray, invertedMask);
             if (IsThereAnImageInTopRightQuarter(gray) ) 
-            if (!IsThereAnImageInTopLeftQuarter(gray) )
+            if ( !IsThereAnImageInTopLeftQuarter(gray) && Properties.Settings.Default.QuickDecode == false )
             {
                 Cv2.CvtColor(gray, gray, ColorConversionCodes.BayerBG2RGB);
                     DrawMarkers(ref  gray);
@@ -917,6 +917,7 @@ namespace HekiliHelper
             sliderKeyRateMS.Value = Properties.Settings.Default.KeyPressSpeedMS;
 
             cbPushRelease.IsChecked = Properties.Settings.Default.PushAndRelease;
+            cbQuickDecode.IsChecked = Properties.Settings.Default.QuickDecode;
             //Properties.Settings.Default.ActivationKey
 
             foreach (var x in cbActivationKey.Items)
@@ -953,6 +954,7 @@ namespace HekiliHelper
                 // Check the key dictionary if the key is one we should handle
         
                 if ((!VirtualKeyCodeMapper.HasKey(_currentKeyToSend)) || (VirtualKeyCodeMapper.HasExcludeKey(_currentKeyToSend) )) return;
+                _wowWindowHandle = FindWindow(null, "World of Warcraft");
                 var l_currentKeyToSend = _currentKeyToSend;
                 int vkCode = 0;
                 // Tranlate the char to the virtual Key Code
@@ -1461,6 +1463,16 @@ namespace HekiliHelper
             _keyPressMode = false;
             Properties.Settings.Default.PushAndRelease = _keyPressMode;
 
+        }
+
+        private void cbQuickDecode_Checked(object sender, RoutedEventArgs e)
+        {
+            Properties.Settings.Default.QuickDecode = true;
+        }
+
+        private void cbQuickDecode_Unchecked(object sender, RoutedEventArgs e)
+        {
+            Properties.Settings.Default.QuickDecode = false;
         }
     }
 }
