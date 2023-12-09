@@ -918,7 +918,11 @@ namespace HekiliHelper
 
             cbPushRelease.IsChecked = Properties.Settings.Default.PushAndRelease;
             cbQuickDecode.IsChecked = Properties.Settings.Default.QuickDecode;
+            cbStayOnTop.IsChecked = Properties.Settings.Default.KeepOnTop;
             //Properties.Settings.Default.ActivationKey
+
+                this.Topmost = Properties.Settings.Default.KeepOnTop;
+
 
             foreach (var x in cbActivationKey.Items)
             {
@@ -954,7 +958,7 @@ namespace HekiliHelper
                 // Check the key dictionary if the key is one we should handle
         
                 if ((!VirtualKeyCodeMapper.HasKey(_currentKeyToSend)) || (VirtualKeyCodeMapper.HasExcludeKey(_currentKeyToSend) )) return;
-                _wowWindowHandle = FindWindow(null, "World of Warcraft");
+               // _wowWindowHandle = FindWindow(null, "World of Warcraft");
                 var l_currentKeyToSend = _currentKeyToSend;
                 int vkCode = 0;
                 // Tranlate the char to the virtual Key Code
@@ -1043,10 +1047,13 @@ namespace HekiliHelper
             if (cbStayOnTop.IsChecked == true)
             {
                 this.Topmost = true;
+                Properties.Settings.Default.KeepOnTop = true;
             }
             else
             {
                 this.Topmost = false;
+                Properties.Settings.Default.KeepOnTop = false;
+
             }
         }
 
