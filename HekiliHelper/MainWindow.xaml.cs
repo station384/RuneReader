@@ -946,7 +946,7 @@ namespace HekiliHelper
 
         _wowWindowHandle = FindWindow(null, "World of Warcraft");
 
-
+ 
             StartCaptureProcess();
 
 
