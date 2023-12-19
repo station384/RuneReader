@@ -274,5 +274,17 @@ namespace HekiliHelper.Properties {
                 this["KeepOnTop"] = value;
             }
         }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("False")]
+        public bool BarcodeDecode {
+            get {
+                return ((bool)(this["BarcodeDecode"]));
+            }
+            set {
+                this["BarcodeDecode"] = value;
+            }
+        }
     }
 }

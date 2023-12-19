@@ -71,6 +71,8 @@
     <PackageReference Include="Vortice.Direct3D11" Version="3.3.4" />
     <PackageReference Include="Vortice.DXGI" Version="3.3.4" />
     <PackageReference Include="Vortice.Mathematics" Version="1.7.2" />
+    <PackageReference Include="ZXing.Net" Version="0.16.9" />
+    <PackageReference Include="ZXing.Net.Bindings.OpenCV.V4" Version="0.16.9" />
   </ItemGroup>
 
   <ItemGroup>
@@ -99,6 +101,9 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
     <None Update="CustomFontLoader\fonts.lua">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="CustomFontLoader\Fonts\LibreBarcode39ExtendedText-Regular.ttf">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
     <None Update="CustomFontLoader\Fonts\PTSansNarrow.ttf">

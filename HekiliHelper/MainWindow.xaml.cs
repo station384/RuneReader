@@ -14,6 +14,9 @@ using OpenCvSharp.WpfExtensions;
 using System.Text.RegularExpressions;
 using static System.Net.Mime.MediaTypeNames;
 using System.Windows.Controls;
+using ZXing;
+using ZXing.OpenCV;
+
 
 namespace HekiliHelper
 {
@@ -700,10 +703,8 @@ namespace HekiliHelper
             Cv2.CvtColor(IsolatedColor, gray, ColorConversionCodes.BGR2GRAY);
         
             // Apply Otsu's thresholding
-            Cv2.Threshold(gray, gray, 1, 255, ThresholdTypes.Otsu | ThresholdTypes.BinaryInv); //
+            Cv2.Threshold(gray, gray, 250,254, ThresholdTypes.Otsu | ThresholdTypes.BinaryInv); // 
 
-            //Mat invertedMask = new Mat();
-            //Cv2.BitwiseNot(gray, invertedMask);
             if (IsThereAnImageInTopRightQuarter(gray) ) 
             if ( !IsThereAnImageInTopLeftQuarter(gray) && Properties.Settings.Default.QuickDecode == false )
             {
@@ -717,7 +718,6 @@ namespace HekiliHelper
                 return;
             }
              resizedMat = gray;
-           // resizedMat = RescaleImageToNewDpi(gray, image.HorizontalResolution, 300);
 
          
 
@@ -739,48 +739,53 @@ namespace HekiliHelper
             foreach (var contour in contours)
             {
                 OpenCvSharp.Rect rect = Cv2.BoundingRect(contour);
-               // Cv2.Rectangle(CVMat, rect, new Scalar(0, 255, 0), 2);
 
                 // Crop and OCR
                 Mat cropped = new Mat(resizedMat, rect);
                 var OutImage = OpenCvSharp.Extensions.BitmapConverter.ToBitmap(cropped);
-    
-   
-                string s = OCRProcess(OpenCvSharp.Extensions.BitmapConverter.ToBitmap(resizedMat));
+
+                string s = "";
+                var bitm = OpenCvSharp.Extensions.BitmapConverter.ToBitmap(resizedMat);
+
+                if (cbBarcodeDecode.IsChecked == false ) { 
+                    s = OCRProcess(bitm);
+                }
+                else
+                {
+    //                WriteableBitmap writeableBitmap = new WriteableBitmap(ImageHelpers.BitmapToBitmapImage(bitm));
+                    var reader = new ZXing.OpenCV.BarcodeReader()
+                    {
+                        
+                        AutoRotate = false,
+                        Options = new ZXing.Common.DecodingOptions
+                        {
+                            
+                            UseCode39ExtendedMode = true,
+                            TryInverted = true,
+                            AssumeCode39CheckDigit = false,
+                            AssumeMSICheckDigit = false,
+                          PureBarcode = true,
+                          
+                           
+                            PossibleFormats = new List<BarcodeFormat>
+                            {
+                                BarcodeFormat.CODE_39,
+                                BarcodeFormat.CODE_128
+                            },
+                            
+                        }
+                    };
+
+
+                 
+
+                    var result = reader.Decode(resizedMat);
+
+                    s = result == null ? "" : result.Text ;
+                }
+
                 Cv2.CvtColor(resizedMat, resizedMat, ColorConversionCodes.BayerBG2RGB);
-
                 DrawMarkers(ref resizedMat);
-
-                //Cv2.Line(resizedMat, (int)(resizedMat.Width / 2), 0, (int)(resizedMat.Width / 2), resizedMat.Height, Scalar.FromRgb(255, 0, 0), 1, LineTypes.Link8);
-                //Cv2.Line(resizedMat, 0, (int)(resizedMat.Height / 2), resizedMat.Width, (int)(resizedMat.Height / 2), Scalar.FromRgb(255, 0, 0), 1, LineTypes.Link8);
-
-                ////Draw top left sensor
-                //var x = (resizedMat.Width / 8) + (resizedMat.Width / 16);
-                //var y = (resizedMat.Height / 16);
-                //var width = (resizedMat.Width / 2) - (resizedMat.Width / 5);
-                //var height = (resizedMat.Height / 2) / 2;
-                //OpenCvSharp.Rect roi = new OpenCvSharp.Rect(x, y, width, height);
-                //Cv2.Rectangle(resizedMat, roi, Scalar.Red, 1, LineTypes.Link8);
-
-                ////Draw top right sensor
-                //var x1 = (resizedMat.Width / 2) + (resizedMat.Width / 32);
-                //var y1 = (resizedMat.Height / 16);
-                //var width1 = (resizedMat.Width / 2) - (resizedMat.Width / 5);
-                //var height1 = (resizedMat.Height / 2) / 2;
-                //OpenCvSharp.Rect roi1 = new OpenCvSharp.Rect(x1, y1, width1, height1);
-                //Cv2.Rectangle(resizedMat, roi1, Scalar.Red, 1, LineTypes.Link8);
-                
-                
-                //Cv2.Rectangle(resizedMat,
-                //    new OpenCvSharp.Point((resizedMat.Width / 4), 0),
-                //    new OpenCvSharp.Point((resizedMat.Width / 8)+(resizedMat.Width / 4), (resizedMat.Height / 3)),
-
-                //    Scalar.Red, 1, LineTypes.Link8);
-
-                //Cv2.Rectangle(resizedMat,
-                //         new OpenCvSharp.Point((resizedMat.Width / 2) + (resizedMat.Width / 8), 0),
-                //         new OpenCvSharp.Point((resizedMat.Width / 2) + (resizedMat.Width / 4), (resizedMat.Height / 3)),
-                //         Scalar.Red, 1, LineTypes.Link8);
 
 
                 var OutImageSource = BitmapSourceConverter.ToBitmapSource(resizedMat);
@@ -847,10 +852,6 @@ namespace HekiliHelper
             magnifier.Show();
         }
 
-
-
-
-
         // Method to retrieve properties from the MagnifierWindow
         private void RetrieveMagnifierProperties()
         {
@@ -914,6 +915,7 @@ namespace HekiliHelper
             cbPushRelease.IsChecked = Properties.Settings.Default.PushAndRelease;
             cbQuickDecode.IsChecked = Properties.Settings.Default.QuickDecode;
             cbStayOnTop.IsChecked = Properties.Settings.Default.KeepOnTop;
+            cbBarcodeDecode.IsChecked = Properties.Settings.Default.BarcodeDecode;
             //Properties.Settings.Default.ActivationKey
 
                 this.Topmost = Properties.Settings.Default.KeepOnTop;
@@ -1482,6 +1484,16 @@ namespace HekiliHelper
         private void cbQuickDecode_Unchecked(object sender, RoutedEventArgs e)
         {
             Properties.Settings.Default.QuickDecode = false;
+        }
+
+        private void cbBarcodeDecode_Checked(object sender, RoutedEventArgs e)
+        {
+            Properties.Settings.Default.BarcodeDecode = true;
+        }
+
+        private void cbBarcodeDecode_Unchecked(object sender, RoutedEventArgs e)
+        {
+            Properties.Settings.Default.BarcodeDecode = false;
         }
     }
 }

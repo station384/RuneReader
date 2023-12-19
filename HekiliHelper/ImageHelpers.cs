@@ -7,6 +7,8 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Drawing.Drawing2D;
 using System.Runtime.InteropServices;
+using System.IO;
+using System.Windows.Media.Imaging;
 
 namespace HekiliHelper
 {
@@ -1017,7 +1019,23 @@ namespace HekiliHelper
 
 
 
+        public static BitmapImage BitmapToBitmapImage(Bitmap bitmap)
+        {
+            using (var memory = new MemoryStream())
+            {
+                bitmap.Save(memory, System.Drawing.Imaging.ImageFormat.Bmp);
+                memory.Position = 0;
 
+                var bitmapImage = new BitmapImage();
+                bitmapImage.BeginInit();
+                bitmapImage.StreamSource = memory;
+                bitmapImage.CacheOption = BitmapCacheOption.OnLoad;
+                bitmapImage.EndInit();
+                bitmapImage.Freeze(); // Optional, helps keep the image from being locked
+
+                return bitmapImage;
+            }
+        }
 
 
 

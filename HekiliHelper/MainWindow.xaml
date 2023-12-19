@@ -54,6 +54,7 @@ Height="Auto"
             </StackPanel>
             <CheckBox Name="cbPushRelease" Content="Push And Release mode" IsChecked="False" Checked="cbPushRelease_Checked" Unchecked="cbPushRelease_Unchecked" ToolTip="Commands will be pressed until next command is detected, or fixed time"></CheckBox>
             <CheckBox Name="cbQuickDecode" Content="Quick Decode" IsChecked="False" Checked="cbQuickDecode_Checked" Unchecked="cbQuickDecode_Unchecked" ToolTip="Wait for detection in upper left region"></CheckBox>
+            <CheckBox Name="cbBarcodeDecode" Content="Barcode Decode" IsChecked="False" Checked="cbBarcodeDecode_Checked"  Unchecked="cbBarcodeDecode_Unchecked"  ToolTip="Font is code39 Barcode"></CheckBox>
 
 
         </StackPanel>
