@@ -1,9 +1,6 @@
-﻿using ScreenCapture.NET;
-using System;
+﻿using System;
 using System.Collections.Generic;
-using System.ComponentModel;
 using System.Diagnostics;
-using System.Diagnostics.Eventing.Reader;
 using System.Drawing;
 using System.IO;
 using System.Runtime.InteropServices;
@@ -17,10 +14,6 @@ using OpenCvSharp.WpfExtensions;
 using System.Text.RegularExpressions;
 using static System.Net.Mime.MediaTypeNames;
 using System.Windows.Controls;
-using System.Linq;
-using System.Collections.ObjectModel;
-using Vortice.Mathematics;
-using Tesseract;
 
 namespace HekiliHelper
 {
@@ -256,6 +249,7 @@ namespace HekiliHelper
         private volatile string _currentKeyToSend = string.Empty; // Default key to send, can be changed dynamically
         private volatile string _lastKeyToSend = string.Empty; // Default key to send, can be changed dynamically
         private volatile string _DetectedValue = string.Empty;
+        private volatile bool keyProcessing = false;
         private volatile int _DetectedSameCount = 0;
         private static IntPtr _hookID = IntPtr.Zero;
         private static IntPtr _MouseHookID = IntPtr.Zero;
@@ -330,9 +324,10 @@ namespace HekiliHelper
                 if (!IsCurrentWindowWithTitle("World of Warcraft"))
                 {
                     _timer.Stop();
-                    _lastKeyToSend = string.Empty; 
+                    _lastKeyToSend = string.Empty;
                     // Let the key event go thru so the new focused app can handle it
-                    handled = false;
+                    keyProcessing = false;
+                       handled = false;
                 }
                 else
                 {
@@ -344,7 +339,7 @@ namespace HekiliHelper
                         {
                             _wowWindowHandle = FindWindow(null, "wow");
                         }
-                        if (_wowWindowHandle != IntPtr.Zero && !_timer.IsEnabled)
+                        if (_wowWindowHandle != IntPtr.Zero && !_timer.IsEnabled && keyProcessing == false)
                         {
                             _timer.Start();
                             // Don't let the message go thru.  this blocks the game from seeing the key press
@@ -955,9 +950,14 @@ namespace HekiliHelper
             _timer.Interval = TimeSpan.FromMilliseconds(50);
             _timer.Tick += async (sender, args) =>
             {
+                if (keyProcessing == true) return;
                 // Check the key dictionary if the key is one we should handle
-        
-                if ((!VirtualKeyCodeMapper.HasKey(_currentKeyToSend)) || (VirtualKeyCodeMapper.HasExcludeKey(_currentKeyToSend) )) return;
+                keyProcessing = true;
+                if ((!VirtualKeyCodeMapper.HasKey(_currentKeyToSend)) || (VirtualKeyCodeMapper.HasExcludeKey(_currentKeyToSend)))
+                {
+                    keyProcessing = false;
+                    return;
+                }
                // _wowWindowHandle = FindWindow(null, "World of Warcraft");
                 var l_currentKeyToSend = _currentKeyToSend;
                 int vkCode = 0;
@@ -995,7 +995,7 @@ namespace HekiliHelper
                             && _keyPressMode
                         )
                         {
-
+                            await Task.Delay(5);
                         }
 
                         // It may not be necessary to send WM_KEYUP immediately after WM_KEYDOWN
@@ -1017,7 +1017,7 @@ namespace HekiliHelper
 
                         if (_keyPressMode)
                         {
-                            await Task.Delay(150);
+                            await Task.Delay(25);
                         }
 
 
@@ -1034,6 +1034,8 @@ namespace HekiliHelper
 
                     }
                 }
+                keyProcessing = false;
+
             };
 
             
