@@ -21,22 +21,28 @@ namespace HekiliHelper
         private CaptureScreen screenCapture; // Instance of CaptureScreen class
         private readonly object intervalLock = new object();
 
-        public delegate void UpdateUIImageDelegate(Bitmap image);
-        public event UpdateUIImageDelegate UpdateUIImage;
+        public delegate void UpdateFirstImageDelegate(Bitmap image);
+        public event UpdateFirstImageDelegate UpdateFirstImage;
 
-        private Rect _captureRegion;
-        public Rect CaptureRegion { get {
+        public delegate void UpdateSecondImageDelegate(Bitmap image);
+        public event UpdateSecondImageDelegate UpdateSecondImage;
+
+
+        private Rect[] _captureRegion;
+        public Rect[] CaptureRegion { 
+            get {
                 return _captureRegion;
+                //    screenCapture.CaptureRegion;// _captureRegion;
             }
             set
             {
-                _captureRegion = value;
-                screenCapture.CaptureRegion = value;
-                if (isCapturing)
+              
+                screenCapture.CaptureRegion = new Rect[2]
                 {
-//                    StopCapture();
-//                    StartCapture();
+                    value[0],
+                    value[1]
                 };
+                _captureRegion = screenCapture.CaptureRegion;
             }
             }
         public bool IsCapturing {get { return isCapturing; }}
@@ -46,6 +52,7 @@ namespace HekiliHelper
             this.captureInterval = interval;
             this.uiDispatcher = uiDispatcher;
             this.screenCapture = captureScreen;
+            this._captureRegion = captureScreen.CaptureRegion;
         }
 
         public int CaptureInterval
@@ -98,13 +105,18 @@ namespace HekiliHelper
             while (isCapturing)
             {
                 screenCapture.GrabScreen();
-                 Bitmap capturedImage = screenCapture.CapturedImage; // Implement this to capture the screen
+                Bitmap capturedImage = screenCapture.CapturedImageFirst; // Implement this to capture the screen
+                Bitmap capturedImage2 = screenCapture.CapturedImageSecond; // Implement this to capture the screen
+
                 try
                 {
                     uiDispatcher.Invoke(() =>
                     {
-                        UpdateUIImage?.Invoke(capturedImage);
+                        UpdateFirstImage?.Invoke(capturedImage);
+                        UpdateSecondImage?.Invoke(capturedImage2);
                     });
+                        
+
                 }
                 catch (Exception ex)
                 {

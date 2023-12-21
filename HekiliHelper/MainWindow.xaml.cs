@@ -65,7 +65,6 @@ namespace HekiliHelper
     public static class VirtualKeyCodeMapper
     {
 
-
         private static readonly Dictionary<string, int> KeyMappingsExclude = new Dictionary<string, int>
         {
             {"1", (int)VirtualKeyCodes.VirtualKeyStates.VK_Alphanumeric_1},
@@ -79,7 +78,7 @@ namespace HekiliHelper
             {"9", (int)VirtualKeyCodes.VirtualKeyStates.VK_Alphanumeric_9},
             {"0", (int)VirtualKeyCodes.VirtualKeyStates.VK_Alphanumeric_0},
             // Had to remove these keys as that can't be detected using OCR very well.   only about a 30% accuarcy
-            {"-", (int)VirtualKeyCodes.VirtualKeyStates.VK_OEM_MINUS},
+           {"-", (int)VirtualKeyCodes.VirtualKeyStates.VK_OEM_MINUS},
             {"=", 187}, // This key can be different depending on country, i.e.  US its the = key,  Spanish is the ? (upside down)
         };
 
@@ -126,7 +125,7 @@ namespace HekiliHelper
             {"CF9", (int)VirtualKeyCodes.VirtualKeyStates.VK_F9},
             {"CF10", (int)VirtualKeyCodes.VirtualKeyStates.VK_F10},
             {"CF11", (int)VirtualKeyCodes.VirtualKeyStates.VK_F11},
-                        {"CF12", (int)VirtualKeyCodes.VirtualKeyStates.VK_F12},
+            {"CF12", (int)VirtualKeyCodes.VirtualKeyStates.VK_F12},
             {"AF1", (int)VirtualKeyCodes.VirtualKeyStates.VK_F1},
             {"AF2", (int)VirtualKeyCodes.VirtualKeyStates.VK_F2},
             {"AF3", (int)VirtualKeyCodes.VirtualKeyStates.VK_F3},
@@ -246,11 +245,18 @@ namespace HekiliHelper
         #endregion
 
         private string CurrentKeyToPress { get; set; }
-        private volatile string _currentKeyToSend = string.Empty; // Default key to send, can be changed dynamically
+
+        private volatile string[] _currentKeyToSend = new string[] { string.Empty, string.Empty }; // Default key to send, can be changed dynamically
+
         private volatile string _lastKeyToSend = string.Empty; // Default key to send, can be changed dynamically
-        private volatile string _DetectedValue = string.Empty;
+
+        private volatile string _DetectedValueFirst = string.Empty;
+        private volatile string _DetectedValueSecond = string.Empty;
+
         private volatile bool keyProcessing = false;
-        private volatile int _DetectedSameCount = 0;
+        
+        private volatile int[] _DetectedSameCount = new int[2]{ 0,0 };
+
         private static IntPtr _hookID = IntPtr.Zero;
         private static IntPtr _MouseHookID = IntPtr.Zero;
         private WindowsMessageProc _proc;
@@ -261,7 +267,10 @@ namespace HekiliHelper
         private ImageHelpers ImageHelpers = new ImageHelpers();
         private delegate IntPtr WindowsMessageProc(int nCode, IntPtr wParam, IntPtr lParam);
         private OcrModule ocr = new OcrModule();
-     
+        private MagnifierWindow magnifier;
+        private MagnifierWindow magnifier2;
+
+
         private int CurrentR = 25;
         private int CurrentG = 255;
         private int CurrentB = 255;
@@ -386,90 +395,92 @@ namespace HekiliHelper
 
         private string OCRProcess(Bitmap b)
         {
+
             string Result = "";
-            string s = ocr.PerformOcr(b).Replace("\n", "");
-            if (VirtualKeyCodeMapper.HasKey(s) && (!VirtualKeyCodeMapper.HasExcludeKey(s)) )
-            {
-                CurrentKeyToPress = StringExtensions.Extract(s, 4);
-                if (!string.IsNullOrEmpty(CurrentKeyToPress.Trim()))
+                string s = ocr.PerformOcr(b).Replace("\n", "");
+                if (VirtualKeyCodeMapper.HasKey(s) && (!VirtualKeyCodeMapper.HasExcludeKey(s)))
                 {
-                    _currentKeyToSend = CurrentKeyToPress;
-                    Result = CurrentKeyToPress;
-                }
+                    CurrentKeyToPress = StringExtensions.Extract(s, 4);
+                    if (!string.IsNullOrEmpty(CurrentKeyToPress.Trim()))
+                    {
+                           // _currentKeyToSend[0] = CurrentKeyToPress;
+                            Result = CurrentKeyToPress;
+                    }
+                
             }
          return Result;
 
         }
 
 
-        private void ProcessImageLocal(Bitmap image)
-        {
-            // This only works with non HDR,  for now.
+        //private void ProcessImageLocal(Bitmap image)
+        //{
+        //    // This only works with non HDR,  for now.
 
-            Bitmap b = image;
-
-
-            var origWidth = b.Width;
-            var origHeight = b.Height;
-
-            //Remember this is running in the background and every CPU cycle counts!!
-            //This has to be FAST it is executing every 250 miliseconds 4 times a second
-            //The faster this is the more times per second we can evaluate and react faster
+        //    Bitmap b = image;
 
 
+        //    var origWidth = b.Width;
+        //    var origHeight = b.Height;
+
+        //    //Remember this is running in the background and every CPU cycle counts!!
+        //    //This has to be FAST it is executing every 250 miliseconds 4 times a second
+        //    //The faster this is the more times per second we can evaluate and react faster
 
 
-            // It is expected that in the game the font on the hotkey text will be set to R:25 B:255 G:255 The font set to mica, and the size set to 40.
-            // We filter out everying that isn't close to the color we want.
-            // Doing it this way because it wwwas FAST.  This could be doing by doing a find conture and area but that takes alot more caculation than just a simple color filter
-
-            b = ImageHelpers.FilterByColor(b, System.Drawing.Color.FromArgb(CurrentA, CurrentR, CurrentG, CurrentB), CurrentThreshold);
-            b = ImageHelpers.RescaleImageToDpi(b, 300);
-            //UpdateImageControl(Convert(b));
-            // Bring the levels to somthing predictable, to simplify we convert it to greyscale
-            b = ImageHelpers.ConvertToGrayscaleFast(b);
-            b = ImageHelpers.BumpToBlack(b, 160);
-
-            if (ImageHelpers.FindColorInFirstQuarter(b, System.Drawing.Color.White, CurrentThreshold))
-            {
-                b = ImageHelpers.BumpToWhite(b, 180);
-
-                // For tesseract it doesn't like HUGE text so we bring it back down to the original size
-                b = ImageHelpers.ResizeImage(b, origWidth, origHeight);
-
-                // Bitmap DisplayImage = b;
 
 
-                // Work Contourse later to find the main text and crop it out
-                // Just leaving the code here  just incase I can come up with a fast way of doing this
-                //var points = ImageHelpers.FindContours(b,128);
-                //foreach (var contour in points)
-                //{
-                //    System.Console.WriteLine("Contour found with points:");
-                //    var area = ImageHelpers.CalculateContourArea(contour);
-                //    var BoundingRect = ImageHelpers.GetBoundingRect(contour);
-                //    var ar = BoundingRect.Width / (float)(BoundingRect.Height);
-                //    if (area > 200 & ar > .25 & ar < 1.2)
-                //    {
-                //        DisplayImage = ImageHelpers.DrawRectangle(b, BoundingRect, System.Drawing.Color.Red);
-                //    }
-                //}
+        //    // It is expected that in the game the font on the hotkey text will be set to R:25 B:255 G:255 The font set to mica, and the size set to 40.
+        //    // We filter out everying that isn't close to the color we want.
+        //    // Doing it this way because it wwwas FAST.  This could be doing by doing a find conture and area but that takes alot more caculation than just a simple color filter
+
+        //    b = ImageHelpers.FilterByColor(b, System.Drawing.Color.FromArgb(CurrentA, CurrentR, CurrentG, CurrentB), CurrentThreshold);
+        //    b = ImageHelpers.RescaleImageToDpi(b, 300);
+        //    //UpdateImageControl(Convert(b));
+        //    // Bring the levels to somthing predictable, to simplify we convert it to greyscale
+        //    b = ImageHelpers.ConvertToGrayscaleFast(b);
+        //    b = ImageHelpers.BumpToBlack(b, 160);
+
+        //    if (ImageHelpers.FindColorInFirstQuarter(b, System.Drawing.Color.White, CurrentThreshold))
+        //    {
+        //        b = ImageHelpers.BumpToWhite(b, 180);
+
+        //        // For tesseract it doesn't like HUGE text so we bring it back down to the original size
+        //        b = ImageHelpers.ResizeImage(b, origWidth, origHeight);
+
+        //        // Bitmap DisplayImage = b;
 
 
-                UpdateImageControl(Convert(b));
+        //        // Work Contourse later to find the main text and crop it out
+        //        // Just leaving the code here  just incase I can come up with a fast way of doing this
+        //        //var points = ImageHelpers.FindContours(b,128);
+        //        //foreach (var contour in points)
+        //        //{
+        //        //    System.Console.WriteLine("Contour found with points:");
+        //        //    var area = ImageHelpers.CalculateContourArea(contour);
+        //        //    var BoundingRect = ImageHelpers.GetBoundingRect(contour);
+        //        //    var ar = BoundingRect.Width / (float)(BoundingRect.Height);
+        //        //    if (area > 200 & ar > .25 & ar < 1.2)
+        //        //    {
+        //        //        DisplayImage = ImageHelpers.DrawRectangle(b, BoundingRect, System.Drawing.Color.Red);
+        //        //    }
+        //        //}
 
-                string s = OCRProcess(b);
-                lDetectedValue.Content = s;
-            }
-            else
-            {
-                // nothing found
-                UpdateImageControl(Convert(_holderBitmap));
-                lDetectedValue.Content = "";
 
-            }
+        //        UpdateImageControl(Convert(b));
 
-        }
+        //        string s = OCRProcess(b);
+        //        lDetectedValue.Content = s;
+        //    }
+        //    else
+        //    {
+        //        // nothing found
+        //        UpdateImageControl(Convert(_holderBitmap));
+        //        lDetectedValue.Content = "";
+
+        //    }
+
+        //}
 
         private Scalar ConvertRgbToHsvRange(Scalar rgbColor, Scalar rgbColorTolerance, bool? isLowerBound)
         {
@@ -677,23 +688,26 @@ namespace HekiliHelper
             Cv2.Rectangle(src, roi1, Scalar.Red, 1, LineTypes.Link8);
 
         }
-        private void ProcessImageOpenCV (Bitmap image)
+
+        private string ProcessImageOpenCV (Bitmap image, ref Label label, ref string _DetectedValue, ref int _DetectedSameCount, ref string CurrentKeyToSend, ref System.Windows.Controls.Image DisplayControl, double Threshold)
         {
             var origWidth = image.Width;
             var origHeight = image.Height;
-            double trasThreshold = CurrentThreshold == 0 ? 0.0 : CurrentThreshold / 100;
-            int Rscale =  ((int)(CurrentR * ((CurrentR * trasThreshold) / CurrentR)));
-            int Gscale =  ((int)(CurrentG * ((CurrentG * trasThreshold) / CurrentG)));
-            int Bscale =  ((int)(CurrentB * ((CurrentB * trasThreshold) / CurrentB)));
 
-      
+            int Rscale =  ((int)(CurrentR * ((CurrentR * Threshold) / CurrentR)));
+            int Gscale =  ((int)(CurrentG * ((CurrentG * Threshold) / CurrentG)));
+            int Bscale =  ((int)(CurrentB * ((CurrentB * Threshold) / CurrentB)));
+
+
+            string result = "";
+            BitmapSource? OutImageSource;
             var CVMat = BitmapSourceConverter.ToMat(Convert(image));
             Mat resizedMat;
             resizedMat = RescaleImageToNewDpi(CVMat, image.HorizontalResolution, 300);
 
 
 
-            var IsolatedColor = IsolateColor(resizedMat, Scalar.FromRgb(CurrentR, CurrentG, CurrentB), Scalar.FromRgb(Rscale, Gscale, Bscale), trasThreshold);
+            var IsolatedColor = IsolateColor(resizedMat, Scalar.FromRgb(CurrentR, CurrentG, CurrentB), Scalar.FromRgb(Rscale, Gscale, Bscale), Threshold);
 
            
             Mat gray = new Mat();
@@ -710,98 +724,65 @@ namespace HekiliHelper
                 Cv2.CvtColor(gray, gray, ColorConversionCodes.BayerBG2RGB);
                     DrawMarkers(ref  gray);
 
-                      var OutImageSource = BitmapSourceConverter.ToBitmapSource(gray);
-
-                    UpdateImageControl(OutImageSource);
-                lDetectedValue.Content = "";
-                return;
+                       OutImageSource = BitmapSourceConverter.ToBitmapSource(gray);
+                    DisplayControl.Source = OutImageSource;
+                    lDetectedValue.Content = "";
+                    result = "";
+                return result;
             }
              resizedMat = gray;
-           // resizedMat = RescaleImageToNewDpi(gray, image.HorizontalResolution, 300);
+
 
          
 
             //This  currently not working and just taking up CPU cycles.  Not sure what is going on.
             //Will figure this out later.
 
-            // Dilation
-            Mat kernel = Cv2.GetStructuringElement(MorphShapes.Rect, new OpenCvSharp.Size(3, 3));
-            Mat dilation = new Mat();
-            Cv2.Dilate(resizedMat, dilation, kernel);
-            //var OutImageSource = BitmapSourceConverter.ToBitmapSource(dilation);
+            //// Dilation
+            //Mat kernel = Cv2.GetStructuringElement(MorphShapes.Rect, new OpenCvSharp.Size(3, 3));
+            //Mat dilation = new Mat();
+            //Cv2.Dilate(resizedMat, dilation, kernel);
       
 
-            // Find contours
-            OpenCvSharp.Point[][] contours;
-            HierarchyIndex[] hierarchy;
-            Cv2.FindContours(dilation, out  contours, out  hierarchy, RetrievalModes.External, ContourApproximationModes.ApproxNone);
+            //// Find contours
+            //OpenCvSharp.Point[][] contours;
+            //HierarchyIndex[] hierarchy;
+            //Cv2.FindContours(dilation, out  contours, out  hierarchy, RetrievalModes.External, ContourApproximationModes.ApproxNone);
 
-            foreach (var contour in contours)
-            {
-                OpenCvSharp.Rect rect = Cv2.BoundingRect(contour);
-               // Cv2.Rectangle(CVMat, rect, new Scalar(0, 255, 0), 2);
+            //foreach (var contour in contours)
+            //{
+            //    OpenCvSharp.Rect rect = Cv2.BoundingRect(contour);
 
-                // Crop and OCR
-                Mat cropped = new Mat(resizedMat, rect);
-                var OutImage = OpenCvSharp.Extensions.BitmapConverter.ToBitmap(cropped);
+            //    // Crop and OCR
+            //    Mat cropped = new Mat(resizedMat, rect);
+            //    var OutImage = OpenCvSharp.Extensions.BitmapConverter.ToBitmap(cropped);
     
    
                 string s = OCRProcess(OpenCvSharp.Extensions.BitmapConverter.ToBitmap(resizedMat));
+                CurrentKeyToSend = s; 
                 Cv2.CvtColor(resizedMat, resizedMat, ColorConversionCodes.BayerBG2RGB);
 
                 DrawMarkers(ref resizedMat);
 
-                //Cv2.Line(resizedMat, (int)(resizedMat.Width / 2), 0, (int)(resizedMat.Width / 2), resizedMat.Height, Scalar.FromRgb(255, 0, 0), 1, LineTypes.Link8);
-                //Cv2.Line(resizedMat, 0, (int)(resizedMat.Height / 2), resizedMat.Width, (int)(resizedMat.Height / 2), Scalar.FromRgb(255, 0, 0), 1, LineTypes.Link8);
+           OutImageSource = BitmapSourceConverter.ToBitmapSource(resizedMat);
+                DisplayControl.Source = OutImageSource;
 
-                ////Draw top left sensor
-                //var x = (resizedMat.Width / 8) + (resizedMat.Width / 16);
-                //var y = (resizedMat.Height / 16);
-                //var width = (resizedMat.Width / 2) - (resizedMat.Width / 5);
-                //var height = (resizedMat.Height / 2) / 2;
-                //OpenCvSharp.Rect roi = new OpenCvSharp.Rect(x, y, width, height);
-                //Cv2.Rectangle(resizedMat, roi, Scalar.Red, 1, LineTypes.Link8);
-
-                ////Draw top right sensor
-                //var x1 = (resizedMat.Width / 2) + (resizedMat.Width / 32);
-                //var y1 = (resizedMat.Height / 16);
-                //var width1 = (resizedMat.Width / 2) - (resizedMat.Width / 5);
-                //var height1 = (resizedMat.Height / 2) / 2;
-                //OpenCvSharp.Rect roi1 = new OpenCvSharp.Rect(x1, y1, width1, height1);
-                //Cv2.Rectangle(resizedMat, roi1, Scalar.Red, 1, LineTypes.Link8);
-                
-                
-                //Cv2.Rectangle(resizedMat,
-                //    new OpenCvSharp.Point((resizedMat.Width / 4), 0),
-                //    new OpenCvSharp.Point((resizedMat.Width / 8)+(resizedMat.Width / 4), (resizedMat.Height / 3)),
-
-                //    Scalar.Red, 1, LineTypes.Link8);
-
-                //Cv2.Rectangle(resizedMat,
-                //         new OpenCvSharp.Point((resizedMat.Width / 2) + (resizedMat.Width / 8), 0),
-                //         new OpenCvSharp.Point((resizedMat.Width / 2) + (resizedMat.Width / 4), (resizedMat.Height / 3)),
-                //         Scalar.Red, 1, LineTypes.Link8);
-
-
-                var OutImageSource = BitmapSourceConverter.ToBitmapSource(resizedMat);
-
-                UpdateImageControl(OutImageSource);
-                //if ( _DetectedSameCount >= (int)(Properties.Settings.Default.CaptureRateMS * 0.05))
-                if ( _DetectedSameCount >= 1)
+                if (_DetectedSameCount >= 1)
                 {
-                    lDetectedValue.Content = s;
+                    label.Content = s;
                     _DetectedValue = s;
                     _DetectedSameCount = 0;
                 }
                 else
                 {
-                    if (lDetectedValue.Content.ToString() != s)
+                    if (label.Content.ToString() != s)
                     lDetectedValue.Content = "";
                     _DetectedSameCount++;
                 }
                 
-            }
-
+            //}
+            result = _DetectedValueFirst;
+            return result;
 
 
            // var OutImage = BitmapSourceConverter.ToBitmapSource(gray);
@@ -818,9 +799,18 @@ namespace HekiliHelper
                 y = (int)magnifier.Top, 
                 width = (int)magnifier.Width, 
                 height = (int)magnifier.Height;
+            
+            int x2 = (int)magnifier2.Left,
+                y2 = (int)magnifier2.Top,
+                width2 = (int)magnifier2.Width,
+                height2 = (int)magnifier2.Height;
+
 
             // Initialize CaptureScreen with the dispatcher and the UI update action
-            captureScreen = new CaptureScreen(x, y, width, height,0);
+             System.Windows.Rect[] regions = new System.Windows.Rect[2] ;
+             regions[0] = new System.Windows.Rect { X = (double)x, Y = (double)y, Width = width, Height = height };
+            regions[1] = new System.Windows.Rect { X = (double)x2, Y = (double)y2, Width = width2, Height = height2 };
+            captureScreen = new CaptureScreen(regions ,0);
             //  image.Source = Convert(captureScreen.CapturedImage);
 
             // Create an instance of ContinuousScreenCapture with the CaptureScreen object
@@ -831,51 +821,34 @@ namespace HekiliHelper
             );
 
             // Assign a handler to the UpdateUIImage event
-            screenCapture.UpdateUIImage += (Bitmap image) =>
+            screenCapture.UpdateFirstImage += (Bitmap image) =>
             {
                 //ProcessImageLocal(image);
-                ProcessImageOpenCV(image);
+                double trasThreshold = CurrentThreshold == 0 ? 0.0 : CurrentThreshold / 100;
+                ProcessImageOpenCV(image, ref lDetectedValue, ref _DetectedValueFirst, ref _DetectedSameCount[0], ref _currentKeyToSend[0], ref imageCap, trasThreshold);
             };
+            screenCapture.UpdateSecondImage += (Bitmap image) =>
+            {
+                //ProcessImageLocal(image);
+                double trasThreshold = CurrentThreshold == 0 ? 0.0 : CurrentThreshold / 100;
+                ProcessImageOpenCV(image, ref lDetectedValue2, ref _DetectedValueSecond, ref _DetectedSameCount[1], ref _currentKeyToSend[1], ref imageCap2, trasThreshold);
+            };
+
+
         }
 
         private System.Windows.Threading.DispatcherTimer _timer;
 
-        private MagnifierWindow magnifier;
+
         // Method to open the MagnifierWindow
         private void OpenMagnifierWindow()
         {
             magnifier.Show();
+            magnifier2.Show();
         }
 
 
 
-
-
-        // Method to retrieve properties from the MagnifierWindow
-        private void RetrieveMagnifierProperties()
-        {
-            if (magnifier != null)
-            {
-                double x = magnifier.ScaledX;
-                double y = magnifier.ScaledY;
-                double width = magnifier.ScaledWidth;
-                double height = magnifier.ScaledHeight;
-
-                // Do something with the properties, e.g., display them
-                MessageBox.Show($"Magnified Position: ({x}, {y})\n" +
-                                $"Magnified Size: {width} x {height}");
-            }
-        }
-
-        private void CloseMagnifierWindow()
-        {
-            if (magnifier != null)
-            {
-                magnifier.Close();
-                // May want to destroy the window on close to free up the resources and everything tied to it
-                // but have to update the code that reads the chords directly from the magnifier so use the last values stored local
-            }
-        }
 
 
         Bitmap _holderBitmap;
@@ -884,14 +857,29 @@ namespace HekiliHelper
             InitializeComponent();
 
             magnifier = new MagnifierWindow();
-            magnifier.SizeChanged += Magnifier_SizeChanged;
-            magnifier.LocationChanged += Magnifier_LocationChanged;
-
-
             magnifier.Left = Properties.Settings.Default.CapX > SystemParameters.PrimaryScreenWidth ? 100 : Properties.Settings.Default.CapX;
             magnifier.Top = Properties.Settings.Default.CapY > SystemParameters.PrimaryScreenHeight ? 100 : Properties.Settings.Default.CapY;
             magnifier.Width = Properties.Settings.Default.CapWidth;
             magnifier.Height = Properties.Settings.Default.CapHeight;
+            magnifier.SizeChanged += Magnifier_SizeChanged;
+            magnifier.LocationChanged += Magnifier_LocationChanged;
+
+
+
+
+            magnifier2 = new MagnifierWindow();
+            magnifier2.border.BorderBrush = BorderBrush = System.Windows.Media.Brushes.Blue;
+            magnifier2.Left = Properties.Settings.Default.CapX > SystemParameters.PrimaryScreenWidth ? 100 : Properties.Settings.Default.Cap2X;
+            magnifier2.Top = Properties.Settings.Default.CapY > SystemParameters.PrimaryScreenHeight ? 100 : Properties.Settings.Default.Cap2Y;
+            magnifier2.Width = Properties.Settings.Default.Cap2Width;
+            magnifier2.Height = Properties.Settings.Default.Cap2Height;
+            magnifier2.SizeChanged += Magnifier2_SizeChanged;
+            magnifier2.LocationChanged += Magnifier2_LocationChanged;
+
+
+
+
+
 
             //TargetColorPicker.ColorState =  new ColorPicker.Models.ColorState();
             TargetColorPicker.SelectedColor = System.Windows.Media.Color.FromArgb((byte)Properties.Settings.Default.TargetA, (byte)Properties.Settings.Default.TargetR, (byte)Properties.Settings.Default.TargetG, (byte)Properties.Settings.Default.TargetB);
@@ -939,7 +927,7 @@ namespace HekiliHelper
             _mouseProc = MouseHookCallback;
 
 
-        _wowWindowHandle = FindWindow(null, "World of Warcraft");
+            _wowWindowHandle = FindWindow(null, "World of Warcraft");
 
  
             StartCaptureProcess();
@@ -953,13 +941,13 @@ namespace HekiliHelper
                 if (keyProcessing == true) return;
                 // Check the key dictionary if the key is one we should handle
                 keyProcessing = true;
-                if ((!VirtualKeyCodeMapper.HasKey(_currentKeyToSend)) || (VirtualKeyCodeMapper.HasExcludeKey(_currentKeyToSend)))
+                if ((!VirtualKeyCodeMapper.HasKey(_currentKeyToSend[0])) || (VirtualKeyCodeMapper.HasExcludeKey(_currentKeyToSend[0])))
                 {
                     keyProcessing = false;
                     return;
                 }
                // _wowWindowHandle = FindWindow(null, "World of Warcraft");
-                var l_currentKeyToSend = _currentKeyToSend;
+                var l_currentKeyToSend = _currentKeyToSend[0];
                 int vkCode = 0;
                 // Tranlate the char to the virtual Key Code
                 vkCode = VirtualKeyCodeMapper.GetVirtualKeyCode(l_currentKeyToSend);
@@ -987,9 +975,9 @@ namespace HekiliHelper
                         while (
                             (
                                 (
-                                 (!VirtualKeyCodeMapper.HasKey(_currentKeyToSend)) || VirtualKeyCodeMapper.HasExcludeKey(_currentKeyToSend)
+                                 (!VirtualKeyCodeMapper.HasKey(_currentKeyToSend[0])) || VirtualKeyCodeMapper.HasExcludeKey(_currentKeyToSend[0])
                                 )
-                                || _currentKeyToSend == ""
+                                || _currentKeyToSend[0] == ""
                              )
 
                             && _keyPressMode
@@ -1027,8 +1015,8 @@ namespace HekiliHelper
                         // this stops the sending of the key till the timer is almost up.  
                         // it takes advantage of the cooldown visual cue in the game that darkens the font (changes the color)
                         // the OCR doesn't see a new char until it is almost times out, at that point it can be pressed and would be added to the action queue
-                        _currentKeyToSend = "";
-                        _DetectedValue = "";
+                        _currentKeyToSend[0] = "";
+                        _DetectedValueFirst = "";
 
 
 
@@ -1068,6 +1056,7 @@ namespace HekiliHelper
                 if (!screenCapture.IsCapturing)
                 {
                     Magnifier_LocationChanged(sender, e);
+                    Magnifier2_LocationChanged(sender, e);
                     screenCapture.StartCapture();
 
                     _hookID = _hookID == 0 ? SetHookActionKey(_proc) : 0; 
@@ -1112,20 +1101,6 @@ namespace HekiliHelper
                 encoder.Save(fileStream);
             }
         }
-        private void OpenMagnifierButton_Click(object sender, RoutedEventArgs e)
-        {
-            OpenMagnifierWindow();
-        }
-
-        private void GetPropertiesButton_Click(object sender, RoutedEventArgs e)
-        {
-            RetrieveMagnifierProperties();
-        }
-
-        private void CloseMagnifierButton_Click(object sender, RoutedEventArgs e)
-        {
-            CloseMagnifierWindow();
-        }
 
         private void bToggleMagBorder_Click(object sender, RoutedEventArgs e)
         {
@@ -1137,37 +1112,17 @@ namespace HekiliHelper
             {
                 magnifier.Visibility = Visibility.Visible;
             }
-        }
-        private void setMagnifierPosition (double x, double y, double width, double height)
-        {
-            var source = PresentationSource.FromVisual(this);
-            if (source?.CompositionTarget != null)
+
+            if (magnifier2.Visibility == Visibility.Visible)
             {
-                var dpiX = source.CompositionTarget.TransformToDevice.M11;
-                var dpiY = source.CompositionTarget.TransformToDevice.M22;
-
-                // Get the window's current location
-                var left = x;
-                var top = y;
-                var widthh = width;
-                var heightt = height;
-
-                // Adjust for DPI scaling
-                var scaledLeft = left * dpiX;
-                var scaledTop = top * dpiY;
-                var scaledWidth = widthh * dpiX;
-                var scaledHeight = heightt * dpiY;
-
-                magnifier.Left = scaledLeft;
-                magnifier.Top = scaledTop;
-                magnifier.Width = scaledWidth;
-                magnifier.Height = scaledHeight;
-
-
-                screenCapture.CaptureRegion = new System.Windows.Rect(scaledLeft, scaledTop, scaledWidth, scaledHeight);
-                //screenCapture.CaptureRegion = magnifier.CurrrentLocationValue;
-
+                magnifier2.Visibility = Visibility.Hidden;
             }
+            else
+            {
+                magnifier2.Visibility = Visibility.Visible;
+            }
+
+
 
         }
 
@@ -1193,8 +1148,13 @@ namespace HekiliHelper
                 var scaledTop = top * dpiY;
                 var scaledWidth = width * dpiX;
                 var scaledHeight = height * dpiY;
+                //     if (screenCapture.CaptureRegion != null ) 
+                screenCapture.CaptureRegion = 
 
-                screenCapture.CaptureRegion = new System.Windows.Rect(scaledLeft+1, scaledTop+1, scaledWidth-1, scaledHeight-1);
+                    new System.Windows.Rect[2] 
+                    { new System.Windows.Rect(scaledLeft+1, scaledTop+1, scaledWidth-1, scaledHeight-1),
+                      screenCapture.CaptureRegion == null ? new System.Windows.Rect() : screenCapture.CaptureRegion[1]
+                     };
                 //screenCapture.CaptureRegion = magnifier.CurrrentLocationValue;
 
             }
@@ -1224,14 +1184,89 @@ namespace HekiliHelper
 
                 scaledWidth = scaledWidth < 0 ? 1 : scaledWidth;
                 scaledHeight = scaledHeight < 0 ? 1 : scaledHeight;
-                
-                
 
-                screenCapture.CaptureRegion = new System.Windows.Rect(scaledLeft , scaledTop, scaledWidth , scaledHeight);
-                //screenCapture.CaptureRegion = magnifier.CurrrentLocationValue;
+
+                //    if (screenCapture.CaptureRegion != null)
+                screenCapture.CaptureRegion = 
+                    new System.Windows.Rect[2]
+                    { 
+                        new System.Windows.Rect(scaledLeft+1, scaledTop+1, scaledWidth-1, scaledHeight-1),
+                      screenCapture.CaptureRegion == null ? new System.Windows.Rect() : screenCapture.CaptureRegion[1]
+                     };                //screenCapture.CaptureRegion = magnifier.CurrrentLocationValue;
 
             }
         }
+
+        private void Magnifier2_LocationChanged(object? sender, EventArgs e)
+        {
+            //            if (screenCapture == null) return;
+            //            screenCapture.CaptureRegion = magnifier.CurrrentLocationValue;
+            if (screenCapture == null) return;
+            var source = PresentationSource.FromVisual(this);
+            if (source?.CompositionTarget != null)
+            {
+                var dpiX = source.CompositionTarget.TransformToDevice.M11;
+                var dpiY = source.CompositionTarget.TransformToDevice.M22;
+
+                // Get the window's current location
+                var left = magnifier2.CurrrentLocationValue.X;
+                var top = magnifier2.CurrrentLocationValue.Y;
+                var width = magnifier2.CurrrentLocationValue.Width;
+                var height = magnifier2.CurrrentLocationValue.Height;
+
+                // Adjust for DPI scaling
+                var scaledLeft = left * dpiX;
+                var scaledTop = top * dpiY;
+                var scaledWidth = width * dpiX;
+                var scaledHeight = height * dpiY;
+                // if (screenCapture.CaptureRegion != null)
+                screenCapture.CaptureRegion = //new System.Windows.Rect(scaledLeft + 1, scaledTop + 1, scaledWidth - 1, scaledHeight - 1);
+                    new System.Windows.Rect[2]
+                    {
+                      screenCapture.CaptureRegion == null ? new System.Windows.Rect() : screenCapture.CaptureRegion[0],
+                     new System.Windows.Rect(scaledLeft+1, scaledTop+1, scaledWidth-1, scaledHeight-1)
+                     };                //screenCapture.CaptureRegion = magnifier.CurrrentLocationValue;
+
+            }
+
+        }
+
+        private void Magnifier2_SizeChanged(object sender, SizeChangedEventArgs e)
+        {
+            if (screenCapture == null) return;
+            var source = PresentationSource.FromVisual(this);
+            if (source?.CompositionTarget != null)
+            {
+                var dpiX = source.CompositionTarget.TransformToDevice.M11;
+                var dpiY = source.CompositionTarget.TransformToDevice.M22;
+
+                // Get the window's current location
+                var left = magnifier2.CurrrentLocationValue.X;
+                var top = magnifier2.CurrrentLocationValue.Y;
+                var width = magnifier2.CurrrentLocationValue.Width;
+                var height = magnifier2.CurrrentLocationValue.Height;
+
+                // Adjust for DPI scaling
+                var scaledLeft = (left * dpiX) + 1;
+                var scaledTop = (top * dpiY) + 1;
+                var scaledWidth = (width * dpiX) - 1;
+                var scaledHeight = (height * dpiY) - 15;
+
+                scaledWidth = scaledWidth < 0 ? 1 : scaledWidth;
+                scaledHeight = scaledHeight < 0 ? 1 : scaledHeight;
+
+
+                //     if (screenCapture.CaptureRegion != null)
+                screenCapture.CaptureRegion = //new System.Windows.Rect(scaledLeft + 1, scaledTop + 1, scaledWidth - 1, scaledHeight - 1);
+                    new System.Windows.Rect[2]
+                    {
+                      screenCapture.CaptureRegion == null ? new System.Windows.Rect() : screenCapture.CaptureRegion[0],
+                     new System.Windows.Rect(scaledLeft+1, scaledTop+1, scaledWidth-1, scaledHeight-1)
+                     };                //screenCapture.CaptureRegion = magnifier.CurrrentLocationValue;
+
+            }
+        }
+
 
         private void Window_Closed(object sender, EventArgs e)
         {
@@ -1242,6 +1277,10 @@ namespace HekiliHelper
             Properties.Settings.Default.CapY = magnifier.Top;
             Properties.Settings.Default.CapWidth = magnifier.Width;
             Properties.Settings.Default.CapHeight = magnifier.Height;
+            Properties.Settings.Default.Cap2X = magnifier2.Left;
+            Properties.Settings.Default.Cap2Y = magnifier2.Top;
+            Properties.Settings.Default.Cap2Width = magnifier2.Width;
+            Properties.Settings.Default.Cap2Height = magnifier2.Height;
             Properties.Settings.Default.AppStartX = this.Left;
             Properties.Settings.Default.AppStartY = this.Top;
             Properties.Settings.Default.TargetR = CurrentR;
@@ -1251,7 +1290,9 @@ namespace HekiliHelper
 
             Properties.Settings.Default.Save();
 
-            magnifier.Close();  
+            magnifier.Close();
+            magnifier2.Close();
+
             if (screenCapture.IsCapturing)
             {
                 screenCapture.StopCapture();
@@ -1274,20 +1315,6 @@ namespace HekiliHelper
         }
         #endregion
 
-        private void sliderTargetR_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
-        {
-
-        }
-
-        private void sliderTargetG_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
-        {
-
-        }
-
-        private void sliderTargetB_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
-        {
-
-        }
  
         private void buPicker_Click(object sender, RoutedEventArgs e)
         {
@@ -1456,6 +1483,11 @@ namespace HekiliHelper
             magnifier.Top = Properties.Settings.Default.CapY > SystemParameters.PrimaryScreenHeight ? 100 : Properties.Settings.Default.CapY;
             magnifier.Width = Properties.Settings.Default.CapWidth;
             magnifier.Height = Properties.Settings.Default.CapHeight;
+
+            magnifier2.Left = Properties.Settings.Default.Cap2X > SystemParameters.PrimaryScreenWidth ? 100 : Properties.Settings.Default.CapX;
+            magnifier2.Top = Properties.Settings.Default.Cap2Y > SystemParameters.PrimaryScreenHeight ? 100 : Properties.Settings.Default.CapY;
+            magnifier2.Width = Properties.Settings.Default.Cap2Width;
+            magnifier2.Height = Properties.Settings.Default.Cap2Height;
 
         }
 
