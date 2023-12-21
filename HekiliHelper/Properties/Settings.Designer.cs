@@ -274,5 +274,53 @@ namespace HekiliHelper.Properties {
                 this["KeepOnTop"] = value;
             }
         }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("0")]
+        public double Cap2X {
+            get {
+                return ((double)(this["Cap2X"]));
+            }
+            set {
+                this["Cap2X"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("50")]
+        public double Cap2Y {
+            get {
+                return ((double)(this["Cap2Y"]));
+            }
+            set {
+                this["Cap2Y"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("50")]
+        public double Cap2Width {
+            get {
+                return ((double)(this["Cap2Width"]));
+            }
+            set {
+                this["Cap2Width"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("100")]
+        public double Cap2Height {
+            get {
+                return ((double)(this["Cap2Height"]));
+            }
+            set {
+                this["Cap2Height"] = value;
+            }
+        }
     }
 }
