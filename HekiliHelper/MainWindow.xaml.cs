@@ -1404,7 +1404,8 @@ namespace HekiliHelper
         private void buPicker_Click(object sender, RoutedEventArgs e)
         {
             _MouseHookID = MouseSetHook(_mouseProc);
-            ChangeCursor();
+            //ChangeCursor();
+            this.TargetColorPicker.SelectedColor = System.Windows.Media.Color.FromArgb(255, 0, 0, 0);
             // Other application logic
         }
 
@@ -1521,6 +1522,7 @@ namespace HekiliHelper
         {
             e.Handled = _regex.IsMatch(e.Text);
         }
+
         private void TextBoxPasting(object sender, DataObjectPastingEventArgs e)
         {
             if (e.DataObject.GetDataPresent(typeof(String)))
