@@ -14,6 +14,7 @@ using OpenCvSharp.WpfExtensions;
 using System.Text.RegularExpressions;
 using static System.Net.Mime.MediaTypeNames;
 using System.Windows.Controls;
+using Tesseract;
 
 namespace HekiliHelper
 {
@@ -275,6 +276,9 @@ namespace HekiliHelper
         private int CurrentG = 255;
         private int CurrentB = 255;
         private int CurrentA = 255;
+        private int CurrentH = 255;
+        private int CurrentS = 255;
+        private int CurrentV = 255;
         private double CurrentThreshold = 0.3;
         private int CurrentCaptureRateMS = 100;
         private int CurrentKeyPressSpeedMS = 125;
@@ -482,42 +486,14 @@ namespace HekiliHelper
 
         //}
 
-        private Scalar ConvertRgbToHsvRange(Scalar rgbColor, Scalar rgbColorTolerance, bool? isLowerBound)
-        {
-            Mat rgbMat = new Mat(1, 1, MatType.CV_8UC3, rgbColor);
-            Mat hsvMat = new Mat();
-            Cv2.CvtColor(rgbMat, hsvMat, ColorConversionCodes.BGR2HSV_FULL);
-            Vec3b hsvColor = hsvMat.Get<Vec3b>(0, 0);
-
-            // Adjust the HSV range based on the tolerance
-            int h = hsvColor[0];
-            int s = hsvColor[1];
-            int v = hsvColor[2];
-            int hTol = (int)rgbColorTolerance[0];
-            int sTol = (int)rgbColorTolerance[1];
-            int vTol = (int)rgbColorTolerance[2];
-            if (isLowerBound == null)
-            {
-                return new Scalar(
-                    h ,
-                    s ,
-                    v );
-
-            } else
-
-            return new Scalar(
-                isLowerBound.Value ? h : h + hTol,
-                isLowerBound.Value ? s - sTol : s + sTol,
-                isLowerBound.Value ? v - vTol : v + vTol);
-        }
-
-
         private Scalar ConvertRgbToHsvRange(Scalar rgbColor, double Threshold, bool? isLowerBound)
         {
-            Mat rgbMat = new Mat(1, 1, MatType.CV_8UC3, rgbColor);
+            Mat rgbMat = new Mat(1, 1, MatType.CV_8UC4, rgbColor);
             Mat hsvMat = new Mat();
             Cv2.CvtColor(rgbMat, hsvMat, ColorConversionCodes.BGR2HSV_FULL);
-            Vec3b hsvColor = hsvMat.Get<Vec3b>(0, 0);
+       
+
+            Vec4b hsvColor = hsvMat.Get<Vec4b>(0, 0);
 
             // Adjust the HSV range based on the tolerance
             int h = hsvColor[0];
@@ -526,6 +502,14 @@ namespace HekiliHelper
             int hTol = (int)(h * Threshold);
             int sTol = (int)(s * Threshold);
             int vTol = (int)(v * Threshold);
+
+            //if (h + hTol > 255) { hTol = 0; }
+            //if (s + sTol > 255) { sTol = 0; }
+            //if (v + vTol > 255) { vTol = 0; }
+            //if (h - hTol < 0) { hTol = 0; }
+            //if (s - sTol < 0) { sTol = 0; }
+            //if (v - vTol < 0) { vTol = 0; }
+
             if (isLowerBound == null)
             {
                 return new Scalar(
@@ -535,31 +519,104 @@ namespace HekiliHelper
 
             }
             else
-
                 return new Scalar(
-                    isLowerBound.Value ? h - hTol : h + hTol,
-                    isLowerBound.Value ? s - sTol : s + sTol,
+                    isLowerBound.Value ? h - 10 : h + 10,
+                    isLowerBound.Value ? s - 20 : s + 20,
                     isLowerBound.Value ? v - vTol : v + vTol);
         }
 
-        public Mat IsolateColor(Mat src, Scalar rgbColor, Scalar rgbColorTolerance, double Threshold)
+
+        private Scalar ConvertRgbToHlsRange(Scalar rgbColor, double Threshold, bool? isLowerBound)
+        {
+            Mat rgbMat = new Mat(1, 1, MatType.CV_8UC3, rgbColor);
+            Mat hslMat = new Mat();
+            Cv2.CvtColor(rgbMat, hslMat, ColorConversionCodes.BGR2HLS); //.BGR2HLS_FULL
+            Vec3b hslColor = hslMat.Get<Vec3b>(0, 0);
+
+            // Adjust the HSL range based on the tolerance
+            int h = hslColor[0];
+            int l = hslColor[1];
+            int s = hslColor[2];
+
+            int hTol = 0;// (int)(h * Threshold);
+            int lTol =  (int)(l * Threshold);
+            int sTol =  (int)(s * Threshold);
+            if (h + hTol > 255) { hTol = 0; }
+            if (l + lTol > 255) { lTol = 0; }
+            if (s + sTol > 255) { sTol = 0; }
+            if (h - hTol < 0) { hTol = 0; }
+            if (l - lTol < 0) { lTol = 0; }
+            if (s - sTol < 0) { sTol = 0; }
+
+            //if (isLowerBound == null)
+            //{
+            //    return new Scalar(
+            //        h ,
+            //        l ,
+            //        s );
+
+            //} else
+
+            return new Scalar(
+                isLowerBound.Value ? h - hTol : h + hTol,
+                isLowerBound.Value ? l - lTol : l + lTol,
+                isLowerBound.Value ? s - sTol : s + sTol
+
+                );
+        }
+
+
+
+        private Scalar ConvertBGRToBGRRange(Scalar rgbColor, double Threshold, bool? isLowerBound)
+        {
+           // Mat rgbMat = new Mat(1, 1, MatType.CV_8UC3, rgbColor);
+           // Mat hslMat = new Mat();
+           // Cv2.CvtColor(rgbMat, hslMat, ColorConversionCodes.RGB2BGR); //.BGR2HLS_FULL
+           // Vec3b hslColor = rgbMat.Get<Vec3b>(0, 0);
+
+            // Adjust the HSL range based on the tolerance
+            byte b = (byte)rgbColor[0];
+            byte g = (byte)rgbColor[1];
+            byte r = (byte)rgbColor[2];
+            int bTol = (int)( b*Threshold);// Threshold);
+            int gTol = (int)( g*Threshold );
+            int rTol = (int)( r*Threshold);
+
+            if (b + bTol > 255) { bTol = 0; }
+            if (g + gTol > 255) { gTol = 0; }
+            if (r + rTol > 255 ) { rTol = 0; }
+            if (b - bTol < 0) { bTol = 0; }
+            if (g - gTol < 0) { gTol = 0; }
+            if (r - rTol < 0) { rTol = 0; }
+
+
+            if (isLowerBound == null)
+            {
+                return new Scalar(
+                    b,
+                    g,
+                    r);
+
+            }
+            else
+
+                return new Scalar(
+                    isLowerBound.Value ? b - bTol : b + bTol,
+                    isLowerBound.Value ? g - gTol : g + gTol,
+                    isLowerBound.Value ? r - rTol : r + rTol);
+        }
+
+
+        public Mat IsolateColorHSV(Mat src, Scalar rgbColor, double Threshold)
         {
             // Convert the RGB color and tolerance to HSV
             Scalar upperBound = ConvertRgbToHsvRange(rgbColor, Threshold, false);
             Scalar lowerBound = ConvertRgbToHsvRange(rgbColor, Threshold, true);
-            Scalar centerBound = ConvertRgbToHsvRange(rgbColor, Threshold, null);
-            //Scalar lowerBound = new Scalar(
-            //    centerBound.Val0,
-            //    centerBound.Val1 - 10,
-            //   centerBound.Val2
-            //    );
-
+      //      Scalar centerBound = ConvertRgbToHsvRange(rgbColor, Threshold, null);
 
             // Convert the image to HSV color space
             Mat hsv = new Mat();
             Cv2.CvtColor(src, hsv, ColorConversionCodes.BGR2HSV_FULL);
-
-
 
             // Create a mask for the desired color range
             Mat mask = new Mat();
@@ -571,6 +628,52 @@ namespace HekiliHelper
 
             return result;
         }
+
+        public Mat IsolateColorHLS(Mat src, Scalar rgbColor,  double Threshold)
+        {
+            // Convert the RGB color and tolerance to HSV
+            Scalar upperBound = ConvertRgbToHlsRange(rgbColor, Threshold, false);
+            Scalar lowerBound = ConvertRgbToHlsRange(rgbColor, Threshold, true);
+        //    Scalar centerBound = ConvertRgbToHlsRange(rgbColor, Threshold, null);
+
+            // Convert the image to HSV color space
+            Mat hls = new Mat();
+            Cv2.CvtColor(src, hls, ColorConversionCodes.BGR2HLS);
+
+            // Create a mask for the desired color range
+            Mat mask = new Mat();
+            Cv2.InRange(hls, lowerBound, upperBound, mask);
+
+            // Bitwise-AND mask and original image to isolate the color
+            Mat result = new Mat();
+            Cv2.BitwiseAnd(src, src, result, mask);
+
+            return result;
+        }
+
+        public Mat IsolateColorRGB(Mat src, Scalar rgbColor,  double Threshold)
+        {
+            // Convert the RGB color and tolerance to HSV
+            Scalar upperBound = ConvertBGRToBGRRange(rgbColor, Threshold, false);
+            Scalar lowerBound = ConvertBGRToBGRRange(rgbColor, Threshold, true);
+ //           Scalar centerBound = ConvertBGRToBGRRange(rgbColor, Threshold, null);
+
+            // Convert the image to HSV color space
+     //       Mat hsv = new Mat();
+          //  Cv2.CvtColor(src, src, ColorConversionCodes.RGB2BGR);
+//            Mat hsv = src.Clone();
+
+            // Create a mask for the desired color range
+            Mat mask = new Mat();
+            Cv2.InRange(src, lowerBound, upperBound, mask);
+
+            // Bitwise-AND mask and original image to isolate the color
+            Mat result = new Mat();
+            Cv2.BitwiseAnd(src, src, result, mask);
+
+            return result;
+        }
+
 
         public Mat RescaleImageToNewDpi(Mat src, double currentDpi, double newDpi)
         {
@@ -698,18 +801,26 @@ namespace HekiliHelper
             int Gscale =  ((int)(CurrentG * ((CurrentG * Threshold) / CurrentG)));
             int Bscale =  ((int)(CurrentB * ((CurrentB * Threshold) / CurrentB)));
 
+            //int Hscale = ()
+            //int Sscale
+            //int Vscale 
+
+
 
             string result = "";
             BitmapSource? OutImageSource;
             var CVMat = BitmapSourceConverter.ToMat(Convert(image));
             Mat resizedMat;
+      
+
             resizedMat = RescaleImageToNewDpi(CVMat, image.HorizontalResolution, 300);
+           // Cv2.CvtColor(resizedMat, resizedMat, ColorConversionCodes.RGB2BGR);
+  //           var IsolatedColor = IsolateColorRGB(resizedMat, Scalar.FromRgb(CurrentR, CurrentG, CurrentB), Threshold);
+
+            //var IsolatedColor = IsolateColorHLS(resizedMat, Scalar.FromRgb(CurrentR, CurrentG, CurrentB), Threshold);
+           var IsolatedColor = IsolateColorHSV(resizedMat, Scalar.FromRgb(CurrentR, CurrentG, CurrentB), Threshold);
 
 
-
-            var IsolatedColor = IsolateColor(resizedMat, Scalar.FromRgb(CurrentR, CurrentG, CurrentB), Scalar.FromRgb(Rscale, Gscale, Bscale), Threshold);
-
-           
             Mat gray = new Mat();
             Cv2.CvtColor(IsolatedColor, gray, ColorConversionCodes.BGR2GRAY);
         
@@ -735,61 +846,35 @@ namespace HekiliHelper
 
          
 
-            //This  currently not working and just taking up CPU cycles.  Not sure what is going on.
-            //Will figure this out later.
-
-            //// Dilation
-            //Mat kernel = Cv2.GetStructuringElement(MorphShapes.Rect, new OpenCvSharp.Size(3, 3));
-            //Mat dilation = new Mat();
-            //Cv2.Dilate(resizedMat, dilation, kernel);
       
+      
+            string s = OCRProcess(OpenCvSharp.Extensions.BitmapConverter.ToBitmap(resizedMat));
+            CurrentKeyToSend = s; 
+            Cv2.CvtColor(resizedMat, resizedMat, ColorConversionCodes.BayerBG2RGB);
 
-            //// Find contours
-            //OpenCvSharp.Point[][] contours;
-            //HierarchyIndex[] hierarchy;
-            //Cv2.FindContours(dilation, out  contours, out  hierarchy, RetrievalModes.External, ContourApproximationModes.ApproxNone);
+            DrawMarkers(ref resizedMat);
 
-            //foreach (var contour in contours)
-            //{
-            //    OpenCvSharp.Rect rect = Cv2.BoundingRect(contour);
+            OutImageSource = BitmapSourceConverter.ToBitmapSource(resizedMat);
+            DisplayControl.Source = OutImageSource;
 
-            //    // Crop and OCR
-            //    Mat cropped = new Mat(resizedMat, rect);
-            //    var OutImage = OpenCvSharp.Extensions.BitmapConverter.ToBitmap(cropped);
-    
-   
-                string s = OCRProcess(OpenCvSharp.Extensions.BitmapConverter.ToBitmap(resizedMat));
-                CurrentKeyToSend = s; 
-                Cv2.CvtColor(resizedMat, resizedMat, ColorConversionCodes.BayerBG2RGB);
-
-                DrawMarkers(ref resizedMat);
-
-           OutImageSource = BitmapSourceConverter.ToBitmapSource(resizedMat);
-                DisplayControl.Source = OutImageSource;
-
-                if (_DetectedSameCount >= 1)
-                {
-                    label.Content = s;
-                    _DetectedValue = s;
-                    _DetectedSameCount = 0;
-                }
-                else
-                {
-                    if (label.Content.ToString() != s)
-                    lDetectedValue.Content = "";
-                    _DetectedSameCount++;
-                }
+            if (_DetectedSameCount >= 1)
+            {
+                label.Content = s;
+                _DetectedValue = s;
+                _DetectedSameCount = 0;
+            }
+            else
+            {
+                if (label.Content.ToString() != s)
+                lDetectedValue.Content = "";
+                _DetectedSameCount++;
+            }
                 
-            //}
             result = _DetectedValueFirst;
             return result;
 
 
-           // var OutImage = BitmapSourceConverter.ToBitmapSource(gray);
-
-            
-            //string s = OCRProcess(OpenCvSharp.Extensions.BitmapConverter.ToBitmap(gray));
-            //lDetectedValue.Content = s;
+      
         }
 
         public void StartCaptureProcess()
@@ -1514,6 +1599,18 @@ namespace HekiliHelper
         private void cbQuickDecode_Unchecked(object sender, RoutedEventArgs e)
         {
             Properties.Settings.Default.QuickDecode = false;
+        }
+
+        private void TargetColorPicker_ColorChanged(object sender, RoutedEventArgs e)
+        {
+          
+            Properties.Settings.Default.TargetR = TargetColorPicker.SelectedColor.R;
+            Properties.Settings.Default.TargetG = TargetColorPicker.SelectedColor.G; 
+            Properties.Settings.Default.TargetB = TargetColorPicker.SelectedColor.B;
+            Properties.Settings.Default.TargetA = TargetColorPicker.SelectedColor.A;
+            CurrentR = TargetColorPicker.SelectedColor.R;
+            CurrentG = TargetColorPicker.SelectedColor.G;
+            CurrentB = TargetColorPicker.SelectedColor.B;
         }
     }
 }
