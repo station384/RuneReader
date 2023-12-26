@@ -768,6 +768,43 @@ namespace HekiliHelper
 
         }
 
+        public bool IsThereAnImageInTopLeftLowerQuarter(Mat src)
+        {
+            // Define the region of interest (ROI) as the first quarter of the image
+            //OpenCvSharp.Rect roi = new OpenCvSharp.Rect(0, 0, (src.Width / 3), (src.Height / 3));
+            //OpenCvSharp.Rect roi = new OpenCvSharp.Rect( (int)((src.Width / 2) / 2.5), 0, (int)((src.Width / 2) / 1.2), (src.Height / 3) );
+
+
+            //       Cv2.Rectangle(resizedMat,
+            //new OpenCvSharp.Point((resizedMat.Width / 4), 0),
+            //new OpenCvSharp.Point((resizedMat.Width / 8) + (resizedMat.Width / 4), (resizedMat.Height / 3)),
+
+            var x = (src.Width / 8) + (src.Width / 16);
+            var y = (src.Height / 2);
+            var width = (src.Width / 2) - (src.Width / 5);
+            var height = (src.Height / 2) / 2;
+            OpenCvSharp.Rect roi = new OpenCvSharp.Rect(x, y, width, height);
+
+            Mat firstQuarter = src.Clone(roi);// new Mat(src, roi);
+
+            // Convert to grayscale
+            //Mat gray = new Mat();
+            //Cv2.CvtColor(firstQuarter, gray, ColorConversionCodes.BGR2GRAY);
+
+            // Apply edge detection (e.g., using Canny)
+            Mat edges = new Mat();
+            //        Cv2.BitwiseNot(firstQuarter, edges);
+            var x1 = Cv2.Mean(firstQuarter);
+            if (x1.Val0 <= 250)
+                return true;
+            else
+                return false;
+
+        }
+
+
+
+
         private void DrawMarkers (ref Mat src)
         {
             Cv2.Line(src, (int)(src.Width / 2), 0, (int)(src.Width / 2), src.Height, Scalar.FromRgb(255, 0, 0), 1, LineTypes.Link8);
@@ -789,6 +826,15 @@ namespace HekiliHelper
             var height1 = (src.Height / 2) / 2;
             OpenCvSharp.Rect roi1 = new OpenCvSharp.Rect(x1, y1, width1, height1);
             Cv2.Rectangle(src, roi1, Scalar.Red, 1, LineTypes.Link8);
+
+
+            //Draw Left Lower Sensor
+            var x2 = (src.Width / 8) + (src.Width / 16);
+            var y2 = ((src.Height  /2)  );
+            var width2 = (src.Width / 2) - (src.Width / 5);
+            var height2 = (src.Height / 2) / 2;
+            OpenCvSharp.Rect roi2 = new OpenCvSharp.Rect(x2, y2, width2, height2);
+            Cv2.Rectangle(src, roi2, Scalar.Red, 1, LineTypes.Link8);
 
         }
 
