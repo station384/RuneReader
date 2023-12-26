@@ -162,6 +162,30 @@ namespace HekiliHelper
         }
 
     }
+    public struct DetectionRegions
+    {
+        public bool TopLeft = false;
+        public bool TopRight = false;
+        public bool BottomLeft = false;
+
+        public DetectionRegions()
+        {
+            TopLeft = false;
+            TopRight = false;
+            BottomLeft = false;
+        }
+    }
+    public struct ImageRegions
+    {
+        public DetectionRegions FirstImageRegions;
+        public DetectionRegions SecondImageRegions;
+
+        public ImageRegions() 
+        {
+            FirstImageRegions = new DetectionRegions();
+            SecondImageRegions = new DetectionRegions();
+        }
+    }
 
     public partial class MainWindow : System.Windows.Window
     {
@@ -270,6 +294,7 @@ namespace HekiliHelper
         private OcrModule ocr = new OcrModule();
         private MagnifierWindow magnifier;
         private MagnifierWindow magnifier2;
+        private ImageRegions CurrentImageRegions = new ImageRegions();
 
 
         private int CurrentR = 25;
@@ -768,7 +793,7 @@ namespace HekiliHelper
 
         }
 
-        public bool IsThereAnImageInTopLeftLowerQuarter(Mat src)
+        public bool IsThereAnImageInBottomLeftQuarter(Mat src)
         {
             // Define the region of interest (ROI) as the first quarter of the image
             //OpenCvSharp.Rect roi = new OpenCvSharp.Rect(0, 0, (src.Width / 3), (src.Height / 3));
@@ -838,7 +863,9 @@ namespace HekiliHelper
 
         }
 
-        private string ProcessImageOpenCV (Bitmap image, ref Label label, ref string _DetectedValue, ref int _DetectedSameCount, ref string CurrentKeyToSend, ref System.Windows.Controls.Image DisplayControl, double Threshold)
+
+
+        private string ProcessImageOpenCV (Bitmap image, ref Label label, ref string _DetectedValue, ref int _DetectedSameCount, ref string CurrentKeyToSend, ref System.Windows.Controls.Image DisplayControl, double Threshold, ref DetectionRegions regions)
         {
             var origWidth = image.Width;
             var origHeight = image.Height;
@@ -875,13 +902,19 @@ namespace HekiliHelper
 
             //Mat invertedMask = new Mat();
             //Cv2.BitwiseNot(gray, invertedMask);
-            if (IsThereAnImageInTopRightQuarter(gray) ) 
-            if ( !IsThereAnImageInTopLeftQuarter(gray) && Properties.Settings.Default.QuickDecode == false )
+
+            regions.TopLeft = IsThereAnImageInTopLeftQuarter(gray);
+            regions.TopRight = IsThereAnImageInTopRightQuarter(gray);
+            regions.BottomLeft = IsThereAnImageInBottomLeftQuarter(gray);
+
+
+            if (regions.TopRight) 
+            if ( !regions.TopLeft && Properties.Settings.Default.QuickDecode == false )
             {
                 Cv2.CvtColor(gray, gray, ColorConversionCodes.BayerBG2RGB);
                     DrawMarkers(ref  gray);
 
-                       OutImageSource = BitmapSourceConverter.ToBitmapSource(gray);
+                    OutImageSource = BitmapSourceConverter.ToBitmapSource(gray);
                     DisplayControl.Source = OutImageSource;
                     lDetectedValue.Content = "";
                     result = "";
@@ -922,6 +955,7 @@ namespace HekiliHelper
 
       
         }
+        
 
         public void StartCaptureProcess()
         {
@@ -951,18 +985,19 @@ namespace HekiliHelper
                 captureScreen
             );
 
+
             // Assign a handler to the UpdateUIImage event
             screenCapture.UpdateFirstImage += (Bitmap image) =>
             {
                 //ProcessImageLocal(image);
                 double trasThreshold = CurrentThreshold == 0 ? 0.0 : CurrentThreshold / 100;
-                ProcessImageOpenCV(image, ref lDetectedValue, ref _DetectedValueFirst, ref _DetectedSameCount[0], ref _currentKeyToSend[0], ref imageCap, trasThreshold);
+                ProcessImageOpenCV(image, ref lDetectedValue, ref _DetectedValueFirst, ref _DetectedSameCount[0], ref _currentKeyToSend[0], ref imageCap, trasThreshold, ref CurrentImageRegions.FirstImageRegions);
             };
             screenCapture.UpdateSecondImage += (Bitmap image) =>
             {
                 //ProcessImageLocal(image);
                 double trasThreshold = CurrentThreshold == 0 ? 0.0 : CurrentThreshold / 100;
-                ProcessImageOpenCV(image, ref lDetectedValue2, ref _DetectedValueSecond, ref _DetectedSameCount[1], ref _currentKeyToSend[1], ref imageCap2, trasThreshold);
+                ProcessImageOpenCV(image, ref lDetectedValue2, ref _DetectedValueSecond, ref _DetectedSameCount[1], ref _currentKeyToSend[1], ref imageCap2, trasThreshold, ref CurrentImageRegions.SecondImageRegions);
             };
 
 
@@ -986,6 +1021,8 @@ namespace HekiliHelper
         public MainWindow()
         {
             InitializeComponent();
+
+
 
             magnifier = new MagnifierWindow();
             magnifier.Left = Properties.Settings.Default.CapX > SystemParameters.PrimaryScreenWidth ? 100 : Properties.Settings.Default.CapX;
