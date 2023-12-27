@@ -15,6 +15,10 @@ using System.Text.RegularExpressions;
 using static System.Net.Mime.MediaTypeNames;
 using System.Windows.Controls;
 using Tesseract;
+using HekiliHelper.Properties;
+using System.Windows.Threading;
+using HekiliHelper;
+using System.Reflection.Emit;
 
 namespace HekiliHelper
 {
@@ -209,7 +213,7 @@ namespace HekiliHelper
 
         [DllImport("USER32.dll")]
         static extern short GetKeyState(VirtualKeyCodes.VirtualKeyStates nVirtKey);
-        
+
         [DllImport("user32.dll", SetLastError = true)]
         private static extern IntPtr SetSystemCursor(IntPtr hcur, uint id);
 
@@ -279,13 +283,14 @@ namespace HekiliHelper
         private volatile string _DetectedValueSecond = string.Empty;
 
         private volatile bool keyProcessing = false;
-        
-        private volatile int[] _DetectedSameCount = new int[2]{ 0,0 };
+        private volatile bool keyProcessing2 = false;
+
+        private volatile int[] _DetectedSameCount = new int[2] { 0, 0 };
 
         private static IntPtr _hookID = IntPtr.Zero;
         private static IntPtr _MouseHookID = IntPtr.Zero;
         private WindowsMessageProc _proc;
-        private WindowsMessageProc _mouseProc ;
+        private WindowsMessageProc _mouseProc;
         private IntPtr _wowWindowHandle = IntPtr.Zero;
         private CaptureScreen captureScreen;
         private ContinuousScreenCapture screenCapture;
@@ -308,13 +313,14 @@ namespace HekiliHelper
         private int CurrentCaptureRateMS = 100;
         private int CurrentKeyPressSpeedMS = 125;
         private int CurrentKeyDownDelayMS = 25;
+        private Dispatcher mainWindowDispatcher;
 
 
         private volatile bool _keyPressMode = false;
 
-        private  bool keyPressMode { 
+        private bool keyPressMode {
             get { return _keyPressMode; }
-            set { _keyPressMode = value; } 
+            set { _keyPressMode = value; }
         }
 
 
@@ -322,7 +328,7 @@ namespace HekiliHelper
         {
             IntPtr hwnd = GetForegroundWindow();
 
-            if (hwnd == null)  return null;
+            if (hwnd == null) return null;
 
             int length = GetWindowTextLength(hwnd);
             StringBuilder sb = new StringBuilder(length + 1);
@@ -330,7 +336,7 @@ namespace HekiliHelper
             return sb.ToString();
         }
 
-        public  bool IsCurrentWindowWithTitle(string title)
+        public bool IsCurrentWindowWithTitle(string title)
         {
             var currentTitle = GetActiveWindowTitle();
             return currentTitle?.Equals(title, StringComparison.OrdinalIgnoreCase) ?? false;
@@ -353,8 +359,8 @@ namespace HekiliHelper
         private IntPtr HookCallbackActionKey(int nCode, IntPtr wParam, IntPtr lParam)
         {
             bool handled = false;
-      
-            if (nCode >= 0 )
+
+            if (nCode >= 0)
             {
                 int vkCode = Marshal.ReadInt32(lParam);
                 Key key = KeyInterop.KeyFromVirtualKey(vkCode);
@@ -362,32 +368,44 @@ namespace HekiliHelper
                 if (!IsCurrentWindowWithTitle("World of Warcraft"))
                 {
                     _timer.Stop();
-                    _lastKeyToSend = string.Empty;
+      
+
+
                     // Let the key event go thru so the new focused app can handle it
                     keyProcessing = false;
-                       handled = false;
+                    keyProcessing2 = false;
+                    handled = false;
                 }
                 else
                 {
                     var item = ActivationKeyCodeMapper.GetVirtualKeyCode(Properties.Settings.Default.ActivationKey);
-                    if (wParam == (IntPtr)WM_KEYDOWN && (int)key == item) // Replace SomeCapturedKey with the actual captured key
-                    {
-                        // Find the window with the title "wow" only if we haven't already found it
-                        if (_wowWindowHandle == IntPtr.Zero)
+                    if (keyProcessing == false || keyProcessing2 == false)
+                        if (wParam == (IntPtr)WM_KEYDOWN && (int)key == item)
                         {
-                            _wowWindowHandle = FindWindow(null, "wow");
-                        }
-                        if (_wowWindowHandle != IntPtr.Zero && !_timer.IsEnabled && keyProcessing == false)
-                        {
-                            _timer.Start();
-                            // Don't let the message go thru.  this blocks the game from seeing the key press
-                            handled = true;
-                        }
+                            // Find the window with the title "wow" only if we haven't already found it
+                            if (_wowWindowHandle == IntPtr.Zero)
+                            {
+                                _wowWindowHandle = FindWindow(null, "wow");
+                            }
+                            if (_wowWindowHandle != IntPtr.Zero && !_timer.IsEnabled && keyProcessing == false)  // Assume timer2 is tied to timer 1
+                            {
+                                _timer.Start();
+                                mainTimerTick(this, new EventArgs());
 
-                    }
-                    else if (wParam == (IntPtr)WM_KEYUP && (int)key == item) // Replace SomeCapturedKey with the actual captured key
+      
+
+                                // Don't let the message go thru.  this blocks the game from seeing the key press
+                                handled = true;
+                            }
+
+
+                        }
+                    if (wParam == (IntPtr)WM_KEYUP && (int)key == item)
                     {
                         _timer.Stop();
+  
+                        keyProcessing = false;
+                        keyProcessing2 = false;
                         handled = true;
                     }
                 }
@@ -397,8 +415,8 @@ namespace HekiliHelper
             // If the keypress has been handled, return a non-zero value.
             // Otherwise, call the next hook in the chain.
             // return handled ? (IntPtr)0:CallNextHookEx(_hookID, nCode, wParam, lParam); // Locks explorer
-             return CallNextHookEx(_hookID, nCode, wParam, lParam); // Doesn't lock explorer
-          //   return handled ? (IntPtr)1:CallNextHookEx(_hookID, nCode, wParam, lParam); // Blocks input to game does not block windowss
+            return CallNextHookEx(_hookID, nCode, wParam, lParam); // Doesn't lock explorer
+                                                                   //   return handled ? (IntPtr)1:CallNextHookEx(_hookID, nCode, wParam, lParam); // Blocks input to game does not block windowss
 
         }
 
@@ -411,33 +429,33 @@ namespace HekiliHelper
         /// <param name="src">A bitmap image</param>
         /// <returns>The image as a BitmapImage for WPF</returns>
         public BitmapImage Convert(Bitmap src)
-            {
-                MemoryStream ms = new MemoryStream();
-                ((System.Drawing.Bitmap)src).Save(ms, System.Drawing.Imaging.ImageFormat.Bmp);
-                BitmapImage image = new BitmapImage();
-                image.BeginInit();
-                ms.Seek(0, SeekOrigin.Begin);
-                image.StreamSource = ms;
-                image.EndInit();
-                return image;
-            }
+        {
+            MemoryStream ms = new MemoryStream();
+            ((System.Drawing.Bitmap)src).Save(ms, System.Drawing.Imaging.ImageFormat.Bmp);
+            BitmapImage image = new BitmapImage();
+            image.BeginInit();
+            ms.Seek(0, SeekOrigin.Begin);
+            image.StreamSource = ms;
+            image.EndInit();
+            return image;
+        }
 
         private string OCRProcess(Bitmap b)
         {
 
             string Result = "";
-                string s = ocr.PerformOcr(b).Replace("\n", "");
-                if (VirtualKeyCodeMapper.HasKey(s) && (!VirtualKeyCodeMapper.HasExcludeKey(s)))
+            string s = ocr.PerformOcr(b).Replace("\n", "");
+            if (VirtualKeyCodeMapper.HasKey(s) && (!VirtualKeyCodeMapper.HasExcludeKey(s)))
+            {
+                CurrentKeyToPress = StringExtensions.Extract(s, 4);
+                if (!string.IsNullOrEmpty(CurrentKeyToPress.Trim()))
                 {
-                    CurrentKeyToPress = StringExtensions.Extract(s, 4);
-                    if (!string.IsNullOrEmpty(CurrentKeyToPress.Trim()))
-                    {
-                           // _currentKeyToSend[0] = CurrentKeyToPress;
-                            Result = CurrentKeyToPress;
-                    }
-                
+                    // _currentKeyToSend[0] = CurrentKeyToPress;
+                    Result = CurrentKeyToPress;
+                }
+
             }
-         return Result;
+            return Result;
 
         }
 
@@ -516,7 +534,7 @@ namespace HekiliHelper
             Mat rgbMat = new Mat(1, 1, MatType.CV_8UC4, rgbColor);
             Mat hsvMat = new Mat();
             Cv2.CvtColor(rgbMat, hsvMat, ColorConversionCodes.BGR2HSV_FULL);
-       
+
 
             Vec4b hsvColor = hsvMat.Get<Vec4b>(0, 0);
 
@@ -564,8 +582,8 @@ namespace HekiliHelper
             int s = hslColor[2];
 
             int hTol = 0;// (int)(h * Threshold);
-            int lTol =  (int)(l * Threshold);
-            int sTol =  (int)(s * Threshold);
+            int lTol = (int)(l * Threshold);
+            int sTol = (int)(s * Threshold);
             if (h + hTol > 255) { hTol = 0; }
             if (l + lTol > 255) { lTol = 0; }
             if (s + sTol > 255) { sTol = 0; }
@@ -594,22 +612,22 @@ namespace HekiliHelper
 
         private Scalar ConvertBGRToBGRRange(Scalar rgbColor, double Threshold, bool? isLowerBound)
         {
-           // Mat rgbMat = new Mat(1, 1, MatType.CV_8UC3, rgbColor);
-           // Mat hslMat = new Mat();
-           // Cv2.CvtColor(rgbMat, hslMat, ColorConversionCodes.RGB2BGR); //.BGR2HLS_FULL
-           // Vec3b hslColor = rgbMat.Get<Vec3b>(0, 0);
+            // Mat rgbMat = new Mat(1, 1, MatType.CV_8UC3, rgbColor);
+            // Mat hslMat = new Mat();
+            // Cv2.CvtColor(rgbMat, hslMat, ColorConversionCodes.RGB2BGR); //.BGR2HLS_FULL
+            // Vec3b hslColor = rgbMat.Get<Vec3b>(0, 0);
 
             // Adjust the HSL range based on the tolerance
             byte b = (byte)rgbColor[0];
             byte g = (byte)rgbColor[1];
             byte r = (byte)rgbColor[2];
-            int bTol = (int)( b*Threshold);// Threshold);
-            int gTol = (int)( g*Threshold );
-            int rTol = (int)( r*Threshold);
+            int bTol = (int)(b * Threshold);// Threshold);
+            int gTol = (int)(g * Threshold);
+            int rTol = (int)(r * Threshold);
 
             if (b + bTol > 255) { bTol = 0; }
             if (g + gTol > 255) { gTol = 0; }
-            if (r + rTol > 255 ) { rTol = 0; }
+            if (r + rTol > 255) { rTol = 0; }
             if (b - bTol < 0) { bTol = 0; }
             if (g - gTol < 0) { gTol = 0; }
             if (r - rTol < 0) { rTol = 0; }
@@ -637,7 +655,7 @@ namespace HekiliHelper
             // Convert the RGB color and tolerance to HSV
             Scalar upperBound = ConvertRgbToHsvRange(rgbColor, Threshold, false);
             Scalar lowerBound = ConvertRgbToHsvRange(rgbColor, Threshold, true);
-      //      Scalar centerBound = ConvertRgbToHsvRange(rgbColor, Threshold, null);
+            //      Scalar centerBound = ConvertRgbToHsvRange(rgbColor, Threshold, null);
 
             // Convert the image to HSV color space
             Mat hsv = new Mat();
@@ -654,12 +672,12 @@ namespace HekiliHelper
             return result;
         }
 
-        public Mat IsolateColorHLS(Mat src, Scalar rgbColor,  double Threshold)
+        public Mat IsolateColorHLS(Mat src, Scalar rgbColor, double Threshold)
         {
             // Convert the RGB color and tolerance to HSV
             Scalar upperBound = ConvertRgbToHlsRange(rgbColor, Threshold, false);
             Scalar lowerBound = ConvertRgbToHlsRange(rgbColor, Threshold, true);
-        //    Scalar centerBound = ConvertRgbToHlsRange(rgbColor, Threshold, null);
+            //    Scalar centerBound = ConvertRgbToHlsRange(rgbColor, Threshold, null);
 
             // Convert the image to HSV color space
             Mat hls = new Mat();
@@ -676,17 +694,17 @@ namespace HekiliHelper
             return result;
         }
 
-        public Mat IsolateColorRGB(Mat src, Scalar rgbColor,  double Threshold)
+        public Mat IsolateColorRGB(Mat src, Scalar rgbColor, double Threshold)
         {
             // Convert the RGB color and tolerance to HSV
             Scalar upperBound = ConvertBGRToBGRRange(rgbColor, Threshold, false);
             Scalar lowerBound = ConvertBGRToBGRRange(rgbColor, Threshold, true);
- //           Scalar centerBound = ConvertBGRToBGRRange(rgbColor, Threshold, null);
+            //           Scalar centerBound = ConvertBGRToBGRRange(rgbColor, Threshold, null);
 
             // Convert the image to HSV color space
-     //       Mat hsv = new Mat();
-          //  Cv2.CvtColor(src, src, ColorConversionCodes.RGB2BGR);
-//            Mat hsv = src.Clone();
+            //       Mat hsv = new Mat();
+            //  Cv2.CvtColor(src, src, ColorConversionCodes.RGB2BGR);
+            //            Mat hsv = src.Clone();
 
             // Create a mask for the desired color range
             Mat mask = new Mat();
@@ -702,7 +720,7 @@ namespace HekiliHelper
 
         public Mat RescaleImageToNewDpi(Mat src, double currentDpi, double newDpi)
         {
-        
+
             // Calculate the scaling factor
             double scaleFactor = newDpi / currentDpi;
 
@@ -734,10 +752,10 @@ namespace HekiliHelper
             var width = (src.Width / 2) - (src.Width / 5);
             var height = (src.Height / 2) / 2;
             OpenCvSharp.Rect roi = new OpenCvSharp.Rect(
-                x, y, width, height 
+                x, y, width, height
     );
 
-            Mat firstQuarter = src.Clone( roi);// new Mat(src, roi);
+            Mat firstQuarter = src.Clone(roi);// new Mat(src, roi);
 
             // Convert to grayscale
             //Mat gray = new Mat();
@@ -830,7 +848,7 @@ namespace HekiliHelper
 
 
 
-        private void DrawMarkers (ref Mat src)
+        private void DrawMarkers(ref Mat src)
         {
             Cv2.Line(src, (int)(src.Width / 2), 0, (int)(src.Width / 2), src.Height, Scalar.FromRgb(255, 0, 0), 1, LineTypes.Link8);
             Cv2.Line(src, 0, (int)(src.Height / 2), src.Width, (int)(src.Height / 2), Scalar.FromRgb(255, 0, 0), 1, LineTypes.Link8);
@@ -855,7 +873,7 @@ namespace HekiliHelper
 
             //Draw Left Lower Sensor
             var x2 = (src.Width / 8) + (src.Width / 16);
-            var y2 = ((src.Height  /2)  );
+            var y2 = ((src.Height / 2));
             var width2 = (src.Width / 2) - (src.Width / 5);
             var height2 = (src.Height / 2) / 2;
             OpenCvSharp.Rect roi2 = new OpenCvSharp.Rect(x2, y2, width2, height2);
@@ -865,70 +883,69 @@ namespace HekiliHelper
 
 
 
-        private string ProcessImageOpenCV (Bitmap image, ref Label label, ref string _DetectedValue, ref int _DetectedSameCount, ref string CurrentKeyToSend, ref System.Windows.Controls.Image DisplayControl, double Threshold, ref DetectionRegions regions)
+        private string ProcessImageOpenCV(Bitmap image, ref System.Windows.Controls.Label label, ref string _DetectedValue, ref int _DetectedSameCount, ref string CurrentKeyToSend, ref System.Windows.Controls.Image DisplayControl, double Threshold, ref DetectionRegions regions)
         {
             var origWidth = image.Width;
             var origHeight = image.Height;
 
-            int Rscale =  ((int)(CurrentR * ((CurrentR * Threshold) / CurrentR)));
-            int Gscale =  ((int)(CurrentG * ((CurrentG * Threshold) / CurrentG)));
-            int Bscale =  ((int)(CurrentB * ((CurrentB * Threshold) / CurrentB)));
-
-            //int Hscale = ()
-            //int Sscale
-            //int Vscale 
-
-
+            int Rscale = ((int)(CurrentR * ((CurrentR * Threshold) / CurrentR)));
+            int Gscale = ((int)(CurrentG * ((CurrentG * Threshold) / CurrentG)));
+            int Bscale = ((int)(CurrentB * ((CurrentB * Threshold) / CurrentB)));
 
             string result = "";
             BitmapSource? OutImageSource;
             var CVMat = BitmapSourceConverter.ToMat(Convert(image));
             Mat resizedMat;
-      
+
 
             resizedMat = RescaleImageToNewDpi(CVMat, image.HorizontalResolution, 300);
-           // Cv2.CvtColor(resizedMat, resizedMat, ColorConversionCodes.RGB2BGR);
-  //           var IsolatedColor = IsolateColorRGB(resizedMat, Scalar.FromRgb(CurrentR, CurrentG, CurrentB), Threshold);
 
-            //var IsolatedColor = IsolateColorHLS(resizedMat, Scalar.FromRgb(CurrentR, CurrentG, CurrentB), Threshold);
-           var IsolatedColor = IsolateColorHSV(resizedMat, Scalar.FromRgb(CurrentR, CurrentG, CurrentB), Threshold);
+            var IsolatedColor = IsolateColorHSV(resizedMat, Scalar.FromRgb(CurrentR, CurrentG, CurrentB), Threshold);
 
 
             Mat gray = new Mat();
             Cv2.CvtColor(IsolatedColor, gray, ColorConversionCodes.BGR2GRAY);
-        
+
             // Apply Otsu's thresholding
             Cv2.Threshold(gray, gray, 1, 255, ThresholdTypes.Otsu | ThresholdTypes.BinaryInv); //
-
-            //Mat invertedMask = new Mat();
-            //Cv2.BitwiseNot(gray, invertedMask);
 
             regions.TopLeft = IsThereAnImageInTopLeftQuarter(gray);
             regions.TopRight = IsThereAnImageInTopRightQuarter(gray);
             regions.BottomLeft = IsThereAnImageInBottomLeftQuarter(gray);
 
 
-            if (regions.TopRight) 
-            if ( !regions.TopLeft && Properties.Settings.Default.QuickDecode == false )
+            if (regions.TopRight)
             {
-                Cv2.CvtColor(gray, gray, ColorConversionCodes.BayerBG2RGB);
-                    DrawMarkers(ref  gray);
+                if (!regions.TopLeft && Properties.Settings.Default.QuickDecode == false)
+                {
+                    Cv2.CvtColor(gray, gray, ColorConversionCodes.BayerBG2RGB);
+                    DrawMarkers(ref gray);
 
                     OutImageSource = BitmapSourceConverter.ToBitmapSource(gray);
                     DisplayControl.Source = OutImageSource;
-                    lDetectedValue.Content = "";
+                    label.Content = "";
                     result = "";
-                return result;
+                    return result;
+                }
+                if (!regions.BottomLeft && Properties.Settings.Default.QuickDecode == true)
+                {
+                    Cv2.CvtColor(gray, gray, ColorConversionCodes.BayerBG2RGB);
+                    DrawMarkers(ref gray);
+
+                    OutImageSource = BitmapSourceConverter.ToBitmapSource(gray);
+                    DisplayControl.Source = OutImageSource;
+                    label.Content = "";
+                    result = "";
+                    return result;
+                }
+
+
             }
-             resizedMat = gray;
+            resizedMat = gray;
 
 
-         
-
-      
-      
             string s = OCRProcess(OpenCvSharp.Extensions.BitmapConverter.ToBitmap(resizedMat));
-            CurrentKeyToSend = s; 
+            CurrentKeyToSend = s;
             Cv2.CvtColor(resizedMat, resizedMat, ColorConversionCodes.BayerBG2RGB);
 
             DrawMarkers(ref resizedMat);
@@ -936,7 +953,7 @@ namespace HekiliHelper
             OutImageSource = BitmapSourceConverter.ToBitmapSource(resizedMat);
             DisplayControl.Source = OutImageSource;
 
-            if (_DetectedSameCount >= 1)
+            if (_DetectedSameCount >= 2)
             {
                 label.Content = s;
                 _DetectedValue = s;
@@ -945,26 +962,23 @@ namespace HekiliHelper
             else
             {
                 if (label.Content.ToString() != s)
-                lDetectedValue.Content = "";
+                    lDetectedValue.Content = "";
                 _DetectedSameCount++;
             }
-                
+
             result = _DetectedValueFirst;
             return result;
-
-
-      
         }
-        
+
 
         public void StartCaptureProcess()
         {
             // Define the area of the screen you want to capture
-            int x = (int)magnifier.Left, 
-                y = (int)magnifier.Top, 
-                width = (int)magnifier.Width, 
+            int x = (int)magnifier.Left,
+                y = (int)magnifier.Top,
+                width = (int)magnifier.Width,
                 height = (int)magnifier.Height;
-            
+
             int x2 = (int)magnifier2.Left,
                 y2 = (int)magnifier2.Top,
                 width2 = (int)magnifier2.Width,
@@ -972,10 +986,10 @@ namespace HekiliHelper
 
 
             // Initialize CaptureScreen with the dispatcher and the UI update action
-             System.Windows.Rect[] regions = new System.Windows.Rect[2] ;
-             regions[0] = new System.Windows.Rect { X = (double)x, Y = (double)y, Width = width, Height = height };
+            System.Windows.Rect[] regions = new System.Windows.Rect[2];
+            regions[0] = new System.Windows.Rect { X = (double)x, Y = (double)y, Width = width, Height = height };
             regions[1] = new System.Windows.Rect { X = (double)x2, Y = (double)y2, Width = width2, Height = height2 };
-            captureScreen = new CaptureScreen(regions ,0);
+            captureScreen = new CaptureScreen(regions, 0);
             //  image.Source = Convert(captureScreen.CapturedImage);
 
             // Create an instance of ContinuousScreenCapture with the CaptureScreen object
@@ -986,6 +1000,7 @@ namespace HekiliHelper
             );
 
 
+            
             // Assign a handler to the UpdateUIImage event
             screenCapture.UpdateFirstImage += (Bitmap image) =>
             {
@@ -1006,6 +1021,7 @@ namespace HekiliHelper
         private System.Windows.Threading.DispatcherTimer _timer;
 
 
+
         // Method to open the MagnifierWindow
         private void OpenMagnifierWindow()
         {
@@ -1014,14 +1030,210 @@ namespace HekiliHelper
         }
 
 
+        private async void mainTimerTick(object? sender, EventArgs args)
+        {
+            // If key is already processing skip this tick
+            if (keyProcessing || keyProcessing2)
+                return;
+            if (_currentKeyToSend[0] == "")
+                return;
 
+            var currentKeyToSend = _currentKeyToSend[0];
+
+            keyProcessing = true;
+            _currentKeyToSend[0] = "";
+
+            // Check the key dictionary if the key is one we should handle
+            if ((!VirtualKeyCodeMapper.HasKey(currentKeyToSend)) || (VirtualKeyCodeMapper.HasExcludeKey(currentKeyToSend)))
+            {
+                keyProcessing = false;
+                _currentKeyToSend[0] = "";
+                return;
+            }
+
+
+            int vkCode = 0;
+
+
+            if (_wowWindowHandle != nint.Zero)
+            {
+                // I keep poking at this trying to figure out how to only send the key press again if a new key is to me pressed.
+                // It fails if the next key to press is the same.
+                // There would have to some logic in the capture to say its a new detection
+
+
+                if (currentKeyToSend[0] == 'C')
+                    PostMessage(_wowWindowHandle, WM_KEYDOWN, VK_CONTROL, 0);
+                else
+                    PostMessage(_wowWindowHandle, WM_KEYUP, VK_CONTROL, 0);
+
+                if (currentKeyToSend[0] == 'A')
+                    PostMessage(_wowWindowHandle, WM_KEYDOWN, VK_MENU, 0);
+                else
+                    PostMessage(_wowWindowHandle, WM_KEYUP, VK_MENU, 0);
+
+                // Tranlate the char to the virtual Key Code
+                vkCode = VirtualKeyCodeMapper.GetVirtualKeyCode(currentKeyToSend);
+                PostMessage(_wowWindowHandle, WM_KEYDOWN, vkCode, 0);
+                ImageCapBorder.BorderBrush = System.Windows.Media.Brushes.Red;
+                await Task.Delay((int)sliderCaptureRateMS.Value); // Give some time for hekili to refresh
+
+ 
+              
+
+                if (_keyPressMode)
+                {
+  //                  bool _FristCapNoValue = (!VirtualKeyCodeMapper.HasKey(currentKeyToSend)) || VirtualKeyCodeMapper.HasExcludeKey(currentKeyToSend) && currentKeyToSend == "";
+//                    if (_FristCapNoValue)
+                    while ( CurrentImageRegions.FirstImageRegions.TopLeft == false && _currentKeyToSend[0] == ""  )
+                    {
+
+
+                        await Task.Delay(1);
+
+                        // Lets explore some second options while this is on cooldown
+                        if (cbUse2ndImage.IsChecked.Value == true )
+                        {
+                            if (_currentKeyToSend[1] == "")
+                                continue;
+                            if (_currentKeyToSend[1] == _currentKeyToSend[0])
+                                continue;
+
+
+                            var currentKeyToSend1 = _currentKeyToSend[1];
+                          
+
+                            #region 2nd Key Options
+
+                            keyProcessing2 = true;
+
+                            if (CurrentImageRegions.FirstImageRegions.BottomLeft == false)
+                            {
+                                keyProcessing2 = false;
+                                _currentKeyToSend[1] = "";
+                                continue;
+                            }
+
+                            if (CurrentImageRegions.SecondImageRegions.TopLeft == false && CurrentImageRegions.SecondImageRegions.TopRight == false)
+                            {
+                                keyProcessing2 = false;
+                                _currentKeyToSend[1] = "";
+                                continue;
+                            }
+
+
+
+                            if ((!VirtualKeyCodeMapper.HasKey(currentKeyToSend1)) || (VirtualKeyCodeMapper.HasExcludeKey(currentKeyToSend1))
+                            )
+                            {
+                                keyProcessing2 = false;
+                                _currentKeyToSend[1] = "";
+                                break;
+                            }
+
+                            int vkCode2 = 0;
+                            if (_wowWindowHandle != nint.Zero)
+                            {
+                                // I keep poking at this trying to figure out how to only send the key press again if a new key is to me pressed.
+                                // It fails if the next key to press is the same.
+                                // There would have to some logic in the capture to say its a new detection
+                 
+
+                                if (currentKeyToSend1[1] == 'C')
+                                    PostMessage(_wowWindowHandle, WM_KEYDOWN, VK_CONTROL, 0);
+                                else
+                                    PostMessage(_wowWindowHandle, WM_KEYUP, VK_CONTROL, 0);
+
+                                if (currentKeyToSend1[1] == 'A')
+                                    PostMessage(_wowWindowHandle, WM_KEYDOWN, VK_MENU, 0);
+                                else
+                                    PostMessage(_wowWindowHandle, WM_KEYUP, VK_MENU, 0);
+
+                                // Tranlate the char to the virtual Key Code
+                                vkCode2 = VirtualKeyCodeMapper.GetVirtualKeyCode(currentKeyToSend1);
+                                PostMessage(_wowWindowHandle, WM_KEYDOWN, vkCode2, 0);
+                                ImageCap2Border.BorderBrush = System.Windows.Media.Brushes.Red;
+                             //   await Task.Delay((int)sliderCaptureRateMS.Value);
+                                // Give some time for hekili to refresh
+
+                                if (_keyPressMode)
+                                {
+                                    //                                    bool _secondCapNoValue = (!VirtualKeyCodeMapper.HasKey(currentKeyToSend)) || VirtualKeyCodeMapper.HasExcludeKey(currentKeyToSend) || currentKeyToSend == "";
+                                    //                                   if (_secondCapNoValue)
+                                    while ((CurrentImageRegions.FirstImageRegions.TopLeft == false ) && _currentKeyToSend[0] == "")
+                                    {
+                                        await Task.Delay(1);
+                                       
+                                    }
+                                }
+
+                                PostMessage(_wowWindowHandle, WM_KEYUP, vkCode2, 0);
+                                if (currentKeyToSend1[1] == 'C')
+                                    PostMessage(_wowWindowHandle, WM_KEYUP, VK_CONTROL, 0);
+
+                                if (currentKeyToSend1[1] == 'A')
+                                    PostMessage(_wowWindowHandle, WM_KEYUP, VK_MENU, 0);
+
+                                // this stops the sending of the key till the timer is almost up.  
+                                // it takes advantage of the cooldown visual cue in the game that darkens the font (changes the color)
+                                // the OCR doesn't see a new char until it is almost times out, at that point it can be pressed and would be added to the action queue
+
+                                keyProcessing2 = false;
+                                ImageCap2Border.BorderBrush = System.Windows.Media.Brushes.Black;
+                                #endregion
+
+
+                            }
+
+                        }
+                    }
+                }
+
+                // It may not be necessary to send WM_KEYUP immediately after WM_KEYDOWN
+                // because it simulates a very quick key tap rather than a sustained key press.
+
+                if (!_keyPressMode)
+                {
+                    await Task.Delay(Random.Shared.Next() % 5 + CurrentKeyDownDelayMS);
+                }
+                PostMessage(_wowWindowHandle, WM_KEYUP, vkCode, 0);
+                if (currentKeyToSend[0] == 'C')
+                {
+                    PostMessage(_wowWindowHandle, WM_KEYUP, VK_CONTROL, 0);
+                }
+                if (currentKeyToSend[0] == 'A')
+                {
+                    PostMessage(_wowWindowHandle, WM_KEYUP, VK_MENU, 0);
+                }
+                ImageCapBorder.BorderBrush = System.Windows.Media.Brushes.Black;
+      
+
+                // If where not watching for when things time out, we insert a hard delay
+                if (!_keyPressMode)
+                {
+                    await Task.Delay(500);
+                }
+                keyProcessing = false;
+
+                // this stops the sending of the key till the timer is almost up.  
+                // it takes advantage of the cooldown visual cue in the game that darkens the font (changes the color)
+                // the OCR doesn't see a new char until it is almost times out, at that point it can be pressed and would be added to the action queue
+                _DetectedValueFirst = "";
+
+               
+
+            }
+
+            keyProcessing = false;
+        }
+    
 
 
         Bitmap _holderBitmap;
         public MainWindow()
         {
             InitializeComponent();
-
+            mainWindowDispatcher = this.Dispatcher;
 
 
             magnifier = new MagnifierWindow();
@@ -1070,6 +1282,9 @@ namespace HekiliHelper
             cbPushRelease.IsChecked = Properties.Settings.Default.PushAndRelease;
             cbQuickDecode.IsChecked = Properties.Settings.Default.QuickDecode;
             cbStayOnTop.IsChecked = Properties.Settings.Default.KeepOnTop;
+
+            cbUse2ndImage.IsChecked = Properties.Settings.Default.Use2ndImageDetection;
+
             //Properties.Settings.Default.ActivationKey
 
                 this.Topmost = Properties.Settings.Default.KeepOnTop;
@@ -1102,103 +1317,19 @@ namespace HekiliHelper
 
 
             // This timer handles the key sending
-            _timer = new System.Windows.Threading.DispatcherTimer();
+          
+            _timer = new System.Windows.Threading.DispatcherTimer(DispatcherPriority.Background);
             _timer.Interval = TimeSpan.FromMilliseconds(50);
-            _timer.Tick += async (sender, args) =>
-            {
-                if (keyProcessing == true) return;
-                // Check the key dictionary if the key is one we should handle
-                keyProcessing = true;
-                if ((!VirtualKeyCodeMapper.HasKey(_currentKeyToSend[0])) || (VirtualKeyCodeMapper.HasExcludeKey(_currentKeyToSend[0])))
-                {
-                    keyProcessing = false;
-                    return;
-                }
-               // _wowWindowHandle = FindWindow(null, "World of Warcraft");
-                var l_currentKeyToSend = _currentKeyToSend[0];
-                int vkCode = 0;
-                // Tranlate the char to the virtual Key Code
-                vkCode = VirtualKeyCodeMapper.GetVirtualKeyCode(l_currentKeyToSend);
-               // int vkCode = _currentKeyToSend + 0x30; // 0x30 is the virtual-key code for "0"
-                //KeyInterop.VirtualKeyFromKey(e.Key)
-                if (_wowWindowHandle != IntPtr.Zero)
-                {
-                    // I keep poking at this trying to figure out how to only send the key press again if a new key is to me pressed.
-                    // It fails if the next key to press is the same.
-                    // There would have to some logic in the capture to say its a new detection
-                    // if (_lastKeyToSend != _currentKeyToSend)
-                    {
-                        if (l_currentKeyToSend[0] == 'C')
-                        {
-                            PostMessage(_wowWindowHandle, WM_KEYDOWN, VK_CONTROL, 0);
-                        }
-                        if (l_currentKeyToSend[0] == 'A')
-                        {
-                            PostMessage(_wowWindowHandle, WM_KEYDOWN, VK_MENU, 0);
-                        }
-
-                        PostMessage(_wowWindowHandle, WM_KEYDOWN, vkCode, 0);
-
-
-                        while (
-                            (
-                                (
-                                 (!VirtualKeyCodeMapper.HasKey(_currentKeyToSend[0])) || VirtualKeyCodeMapper.HasExcludeKey(_currentKeyToSend[0])
-                                )
-                                || _currentKeyToSend[0] == ""
-                             )
-
-                            && _keyPressMode
-                        )
-                        {
-                            await Task.Delay(5);
-                        }
-
-                        // It may not be necessary to send WM_KEYUP immediately after WM_KEYDOWN
-                        // because it simulates a very quick key tap rather than a sustained key press.
-
-                        if (!_keyPressMode)
-                        {
-                            await Task.Delay(Random.Shared.Next() % 5 + CurrentKeyDownDelayMS);
-                        }
-                            PostMessage(_wowWindowHandle, WM_KEYUP, vkCode, 0);
-                        if (l_currentKeyToSend[0] == 'C')
-                        {
-                            PostMessage(_wowWindowHandle, WM_KEYUP, VK_CONTROL, 0);
-                        }
-                        if (l_currentKeyToSend[0] == 'A')
-                        {
-                            PostMessage(_wowWindowHandle, WM_KEYUP, VK_MENU, 0);
-                        }
-
-                        if (_keyPressMode)
-                        {
-                            await Task.Delay(25);
-                        }
+            _timer.Tick += mainTimerTick;
 
 
 
-                        _lastKeyToSend = l_currentKeyToSend;
 
-                        // this stops the sending of the key till the timer is almost up.  
-                        // it takes advantage of the cooldown visual cue in the game that darkens the font (changes the color)
-                        // the OCR doesn't see a new char until it is almost times out, at that point it can be pressed and would be added to the action queue
-                        _currentKeyToSend[0] = "";
-                        _DetectedValueFirst = "";
-
-
-
-                    }
-                }
-                keyProcessing = false;
-
-            };
-
-            
 
 
         }
 
+  
         #region UI Event handlers
         private void button_Click(object sender, RoutedEventArgs e)
         {
@@ -1696,6 +1827,16 @@ namespace HekiliHelper
             CurrentR = TargetColorPicker.SelectedColor.R;
             CurrentG = TargetColorPicker.SelectedColor.G;
             CurrentB = TargetColorPicker.SelectedColor.B;
+        }
+
+        private void cbUse2ndImage_Checked(object sender, RoutedEventArgs e)
+        {
+            Properties.Settings.Default.Use2ndImageDetection = true;
+        }
+
+        private void cbUse2ndImage_Unchecked(object sender, RoutedEventArgs e)
+        {
+            Properties.Settings.Default.Use2ndImageDetection = false;
         }
     }
 }

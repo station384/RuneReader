@@ -322,5 +322,17 @@ namespace HekiliHelper.Properties {
                 this["Cap2Height"] = value;
             }
         }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("True")]
+        public bool Use2ndImageDetection {
+            get {
+                return ((bool)(this["Use2ndImageDetection"]));
+            }
+            set {
+                this["Use2ndImageDetection"] = value;
+            }
+        }
     }
 }
