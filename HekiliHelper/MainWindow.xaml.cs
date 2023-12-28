@@ -1085,7 +1085,7 @@ namespace HekiliHelper
                 {
   //                  bool _FristCapNoValue = (!VirtualKeyCodeMapper.HasKey(currentKeyToSend)) || VirtualKeyCodeMapper.HasExcludeKey(currentKeyToSend) && currentKeyToSend == "";
 //                    if (_FristCapNoValue)
-                    while ( CurrentImageRegions.FirstImageRegions.TopLeft == false && _currentKeyToSend[0] == ""  )
+                    while ( CurrentImageRegions.FirstImageRegions.TopLeft == false && _currentKeyToSend[0] == ""   && button_Start.IsEnabled)
                     {
 
 
@@ -1096,8 +1096,11 @@ namespace HekiliHelper
                         {
                             if (_currentKeyToSend[1] == "")
                                 continue;
-                            if (_currentKeyToSend[1] == _currentKeyToSend[0])
-                                continue;
+
+                            // This is to avoid duplicate keypresses.  not sure if blocking it is helpful or not, in theory it should just pop to the primary,
+                            // but allowing it to press early should make it fire a little faster.   unsure...  skipping it avoids the question.  
+                            //if (_currentKeyToSend[1] == _currentKeyToSend[0])
+                            //    continue;
 
 
                             var currentKeyToSend1 = _currentKeyToSend[1];
@@ -1152,15 +1155,25 @@ namespace HekiliHelper
                                 // Tranlate the char to the virtual Key Code
                                 vkCode2 = VirtualKeyCodeMapper.GetVirtualKeyCode(currentKeyToSend1);
                                 PostMessage(_wowWindowHandle, WM_KEYDOWN, vkCode2, 0);
+                                if (currentKeyToSend1[1] == 'C')
+                                    PostMessage(_wowWindowHandle, WM_KEYUP, VK_CONTROL, 0);
+
+                                if (currentKeyToSend1[1] == 'A')
+                                    PostMessage(_wowWindowHandle, WM_KEYUP, VK_MENU, 0);
+
                                 ImageCap2Border.BorderBrush = System.Windows.Media.Brushes.Red;
-                             //   await Task.Delay((int)sliderCaptureRateMS.Value);
+                                //Lets delay the main wait until we see somthing in the top left. 
+                                while (CurrentImageRegions.FirstImageRegions.TopLeft == false && _currentKeyToSend[0] == "" && button_Start.IsEnabled)
+                                {
+                                    await Task.Delay(1);
+                                }
                                 // Give some time for hekili to refresh
 
+                                
                                 if (_keyPressMode)
                                 {
-                                    //                                    bool _secondCapNoValue = (!VirtualKeyCodeMapper.HasKey(currentKeyToSend)) || VirtualKeyCodeMapper.HasExcludeKey(currentKeyToSend) || currentKeyToSend == "";
-                                    //                                   if (_secondCapNoValue)
-                                    while ((CurrentImageRegions.FirstImageRegions.TopLeft == false ) && _currentKeyToSend[0] == "")
+                                    // Now we pause until top is filled then we release the key that should queue the command.
+                                    while ((CurrentImageRegions.FirstImageRegions.TopLeft == false ) && _currentKeyToSend[0] == "" && button_Start.IsEnabled)
                                     {
                                         await Task.Delay(1);
                                        
@@ -1168,11 +1181,6 @@ namespace HekiliHelper
                                 }
 
                                 PostMessage(_wowWindowHandle, WM_KEYUP, vkCode2, 0);
-                                if (currentKeyToSend1[1] == 'C')
-                                    PostMessage(_wowWindowHandle, WM_KEYUP, VK_CONTROL, 0);
-
-                                if (currentKeyToSend1[1] == 'A')
-                                    PostMessage(_wowWindowHandle, WM_KEYUP, VK_MENU, 0);
 
                                 // this stops the sending of the key till the timer is almost up.  
                                 // it takes advantage of the cooldown visual cue in the game that darkens the font (changes the color)
