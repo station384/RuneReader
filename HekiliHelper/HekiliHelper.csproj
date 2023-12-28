@@ -161,6 +161,9 @@
     <None Update="CustomFontLoader\Libs\LibStub\LibStub.lua">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+    <None Update="HelikiProfiles\Druid-Balance-T31.txt">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
     <None Update="Properties\Settings.settings">
       <Generator>SettingsSingleFileGenerator</Generator>
       <LastGenOutput>Settings.Designer.cs</LastGenOutput>
@@ -188,6 +191,10 @@
 
   <ItemGroup>
     <None Remove="C:\Users\stati\.nuget\packages\tesseract\5.2.0\build\\..\x64\tesseract50.dll" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="HelikiProfiles\" />
   </ItemGroup>
 
 </Project>
