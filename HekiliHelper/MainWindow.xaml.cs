@@ -976,7 +976,7 @@ namespace HekiliHelper
 
             // Apply Otsu's thresholding
             Cv2.Threshold(gray, gray, 1, 255, ThresholdTypes.Otsu | ThresholdTypes.BinaryInv); //
-
+            resizedMat = gray.Clone();
             regions.TopLeft = IsThereAnImageInTopLeftQuarter(gray);
             regions.TopRight = IsThereAnImageInTopRightQuarter(gray);
             regions.BottomLeft = IsThereAnImageInBottomLeftQuarter(gray);
@@ -987,10 +987,10 @@ namespace HekiliHelper
             {
                 if (!regions.TopLeft && Properties.Settings.Default.QuickDecode == false)
                 {
-                    Cv2.CvtColor(gray, gray, ColorConversionCodes.BayerBG2RGB);
-                    DrawMarkers(ref gray);
+                    Cv2.CvtColor(resizedMat, resizedMat, ColorConversionCodes.BayerBG2RGB);
+                    DrawMarkers(ref resizedMat);
 
-                    OutImageSource = BitmapSourceConverter.ToBitmapSource(gray);
+                    OutImageSource = BitmapSourceConverter.ToBitmapSource(resizedMat);
                     DisplayControl.Source = OutImageSource;
                     label.Content = "";
                     result = "";
@@ -998,10 +998,10 @@ namespace HekiliHelper
                 }
                 if (!regions.BottomLeft && Properties.Settings.Default.QuickDecode == true)
                 {
-                    Cv2.CvtColor(gray, gray, ColorConversionCodes.BayerBG2RGB);
-                    DrawMarkers(ref gray);
+                    Cv2.CvtColor(resizedMat, resizedMat, ColorConversionCodes.BayerBG2RGB);
+                    DrawMarkers(ref resizedMat);
 
-                    OutImageSource = BitmapSourceConverter.ToBitmapSource(gray);
+                    OutImageSource = BitmapSourceConverter.ToBitmapSource(resizedMat);
                     DisplayControl.Source = OutImageSource;
                     label.Content = "";
                     result = "";
@@ -1010,10 +1010,10 @@ namespace HekiliHelper
 
 
             }
-            resizedMat = gray;
+  
 
 
-            string s = OCRProcess(OpenCvSharp.Extensions.BitmapConverter.ToBitmap(resizedMat));
+            string s = OCRProcess(OpenCvSharp.Extensions.BitmapConverter.ToBitmap(gray));
             CurrentKeyToSend = s;
             Cv2.CvtColor(resizedMat, resizedMat, ColorConversionCodes.BayerBG2RGB);
 
@@ -1186,28 +1186,28 @@ namespace HekiliHelper
                 vkCode = VirtualKeyCodeMapper.GetVirtualKeyCode(currentKeyToSend);
 
                 // command is tied to CTRL or ALT So have to press them
-                if (currentKeyToSend[0] == 'C' && CtrlPressed == false)
+                if (currentKeyToSend[0] == 'C') //&& CtrlPressed == false
                     PostMessage(_wowWindowHandle, WM_KEYDOWN, VK_CONTROL, 0);
-                //else
+                else
                 //    // Command isn't tied to CTRL so send a CTRL Up.
                 //    // This should really be peeking in the message buffer to see if the the key is really pressed or not. and only send the up if it is. 
                 //    // This could also be accomlished buy storing off the value in the message processor and storing a flag local if it saw one or not.
                 //    // keyboards are global so that may work.
-                //    PostMessage(_wowWindowHandle, WM_KEYUP, VK_CONTROL, 0);  
-                if (currentKeyToSend[0] == 'A' && AltPressed == false)
+                    PostMessage(_wowWindowHandle, WM_KEYUP, VK_CONTROL, 0);  
+                if (currentKeyToSend[0] == 'A') // && AltPressed == false
                     PostMessage(_wowWindowHandle, WM_KEYDOWN, VK_MENU, 0);
-                //else
-                //    // See Notes on CTRL.
-                //    PostMessage(_wowWindowHandle, WM_KEYUP, VK_MENU, 0);
+                else
+                    // See Notes on CTRL.
+                    PostMessage(_wowWindowHandle, WM_KEYUP, VK_MENU, 0);
 
                 // Press the command Key Down
                 PostMessage(_wowWindowHandle, WM_KEYDOWN, vkCode, 0);
                 
                 
                 // CTRL and ALT do not need to be held down just only pressed initally for the command to be interpeted correctly
-                if (currentKeyToSend[0] == 'C' && CtrlPressed == true) PostMessage(_wowWindowHandle, WM_KEYUP, VK_CONTROL, 0);
-                if (currentKeyToSend[0] == 'A' && AltPressed == true) PostMessage(_wowWindowHandle, WM_KEYUP, VK_MENU, 0);
-           //     await Task.Delay((int)sliderCaptureRateMS.Value); // Give some time for hekili to refresh
+                if (currentKeyToSend[0] == 'C' ) PostMessage(_wowWindowHandle, WM_KEYUP, VK_CONTROL, 0); //&& CtrlPressed == true
+                if (currentKeyToSend[0] == 'A' ) PostMessage(_wowWindowHandle, WM_KEYUP, VK_MENU, 0); //&& AltPressed == true
+                                                                                                      //     await Task.Delay((int)sliderCaptureRateMS.Value); // Give some time for hekili to refresh
 
 
                 // I want atleast 1 cycle to go thru
@@ -1280,25 +1280,25 @@ namespace HekiliHelper
 
 
                                 // Handle the if command is tied to CTRL or ALT
-                                if (currentKeyToSend1[1] == 'C' && CtrlPressed == false)
+                                if (currentKeyToSend1[1] == 'C') //&& CtrlPressed == false
                                     PostMessage(_wowWindowHandle, WM_KEYDOWN, VK_CONTROL, 0);
-                              //  else
-                              //      PostMessage(_wowWindowHandle, WM_KEYUP, VK_CONTROL, 0);
+                                else
+                                    PostMessage(_wowWindowHandle, WM_KEYUP, VK_CONTROL, 0);
 
-                                if (currentKeyToSend1[1] == 'A' && AltPressed == false)
+                                if (currentKeyToSend1[1] == 'A') //&& AltPressed == false
                                     PostMessage(_wowWindowHandle, WM_KEYDOWN, VK_MENU, 0);
-                                //else
-                                //    PostMessage(_wowWindowHandle, WM_KEYUP, VK_MENU, 0);
+                                else
+                                    PostMessage(_wowWindowHandle, WM_KEYUP, VK_MENU, 0);
 
                                 // Tranlate the char to the virtual Key Code
                                 vkCode2 = VirtualKeyCodeMapper.GetVirtualKeyCode(currentKeyToSend1);
-
+                                _currentKeyToSend[0] = "";
                                 PostMessage(_wowWindowHandle, WM_KEYDOWN, vkCode2, 0);
                                 // CTRL and ALT do not need to be held down just only pressed initally for the command to be interpeted correctly
-                                if (currentKeyToSend1[1] == 'C' && CtrlPressed == true)
+                                if (currentKeyToSend1[1] == 'C') // && CtrlPressed == true
                                     PostMessage(_wowWindowHandle, WM_KEYUP, VK_CONTROL, 0);
 
-                                if (currentKeyToSend1[1] == 'A' && AltPressed == true)
+                                if (currentKeyToSend1[1] == 'A') // && AltPressed == true
                                     PostMessage(_wowWindowHandle, WM_KEYUP, VK_MENU, 0);
 
 
