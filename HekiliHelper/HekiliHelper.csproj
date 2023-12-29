@@ -161,6 +161,9 @@
     <None Update="CustomFontLoader\Libs\LibStub\LibStub.lua">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+    <None Update="HelikiProfiles\DH-Havoc.txt">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
     <None Update="HelikiProfiles\Druid-Balance-T31.txt">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>

@@ -171,15 +171,17 @@ namespace HekiliHelper
         public bool TopLeft = false;
         public bool TopRight = false;
         public bool BottomLeft = false;
+        public bool BottomCenter = false;
 
         public DetectionRegions()
         {
             TopLeft = false;
             TopRight = false;
             BottomLeft = false;
+            BottomCenter = false;
         }
     }
-    public struct ImageRegions
+    public class ImageRegions
     {
         public DetectionRegions FirstImageRegions;
         public DetectionRegions SecondImageRegions;
@@ -284,6 +286,9 @@ namespace HekiliHelper
 
         private volatile bool keyProcessing = false;
         private volatile bool keyProcessing2 = false;
+        private volatile bool key1Pressed = false;
+        private volatile bool key2Pressed = false;
+
 
         private volatile int[] _DetectedSameCount = new int[2] { 0, 0 };
 
@@ -299,7 +304,9 @@ namespace HekiliHelper
         private OcrModule ocr = new OcrModule();
         private MagnifierWindow magnifier;
         private MagnifierWindow magnifier2;
-        private ImageRegions CurrentImageRegions = new ImageRegions();
+        private volatile ImageRegions CurrentImageRegions = new ImageRegions();
+        private System.Windows.Threading.DispatcherTimer _timer;
+
 
 
         private int CurrentR = 25;
@@ -354,6 +361,8 @@ namespace HekiliHelper
             }
         }
 
+        private bool AltPressed = false;
+        private bool CtrlPressed = false;
 
 
         private IntPtr HookCallbackActionKey(int nCode, IntPtr wParam, IntPtr lParam)
@@ -408,6 +417,25 @@ namespace HekiliHelper
                         keyProcessing2 = false;
                         handled = true;
                     }
+                    if (wParam == (IntPtr)WM_KEYDOWN && key == System.Windows.Input.Key.LeftCtrl)
+                    {
+                        CtrlPressed = true;
+                    }
+                    if (wParam == (IntPtr)WM_KEYDOWN && key == System.Windows.Input.Key.LeftAlt)
+                    {
+                        AltPressed = true;
+                    }
+
+                    if (wParam == (IntPtr)WM_KEYUP && key == System.Windows.Input.Key.LeftCtrl)
+                    {
+                        CtrlPressed = false;
+                    }
+                    if (wParam == (IntPtr)WM_KEYUP && key == System.Windows.Input.Key.LeftAlt)
+                    {
+                        AltPressed = false;
+                    }
+
+
                 }
             }
 
@@ -845,7 +873,39 @@ namespace HekiliHelper
 
         }
 
+        public bool IsThereAnImageInBottomCenter(Mat src)
+        {
+            // Define the region of interest (ROI) as the first quarter of the image
+            //OpenCvSharp.Rect roi = new OpenCvSharp.Rect(0, 0, (src.Width / 3), (src.Height / 3));
+            //OpenCvSharp.Rect roi = new OpenCvSharp.Rect( (int)((src.Width / 2) / 2.5), 0, (int)((src.Width / 2) / 1.2), (src.Height / 3) );
 
+
+            //       Cv2.Rectangle(resizedMat,
+            //new OpenCvSharp.Point((resizedMat.Width / 4), 0),
+            //new OpenCvSharp.Point((resizedMat.Width / 8) + (resizedMat.Width / 4), (resizedMat.Height / 3)),
+
+            var x = (src.Width / 4) + (src.Width / 16);
+            var y = (src.Height / 2);
+            var width = (src.Width / 2) - (src.Width / 5);
+            var height = (src.Height / 2) / 2;
+            OpenCvSharp.Rect roi = new OpenCvSharp.Rect(x, y, width, height);
+
+            Mat firstQuarter = src.Clone(roi);// new Mat(src, roi);
+
+            // Convert to grayscale
+            //Mat gray = new Mat();
+            //Cv2.CvtColor(firstQuarter, gray, ColorConversionCodes.BGR2GRAY);
+
+            // Apply edge detection (e.g., using Canny)
+            Mat edges = new Mat();
+            //        Cv2.BitwiseNot(firstQuarter, edges);
+            var x1 = Cv2.Mean(firstQuarter);
+            if (x1.Val0 <= 250)
+                return true;
+            else
+                return false;
+
+        }
 
 
         private void DrawMarkers(ref Mat src)
@@ -878,6 +938,14 @@ namespace HekiliHelper
             var height2 = (src.Height / 2) / 2;
             OpenCvSharp.Rect roi2 = new OpenCvSharp.Rect(x2, y2, width2, height2);
             Cv2.Rectangle(src, roi2, Scalar.Red, 1, LineTypes.Link8);
+
+            //Draw Bottom Center Sensor
+            var x3 = ((src.Width / 4) + (src.Width / 16)) ;
+            var y3 = ((src.Height / 2));
+            var width3 = (src.Width / 2) - (src.Width / 5);
+            var height3 = (src.Height / 2) / 2;
+            OpenCvSharp.Rect roi3 = new OpenCvSharp.Rect(x3, y3, width3, height3);
+            Cv2.Rectangle(src, roi3, Scalar.Blue, 1, LineTypes.Link8);
 
         }
 
@@ -912,6 +980,7 @@ namespace HekiliHelper
             regions.TopLeft = IsThereAnImageInTopLeftQuarter(gray);
             regions.TopRight = IsThereAnImageInTopRightQuarter(gray);
             regions.BottomLeft = IsThereAnImageInBottomLeftQuarter(gray);
+            regions.BottomCenter = IsThereAnImageInBottomCenter(gray);
 
 
             if (regions.TopRight)
@@ -966,7 +1035,7 @@ namespace HekiliHelper
                 _DetectedSameCount++;
             }
 
-            result = _DetectedValueFirst;
+            result = _DetectedValue;
             return result;
         }
 
@@ -1000,7 +1069,26 @@ namespace HekiliHelper
             );
 
 
-            
+            // Only process the 2nd image if it is active.  The image will still be captured behind the scenes,  but no OCR will be done on it.
+
+            screenCapture.UpdateSecondImage += (Bitmap image) =>
+            {
+                if (Properties.Settings.Default.Use2ndImageDetection)
+                {
+                    //ProcessImageLocal(image);
+                    double trasThreshold = CurrentThreshold == 0 ? 0.0 : CurrentThreshold / 100;
+                    ProcessImageOpenCV(image, ref lDetectedValue2, ref _DetectedValueSecond, ref _DetectedSameCount[1], ref _currentKeyToSend[1], ref imageCap2, trasThreshold, ref CurrentImageRegions.SecondImageRegions);
+                }
+                else
+                {
+                    // Not capturing so set values back to 0-state
+                    lDetectedValue2.Content = "";
+                    _DetectedValueSecond = "";
+                    _DetectedSameCount[1] = 0;
+                    _currentKeyToSend[1] = "";
+                }
+            };
+
             // Assign a handler to the UpdateUIImage event
             screenCapture.UpdateFirstImage += (Bitmap image) =>
             {
@@ -1008,17 +1096,13 @@ namespace HekiliHelper
                 double trasThreshold = CurrentThreshold == 0 ? 0.0 : CurrentThreshold / 100;
                 ProcessImageOpenCV(image, ref lDetectedValue, ref _DetectedValueFirst, ref _DetectedSameCount[0], ref _currentKeyToSend[0], ref imageCap, trasThreshold, ref CurrentImageRegions.FirstImageRegions);
             };
-            screenCapture.UpdateSecondImage += (Bitmap image) =>
-            {
-                //ProcessImageLocal(image);
-                double trasThreshold = CurrentThreshold == 0 ? 0.0 : CurrentThreshold / 100;
-                ProcessImageOpenCV(image, ref lDetectedValue2, ref _DetectedValueSecond, ref _DetectedSameCount[1], ref _currentKeyToSend[1], ref imageCap2, trasThreshold, ref CurrentImageRegions.SecondImageRegions);
-            };
+
+
+            
 
 
         }
 
-        private System.Windows.Threading.DispatcherTimer _timer;
 
 
 
@@ -1029,19 +1113,34 @@ namespace HekiliHelper
             magnifier2.Show();
         }
 
-
+        string lastKey = "";
         private async void mainTimerTick(object? sender, EventArgs args)
         {
             // If key is already processing skip this tick
-            if (keyProcessing || keyProcessing2)
+            if (keyProcessing || keyProcessing2 || key1Pressed)
                 return;
+
             if (_currentKeyToSend[0] == "")
                 return;
 
+            if (lastKey == _currentKeyToSend[0])
+            {
+                await Task.Delay(200);
+                lastKey = "";
+            }
+
+
+            if (CurrentImageRegions.FirstImageRegions.TopLeft == false)
+            {
+                _currentKeyToSend[0] = "";
+                return;
+            }
+            
+
             var currentKeyToSend = _currentKeyToSend[0];
 
-            keyProcessing = true;
-            _currentKeyToSend[0] = "";
+
+            // THis is a brute force way of trying to keep a key from being rapidly pressed
 
             // Check the key dictionary if the key is one we should handle
             if ((!VirtualKeyCodeMapper.HasKey(currentKeyToSend)) || (VirtualKeyCodeMapper.HasExcludeKey(currentKeyToSend)))
@@ -1051,78 +1150,114 @@ namespace HekiliHelper
                 return;
             }
 
+            keyProcessing = true;
+
+
+
 
             int vkCode = 0;
 
 
             if (_wowWindowHandle != nint.Zero)
             {
+                //assuming we got here means we can do anything we want with the regions settings as they will update to the true values in the background
+                //and we know what keys we want to send
+                CurrentImageRegions.FirstImageRegions.TopLeft = false;
+                CurrentImageRegions.FirstImageRegions.TopRight = false;
+                CurrentImageRegions.FirstImageRegions.BottomLeft = false;
+                CurrentImageRegions.FirstImageRegions.BottomCenter = false;
+                _currentKeyToSend[0] = "";
+
+                CurrentImageRegions.SecondImageRegions.TopLeft = false;
+                CurrentImageRegions.SecondImageRegions.TopRight = false;
+                CurrentImageRegions.SecondImageRegions.BottomLeft = false;
+                CurrentImageRegions.SecondImageRegions.BottomCenter = false;
+                _currentKeyToSend[1] = "";
+
+
+                ImageCapBorder.BorderBrush = System.Windows.Media.Brushes.Red;
+                ImageCap2Border.BorderBrush = System.Windows.Media.Brushes.Black;
+
                 // I keep poking at this trying to figure out how to only send the key press again if a new key is to me pressed.
                 // It fails if the next key to press is the same.
                 // There would have to some logic in the capture to say its a new detection
 
-
-                if (currentKeyToSend[0] == 'C')
-                    PostMessage(_wowWindowHandle, WM_KEYDOWN, VK_CONTROL, 0);
-                else
-                    PostMessage(_wowWindowHandle, WM_KEYUP, VK_CONTROL, 0);
-
-                if (currentKeyToSend[0] == 'A')
-                    PostMessage(_wowWindowHandle, WM_KEYDOWN, VK_MENU, 0);
-                else
-                    PostMessage(_wowWindowHandle, WM_KEYUP, VK_MENU, 0);
-
                 // Tranlate the char to the virtual Key Code
                 vkCode = VirtualKeyCodeMapper.GetVirtualKeyCode(currentKeyToSend);
-                PostMessage(_wowWindowHandle, WM_KEYDOWN, vkCode, 0);
-                ImageCapBorder.BorderBrush = System.Windows.Media.Brushes.Red;
-                await Task.Delay((int)sliderCaptureRateMS.Value); // Give some time for hekili to refresh
 
- 
-              
+                // command is tied to CTRL or ALT So have to press them
+                if (currentKeyToSend[0] == 'C' && CtrlPressed == false)
+                    PostMessage(_wowWindowHandle, WM_KEYDOWN, VK_CONTROL, 0);
+                //else
+                //    // Command isn't tied to CTRL so send a CTRL Up.
+                //    // This should really be peeking in the message buffer to see if the the key is really pressed or not. and only send the up if it is. 
+                //    // This could also be accomlished buy storing off the value in the message processor and storing a flag local if it saw one or not.
+                //    // keyboards are global so that may work.
+                //    PostMessage(_wowWindowHandle, WM_KEYUP, VK_CONTROL, 0);  
+                if (currentKeyToSend[0] == 'A' && AltPressed == false)
+                    PostMessage(_wowWindowHandle, WM_KEYDOWN, VK_MENU, 0);
+                //else
+                //    // See Notes on CTRL.
+                //    PostMessage(_wowWindowHandle, WM_KEYUP, VK_MENU, 0);
+
+                // Press the command Key Down
+                PostMessage(_wowWindowHandle, WM_KEYDOWN, vkCode, 0);
+                
+                
+                // CTRL and ALT do not need to be held down just only pressed initally for the command to be interpeted correctly
+                if (currentKeyToSend[0] == 'C' && CtrlPressed == true) PostMessage(_wowWindowHandle, WM_KEYUP, VK_CONTROL, 0);
+                if (currentKeyToSend[0] == 'A' && AltPressed == true) PostMessage(_wowWindowHandle, WM_KEYUP, VK_MENU, 0);
+           //     await Task.Delay((int)sliderCaptureRateMS.Value); // Give some time for hekili to refresh
+
+
+                // I want atleast 1 cycle to go thru
+                while (CurrentImageRegions.FirstImageRegions.TopLeft == false)
+                {
+                    await Task.Delay(1);
+                }
+                _currentKeyToSend[0] = "";
+       
 
                 if (_keyPressMode)
                 {
-  //                  bool _FristCapNoValue = (!VirtualKeyCodeMapper.HasKey(currentKeyToSend)) || VirtualKeyCodeMapper.HasExcludeKey(currentKeyToSend) && currentKeyToSend == "";
-//                    if (_FristCapNoValue)
-                    while ( CurrentImageRegions.FirstImageRegions.TopLeft == false && _currentKeyToSend[0] == ""   && button_Start.IsEnabled)
+                    while (_currentKeyToSend[0] == "" && button_Start.IsEnabled == false)
                     {
+                 
 
-
-                        await Task.Delay(1);
+                        await Task.Delay(5);
 
                         // Lets explore some second options while this is on cooldown
-                        if (cbUse2ndImage.IsChecked.Value == true )
+                        if (Properties.Settings.Default.Use2ndImageDetection == true )
                         {
-                            if (_currentKeyToSend[1] == "")
+                            var currentKeyToSend1 = _currentKeyToSend[1];
+                            if (currentKeyToSend1 == "")
                                 continue;
 
                             // This is to avoid duplicate keypresses.  not sure if blocking it is helpful or not, in theory it should just pop to the primary,
                             // but allowing it to press early should make it fire a little faster.   unsure...  skipping it avoids the question.  
-                            //if (_currentKeyToSend[1] == _currentKeyToSend[0])
-                            //    continue;
+                            if (currentKeyToSend1 == currentKeyToSend)
+                                continue;
 
 
-                            var currentKeyToSend1 = _currentKeyToSend[1];
-                          
+
+
 
                             #region 2nd Key Options
 
                             keyProcessing2 = true;
 
-                            if (CurrentImageRegions.FirstImageRegions.BottomLeft == false)
-                            {
-                                keyProcessing2 = false;
-                                _currentKeyToSend[1] = "";
-                                continue;
-                            }
+                            //if (CurrentImageRegions.FirstImageRegions.TopLeft == false)
+                            //{
+                            //    keyProcessing2 = false;
+                            //    _currentKeyToSend[1] = "";
+                            //    continue;
+                            //}
 
-                            if (CurrentImageRegions.SecondImageRegions.TopLeft == false && CurrentImageRegions.SecondImageRegions.TopRight == false)
-                            {
-                                keyProcessing2 = false;
-                                _currentKeyToSend[1] = "";
-                                continue;
-                            }
+                            //if (CurrentImageRegions.SecondImageRegions.TopLeft == false )
+                            //{
+                            //    keyProcessing2 = false;
+                            //    continue;
+                            //}
 
 
 
@@ -1137,43 +1272,40 @@ namespace HekiliHelper
                             int vkCode2 = 0;
                             if (_wowWindowHandle != nint.Zero)
                             {
+                                ImageCap2Border.BorderBrush = System.Windows.Media.Brushes.Red;
+
                                 // I keep poking at this trying to figure out how to only send the key press again if a new key is to me pressed.
                                 // It fails if the next key to press is the same.
                                 // There would have to some logic in the capture to say its a new detection
-                 
 
-                                if (currentKeyToSend1[1] == 'C')
+
+                                // Handle the if command is tied to CTRL or ALT
+                                if (currentKeyToSend1[1] == 'C' && CtrlPressed == false)
                                     PostMessage(_wowWindowHandle, WM_KEYDOWN, VK_CONTROL, 0);
-                                else
-                                    PostMessage(_wowWindowHandle, WM_KEYUP, VK_CONTROL, 0);
+                              //  else
+                              //      PostMessage(_wowWindowHandle, WM_KEYUP, VK_CONTROL, 0);
 
-                                if (currentKeyToSend1[1] == 'A')
+                                if (currentKeyToSend1[1] == 'A' && AltPressed == false)
                                     PostMessage(_wowWindowHandle, WM_KEYDOWN, VK_MENU, 0);
-                                else
-                                    PostMessage(_wowWindowHandle, WM_KEYUP, VK_MENU, 0);
+                                //else
+                                //    PostMessage(_wowWindowHandle, WM_KEYUP, VK_MENU, 0);
 
                                 // Tranlate the char to the virtual Key Code
                                 vkCode2 = VirtualKeyCodeMapper.GetVirtualKeyCode(currentKeyToSend1);
+
                                 PostMessage(_wowWindowHandle, WM_KEYDOWN, vkCode2, 0);
-                                if (currentKeyToSend1[1] == 'C')
+                                // CTRL and ALT do not need to be held down just only pressed initally for the command to be interpeted correctly
+                                if (currentKeyToSend1[1] == 'C' && CtrlPressed == true)
                                     PostMessage(_wowWindowHandle, WM_KEYUP, VK_CONTROL, 0);
 
-                                if (currentKeyToSend1[1] == 'A')
+                                if (currentKeyToSend1[1] == 'A' && AltPressed == true)
                                     PostMessage(_wowWindowHandle, WM_KEYUP, VK_MENU, 0);
 
-                                ImageCap2Border.BorderBrush = System.Windows.Media.Brushes.Red;
-                                //Lets delay the main wait until we see somthing in the top left. 
-                                while (CurrentImageRegions.FirstImageRegions.TopLeft == false && _currentKeyToSend[0] == "" && button_Start.IsEnabled)
-                                {
-                                    await Task.Delay(1);
-                                }
-                                // Give some time for hekili to refresh
 
-                                
                                 if (_keyPressMode)
                                 {
                                     // Now we pause until top is filled then we release the key that should queue the command.
-                                    while ((CurrentImageRegions.FirstImageRegions.TopLeft == false ) && _currentKeyToSend[0] == "" && button_Start.IsEnabled)
+                                    while (_currentKeyToSend[0] == "" && button_Start.IsEnabled == false)
                                     {
                                         await Task.Delay(1);
                                        
@@ -1187,7 +1319,7 @@ namespace HekiliHelper
                                 // the OCR doesn't see a new char until it is almost times out, at that point it can be pressed and would be added to the action queue
 
                                 keyProcessing2 = false;
-                                ImageCap2Border.BorderBrush = System.Windows.Media.Brushes.Black;
+        
                                 #endregion
 
 
@@ -1197,47 +1329,37 @@ namespace HekiliHelper
                     }
                 }
 
-                // It may not be necessary to send WM_KEYUP immediately after WM_KEYDOWN
-                // because it simulates a very quick key tap rather than a sustained key press.
 
-                if (!_keyPressMode)
-                {
-                    await Task.Delay(Random.Shared.Next() % 5 + CurrentKeyDownDelayMS);
-                }
-                PostMessage(_wowWindowHandle, WM_KEYUP, vkCode, 0);
-                if (currentKeyToSend[0] == 'C')
-                {
-                    PostMessage(_wowWindowHandle, WM_KEYUP, VK_CONTROL, 0);
-                }
-                if (currentKeyToSend[0] == 'A')
-                {
-                    PostMessage(_wowWindowHandle, WM_KEYUP, VK_MENU, 0);
-                }
-                ImageCapBorder.BorderBrush = System.Windows.Media.Brushes.Black;
-      
 
                 // If where not watching for when things time out, we insert a hard delay
                 if (!_keyPressMode)
                 {
-                    await Task.Delay(500);
+                    await Task.Delay(Random.Shared.Next() % 5 + CurrentKeyDownDelayMS);
                 }
+
+                // Let up on the command key
+                PostMessage(_wowWindowHandle, WM_KEYUP, vkCode, 0);
+
+                ImageCapBorder.BorderBrush = System.Windows.Media.Brushes.Black;
                 keyProcessing = false;
+           
 
                 // this stops the sending of the key till the timer is almost up.  
                 // it takes advantage of the cooldown visual cue in the game that darkens the font (changes the color)
                 // the OCR doesn't see a new char until it is almost times out, at that point it can be pressed and would be added to the action queue
                 _DetectedValueFirst = "";
+                }
 
-               
+            
 
-            }
+            ImageCap2Border.BorderBrush = System.Windows.Media.Brushes.Black;
 
             keyProcessing = false;
         }
     
 
 
-        Bitmap _holderBitmap;
+//        Bitmap _holderBitmap;
         public MainWindow()
         {
             InitializeComponent();
@@ -1276,7 +1398,7 @@ namespace HekiliHelper
             CurrentB = Properties.Settings.Default.TargetB;
             CurrentA = Properties.Settings.Default.TargetA; 
 
-            _holderBitmap = ImageHelpers.CreateBitmap(60, 60, System.Drawing.Color.Black);
+  //          _holderBitmap = ImageHelpers.CreateBitmap(60, 60, System.Drawing.Color.Black);
 
             tbVariance.Text = Properties.Settings.Default.VariancePercent.ToString();
             sliderColorVariancePercent.Value = Properties.Settings.Default.VariancePercent;
@@ -1292,10 +1414,13 @@ namespace HekiliHelper
             cbStayOnTop.IsChecked = Properties.Settings.Default.KeepOnTop;
 
             cbUse2ndImage.IsChecked = Properties.Settings.Default.Use2ndImageDetection;
+            
+            ImageCap2Border.Visibility = cbUse2ndImage.IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
+            lDetectedValue2.Visibility = ImageCap2Border.Visibility; // no need to reeval the vars, we already know.  (yeah this can be done in xaml bindings..  but right now I don't know how and don't feel like looking it up.)
 
             //Properties.Settings.Default.ActivationKey
 
-                this.Topmost = Properties.Settings.Default.KeepOnTop;
+            this.Topmost = Properties.Settings.Default.KeepOnTop;
 
 
             foreach (var x in cbActivationKey.Items)
@@ -1313,6 +1438,8 @@ namespace HekiliHelper
             this.Top = Properties.Settings.Default.AppStartY;
 
             CurrentKeyToPress = "";
+          
+            
             _proc = HookCallbackActionKey;
 
             _mouseProc = MouseHookCallback;
@@ -1840,11 +1967,17 @@ namespace HekiliHelper
         private void cbUse2ndImage_Checked(object sender, RoutedEventArgs e)
         {
             Properties.Settings.Default.Use2ndImageDetection = true;
+            ImageCap2Border.Visibility = Visibility.Visible;
+            lDetectedValue2.Visibility = Visibility.Visible;
+
         }
 
         private void cbUse2ndImage_Unchecked(object sender, RoutedEventArgs e)
         {
             Properties.Settings.Default.Use2ndImageDetection = false;
+            ImageCap2Border.Visibility = Visibility.Collapsed;
+            lDetectedValue2.Visibility = Visibility.Collapsed;
+
         }
     }
 }

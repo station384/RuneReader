@@ -51,7 +51,7 @@
       <Value Profile="(Default)">20</Value>
     </Setting>
     <Setting Name="CaptureRateMS" Type="System.Int32" Scope="User">
-      <Value Profile="(Default)">100</Value>
+      <Value Profile="(Default)">200</Value>
     </Setting>
     <Setting Name="KeyPressSpeedMS" Type="System.Int32" Scope="User">
       <Value Profile="(Default)">50</Value>
