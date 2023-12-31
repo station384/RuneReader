@@ -304,7 +304,7 @@ namespace HekiliHelper
         private OcrModule ocr = new OcrModule();
         private MagnifierWindow magnifier;
         private MagnifierWindow magnifier2;
-        private volatile ImageRegions CurrentImageRegions = new ImageRegions();
+        private  ImageRegions CurrentImageRegions = new ImageRegions();
         private System.Windows.Threading.DispatcherTimer _timer;
 
 
@@ -1138,6 +1138,7 @@ namespace HekiliHelper
             
 
             var currentKeyToSend = _currentKeyToSend[0];
+            var currentKeyToSend1 = _currentKeyToSend[1];
 
 
             // THis is a brute force way of trying to keep a key from being rapidly pressed
@@ -1166,13 +1167,9 @@ namespace HekiliHelper
                 CurrentImageRegions.FirstImageRegions.TopRight = false;
                 CurrentImageRegions.FirstImageRegions.BottomLeft = false;
                 CurrentImageRegions.FirstImageRegions.BottomCenter = false;
-                _currentKeyToSend[0] = "";
 
-                CurrentImageRegions.SecondImageRegions.TopLeft = false;
-                CurrentImageRegions.SecondImageRegions.TopRight = false;
-                CurrentImageRegions.SecondImageRegions.BottomLeft = false;
-                CurrentImageRegions.SecondImageRegions.BottomCenter = false;
-                _currentKeyToSend[1] = "";
+
+
 
 
                 ImageCapBorder.BorderBrush = System.Windows.Media.Brushes.Red;
@@ -1207,29 +1204,31 @@ namespace HekiliHelper
                 // CTRL and ALT do not need to be held down just only pressed initally for the command to be interpeted correctly
                 if (currentKeyToSend[0] == 'C' ) PostMessage(_wowWindowHandle, WM_KEYUP, VK_CONTROL, 0); //&& CtrlPressed == true
                 if (currentKeyToSend[0] == 'A' ) PostMessage(_wowWindowHandle, WM_KEYUP, VK_MENU, 0); //&& AltPressed == true
-                                                                                                      //     await Task.Delay((int)sliderCaptureRateMS.Value); // Give some time for hekili to refresh
+                //     await Task.Delay((int)sliderCaptureRateMS.Value); // Give some time for hekili to refresh
 
 
                 // I want atleast 1 cycle to go thru
-                while (CurrentImageRegions.FirstImageRegions.TopLeft == false)
+                while (CurrentImageRegions.FirstImageRegions.TopRight == false)
                 {
                     await Task.Delay(1);
+                    await Task.Yield();
                 }
                 _currentKeyToSend[0] = "";
        
 
                 if (_keyPressMode)
                 {
-                    while (_currentKeyToSend[0] == "" && button_Start.IsEnabled == false)
+                    await Task.Yield();
+                    while (CurrentImageRegions.FirstImageRegions.TopLeft == false && button_Start.IsEnabled == false)
                     {
-                 
 
-                        await Task.Delay(5);
 
+                        //await Task.Delay(5);
+                        await Task.Yield();
                         // Lets explore some second options while this is on cooldown
                         if (Properties.Settings.Default.Use2ndImageDetection == true )
                         {
-                            var currentKeyToSend1 = _currentKeyToSend[1];
+                      //      var currentKeyToSend1 = _currentKeyToSend[1];
                             if (currentKeyToSend1 == "")
                                 continue;
 
@@ -1253,13 +1252,12 @@ namespace HekiliHelper
                             //    continue;
                             //}
 
-                            //if (CurrentImageRegions.SecondImageRegions.TopLeft == false )
+                         //   if (CurrentImageRegions.SecondImageRegions.TopLeft == false)
                             //{
                             //    keyProcessing2 = false;
+                            //    _currentKeyToSend[1] = "";
                             //    continue;
                             //}
-
-
 
                             if ((!VirtualKeyCodeMapper.HasKey(currentKeyToSend1)) || (VirtualKeyCodeMapper.HasExcludeKey(currentKeyToSend1))
                             )
@@ -1268,16 +1266,30 @@ namespace HekiliHelper
                                 _currentKeyToSend[1] = "";
                                 break;
                             }
+                            CurrentImageRegions.SecondImageRegions.TopLeft = false;
+                            CurrentImageRegions.SecondImageRegions.TopRight = false;
+                            CurrentImageRegions.SecondImageRegions.BottomLeft = false;
+                            CurrentImageRegions.SecondImageRegions.BottomCenter = false;
+                            _currentKeyToSend[1] = "";
 
                             int vkCode2 = 0;
                             if (_wowWindowHandle != nint.Zero)
                             {
+
+             
+
                                 ImageCap2Border.BorderBrush = System.Windows.Media.Brushes.Red;
+                                // Let up on the 1st command key
+                                PostMessage(_wowWindowHandle, WM_KEYUP, vkCode, 0);
+                                ImageCapBorder.BorderBrush = System.Windows.Media.Brushes.Black;
+
 
                                 // I keep poking at this trying to figure out how to only send the key press again if a new key is to me pressed.
                                 // It fails if the next key to press is the same.
                                 // There would have to some logic in the capture to say its a new detection
 
+
+                                await Task.Yield();
 
                                 // Handle the if command is tied to CTRL or ALT
                                 if (currentKeyToSend1[1] == 'C') //&& CtrlPressed == false
@@ -1290,6 +1302,7 @@ namespace HekiliHelper
                                 else
                                     PostMessage(_wowWindowHandle, WM_KEYUP, VK_MENU, 0);
 
+                         
                                 // Tranlate the char to the virtual Key Code
                                 vkCode2 = VirtualKeyCodeMapper.GetVirtualKeyCode(currentKeyToSend1);
                                 _currentKeyToSend[0] = "";
@@ -1305,9 +1318,9 @@ namespace HekiliHelper
                                 if (_keyPressMode)
                                 {
                                     // Now we pause until top is filled then we release the key that should queue the command.
-                                    while (_currentKeyToSend[0] == "" && button_Start.IsEnabled == false)
+                                    while (CurrentImageRegions.FirstImageRegions.TopLeft == false && button_Start.IsEnabled == false)
                                     {
-                                        await Task.Delay(1);
+                                        await Task.Yield();
                                        
                                     }
                                 }
