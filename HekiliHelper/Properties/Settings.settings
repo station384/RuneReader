@@ -51,7 +51,7 @@
       <Value Profile="(Default)">20</Value>
     </Setting>
     <Setting Name="CaptureRateMS" Type="System.Int32" Scope="User">
-      <Value Profile="(Default)">100</Value>
+      <Value Profile="(Default)">200</Value>
     </Setting>
     <Setting Name="KeyPressSpeedMS" Type="System.Int32" Scope="User">
       <Value Profile="(Default)">50</Value>
@@ -64,6 +64,21 @@
     </Setting>
     <Setting Name="KeepOnTop" Type="System.Boolean" Scope="User">
       <Value Profile="(Default)">False</Value>
+    </Setting>
+    <Setting Name="Cap2X" Type="System.Double" Scope="User">
+      <Value Profile="(Default)">0</Value>
+    </Setting>
+    <Setting Name="Cap2Y" Type="System.Double" Scope="User">
+      <Value Profile="(Default)">50</Value>
+    </Setting>
+    <Setting Name="Cap2Width" Type="System.Double" Scope="User">
+      <Value Profile="(Default)">50</Value>
+    </Setting>
+    <Setting Name="Cap2Height" Type="System.Double" Scope="User">
+      <Value Profile="(Default)">100</Value>
+    </Setting>
+    <Setting Name="Use2ndImageDetection" Type="System.Boolean" Scope="User">
+      <Value Profile="(Default)">True</Value>
     </Setting>
   </Settings>
 </SettingsFile>

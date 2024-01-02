@@ -14,6 +14,11 @@ using OpenCvSharp.WpfExtensions;
 using System.Text.RegularExpressions;
 using static System.Net.Mime.MediaTypeNames;
 using System.Windows.Controls;
+using Tesseract;
+using HekiliHelper.Properties;
+using System.Windows.Threading;
+using HekiliHelper;
+using System.Reflection.Emit;
 
 namespace HekiliHelper
 {
@@ -65,7 +70,6 @@ namespace HekiliHelper
     public static class VirtualKeyCodeMapper
     {
 
-
         private static readonly Dictionary<string, int> KeyMappingsExclude = new Dictionary<string, int>
         {
             {"1", (int)VirtualKeyCodes.VirtualKeyStates.VK_Alphanumeric_1},
@@ -79,7 +83,7 @@ namespace HekiliHelper
             {"9", (int)VirtualKeyCodes.VirtualKeyStates.VK_Alphanumeric_9},
             {"0", (int)VirtualKeyCodes.VirtualKeyStates.VK_Alphanumeric_0},
             // Had to remove these keys as that can't be detected using OCR very well.   only about a 30% accuarcy
-            {"-", (int)VirtualKeyCodes.VirtualKeyStates.VK_OEM_MINUS},
+           {"-", (int)VirtualKeyCodes.VirtualKeyStates.VK_OEM_MINUS},
             {"=", 187}, // This key can be different depending on country, i.e.  US its the = key,  Spanish is the ? (upside down)
         };
 
@@ -126,7 +130,7 @@ namespace HekiliHelper
             {"CF9", (int)VirtualKeyCodes.VirtualKeyStates.VK_F9},
             {"CF10", (int)VirtualKeyCodes.VirtualKeyStates.VK_F10},
             {"CF11", (int)VirtualKeyCodes.VirtualKeyStates.VK_F11},
-                        {"CF12", (int)VirtualKeyCodes.VirtualKeyStates.VK_F12},
+            {"CF12", (int)VirtualKeyCodes.VirtualKeyStates.VK_F12},
             {"AF1", (int)VirtualKeyCodes.VirtualKeyStates.VK_F1},
             {"AF2", (int)VirtualKeyCodes.VirtualKeyStates.VK_F2},
             {"AF3", (int)VirtualKeyCodes.VirtualKeyStates.VK_F3},
@@ -162,6 +166,32 @@ namespace HekiliHelper
         }
 
     }
+    public struct DetectionRegions
+    {
+        public bool TopLeft = false;
+        public bool TopRight = false;
+        public bool BottomLeft = false;
+        public bool BottomCenter = false;
+
+        public DetectionRegions()
+        {
+            TopLeft = false;
+            TopRight = false;
+            BottomLeft = false;
+            BottomCenter = false;
+        }
+    }
+    public class ImageRegions
+    {
+        public DetectionRegions FirstImageRegions;
+        public DetectionRegions SecondImageRegions;
+
+        public ImageRegions() 
+        {
+            FirstImageRegions = new DetectionRegions();
+            SecondImageRegions = new DetectionRegions();
+        }
+    }
 
     public partial class MainWindow : System.Windows.Window
     {
@@ -185,7 +215,7 @@ namespace HekiliHelper
 
         [DllImport("USER32.dll")]
         static extern short GetKeyState(VirtualKeyCodes.VirtualKeyStates nVirtKey);
-        
+
         [DllImport("user32.dll", SetLastError = true)]
         private static extern IntPtr SetSystemCursor(IntPtr hcur, uint id);
 
@@ -246,37 +276,58 @@ namespace HekiliHelper
         #endregion
 
         private string CurrentKeyToPress { get; set; }
-        private volatile string _currentKeyToSend = string.Empty; // Default key to send, can be changed dynamically
+
+        private volatile string[] _currentKeyToSend = new string[] { string.Empty, string.Empty }; // Default key to send, can be changed dynamically
+
         private volatile string _lastKeyToSend = string.Empty; // Default key to send, can be changed dynamically
-        private volatile string _DetectedValue = string.Empty;
+
+        private volatile string _DetectedValueFirst = string.Empty;
+        private volatile string _DetectedValueSecond = string.Empty;
+
         private volatile bool keyProcessing = false;
-        private volatile int _DetectedSameCount = 0;
+        private volatile bool keyProcessing2 = false;
+        private volatile bool key1Pressed = false;
+        private volatile bool key2Pressed = false;
+
+
+        private volatile int[] _DetectedSameCount = new int[2] { 0, 0 };
+
         private static IntPtr _hookID = IntPtr.Zero;
         private static IntPtr _MouseHookID = IntPtr.Zero;
         private WindowsMessageProc _proc;
-        private WindowsMessageProc _mouseProc ;
+        private WindowsMessageProc _mouseProc;
         private IntPtr _wowWindowHandle = IntPtr.Zero;
         private CaptureScreen captureScreen;
         private ContinuousScreenCapture screenCapture;
         private ImageHelpers ImageHelpers = new ImageHelpers();
         private delegate IntPtr WindowsMessageProc(int nCode, IntPtr wParam, IntPtr lParam);
         private OcrModule ocr = new OcrModule();
-     
+        private MagnifierWindow magnifier;
+        private MagnifierWindow magnifier2;
+        private  ImageRegions CurrentImageRegions = new ImageRegions();
+        private System.Windows.Threading.DispatcherTimer _timer;
+
+
+
         private int CurrentR = 25;
         private int CurrentG = 255;
         private int CurrentB = 255;
         private int CurrentA = 255;
+        private int CurrentH = 255;
+        private int CurrentS = 255;
+        private int CurrentV = 255;
         private double CurrentThreshold = 0.3;
         private int CurrentCaptureRateMS = 100;
         private int CurrentKeyPressSpeedMS = 125;
         private int CurrentKeyDownDelayMS = 25;
+        private Dispatcher mainWindowDispatcher;
 
 
         private volatile bool _keyPressMode = false;
 
-        private  bool keyPressMode { 
+        private bool keyPressMode {
             get { return _keyPressMode; }
-            set { _keyPressMode = value; } 
+            set { _keyPressMode = value; }
         }
 
 
@@ -284,7 +335,7 @@ namespace HekiliHelper
         {
             IntPtr hwnd = GetForegroundWindow();
 
-            if (hwnd == null)  return null;
+            if (hwnd == null) return null;
 
             int length = GetWindowTextLength(hwnd);
             StringBuilder sb = new StringBuilder(length + 1);
@@ -292,7 +343,7 @@ namespace HekiliHelper
             return sb.ToString();
         }
 
-        public  bool IsCurrentWindowWithTitle(string title)
+        public bool IsCurrentWindowWithTitle(string title)
         {
             var currentTitle = GetActiveWindowTitle();
             return currentTitle?.Equals(title, StringComparison.OrdinalIgnoreCase) ?? false;
@@ -310,13 +361,15 @@ namespace HekiliHelper
             }
         }
 
+        private bool AltPressed = false;
+        private bool CtrlPressed = false;
 
 
         private IntPtr HookCallbackActionKey(int nCode, IntPtr wParam, IntPtr lParam)
         {
             bool handled = false;
-      
-            if (nCode >= 0 )
+
+            if (nCode >= 0)
             {
                 int vkCode = Marshal.ReadInt32(lParam);
                 Key key = KeyInterop.KeyFromVirtualKey(vkCode);
@@ -324,34 +377,65 @@ namespace HekiliHelper
                 if (!IsCurrentWindowWithTitle("World of Warcraft"))
                 {
                     _timer.Stop();
-                    _lastKeyToSend = string.Empty;
+      
+
+
                     // Let the key event go thru so the new focused app can handle it
                     keyProcessing = false;
-                       handled = false;
+                    keyProcessing2 = false;
+                    handled = false;
                 }
                 else
                 {
                     var item = ActivationKeyCodeMapper.GetVirtualKeyCode(Properties.Settings.Default.ActivationKey);
-                    if (wParam == (IntPtr)WM_KEYDOWN && (int)key == item) // Replace SomeCapturedKey with the actual captured key
-                    {
-                        // Find the window with the title "wow" only if we haven't already found it
-                        if (_wowWindowHandle == IntPtr.Zero)
+                    if (keyProcessing == false || keyProcessing2 == false)
+                        if (wParam == (IntPtr)WM_KEYDOWN && (int)key == item)
                         {
-                            _wowWindowHandle = FindWindow(null, "wow");
-                        }
-                        if (_wowWindowHandle != IntPtr.Zero && !_timer.IsEnabled && keyProcessing == false)
-                        {
-                            _timer.Start();
-                            // Don't let the message go thru.  this blocks the game from seeing the key press
-                            handled = true;
-                        }
+                            // Find the window with the title "wow" only if we haven't already found it
+                            if (_wowWindowHandle == IntPtr.Zero)
+                            {
+                                _wowWindowHandle = FindWindow(null, "wow");
+                            }
+                            if (_wowWindowHandle != IntPtr.Zero && !_timer.IsEnabled && keyProcessing == false)  // Assume timer2 is tied to timer 1
+                            {
+                                _timer.Start();
+                                mainTimerTick(this, new EventArgs());
 
-                    }
-                    else if (wParam == (IntPtr)WM_KEYUP && (int)key == item) // Replace SomeCapturedKey with the actual captured key
+      
+
+                                // Don't let the message go thru.  this blocks the game from seeing the key press
+                                handled = true;
+                            }
+
+
+                        }
+                    if (wParam == (IntPtr)WM_KEYUP && (int)key == item)
                     {
                         _timer.Stop();
+  
+                        keyProcessing = false;
+                        keyProcessing2 = false;
                         handled = true;
                     }
+                    if (wParam == (IntPtr)WM_KEYDOWN && key == System.Windows.Input.Key.LeftCtrl)
+                    {
+                        CtrlPressed = true;
+                    }
+                    if (wParam == (IntPtr)WM_KEYDOWN && key == System.Windows.Input.Key.LeftAlt)
+                    {
+                        AltPressed = true;
+                    }
+
+                    if (wParam == (IntPtr)WM_KEYUP && key == System.Windows.Input.Key.LeftCtrl)
+                    {
+                        CtrlPressed = false;
+                    }
+                    if (wParam == (IntPtr)WM_KEYUP && key == System.Windows.Input.Key.LeftAlt)
+                    {
+                        AltPressed = false;
+                    }
+
+
                 }
             }
 
@@ -359,8 +443,8 @@ namespace HekiliHelper
             // If the keypress has been handled, return a non-zero value.
             // Otherwise, call the next hook in the chain.
             // return handled ? (IntPtr)0:CallNextHookEx(_hookID, nCode, wParam, lParam); // Locks explorer
-             return CallNextHookEx(_hookID, nCode, wParam, lParam); // Doesn't lock explorer
-          //   return handled ? (IntPtr)1:CallNextHookEx(_hookID, nCode, wParam, lParam); // Blocks input to game does not block windowss
+            return CallNextHookEx(_hookID, nCode, wParam, lParam); // Doesn't lock explorer
+                                                                   //   return handled ? (IntPtr)1:CallNextHookEx(_hookID, nCode, wParam, lParam); // Blocks input to game does not block windowss
 
         }
 
@@ -373,140 +457,114 @@ namespace HekiliHelper
         /// <param name="src">A bitmap image</param>
         /// <returns>The image as a BitmapImage for WPF</returns>
         public BitmapImage Convert(Bitmap src)
-            {
-                MemoryStream ms = new MemoryStream();
-                ((System.Drawing.Bitmap)src).Save(ms, System.Drawing.Imaging.ImageFormat.Bmp);
-                BitmapImage image = new BitmapImage();
-                image.BeginInit();
-                ms.Seek(0, SeekOrigin.Begin);
-                image.StreamSource = ms;
-                image.EndInit();
-                return image;
-            }
+        {
+            MemoryStream ms = new MemoryStream();
+            ((System.Drawing.Bitmap)src).Save(ms, System.Drawing.Imaging.ImageFormat.Bmp);
+            BitmapImage image = new BitmapImage();
+            image.BeginInit();
+            ms.Seek(0, SeekOrigin.Begin);
+            image.StreamSource = ms;
+            image.EndInit();
+            return image;
+        }
 
         private string OCRProcess(Bitmap b)
         {
+
             string Result = "";
             string s = ocr.PerformOcr(b).Replace("\n", "");
-            if (VirtualKeyCodeMapper.HasKey(s) && (!VirtualKeyCodeMapper.HasExcludeKey(s)) )
+            if (VirtualKeyCodeMapper.HasKey(s) && (!VirtualKeyCodeMapper.HasExcludeKey(s)))
             {
                 CurrentKeyToPress = StringExtensions.Extract(s, 4);
                 if (!string.IsNullOrEmpty(CurrentKeyToPress.Trim()))
                 {
-                    _currentKeyToSend = CurrentKeyToPress;
+                    // _currentKeyToSend[0] = CurrentKeyToPress;
                     Result = CurrentKeyToPress;
                 }
+
             }
-         return Result;
+            return Result;
 
         }
 
 
-        private void ProcessImageLocal(Bitmap image)
-        {
-            // This only works with non HDR,  for now.
+        //private void ProcessImageLocal(Bitmap image)
+        //{
+        //    // This only works with non HDR,  for now.
 
-            Bitmap b = image;
-
-
-            var origWidth = b.Width;
-            var origHeight = b.Height;
-
-            //Remember this is running in the background and every CPU cycle counts!!
-            //This has to be FAST it is executing every 250 miliseconds 4 times a second
-            //The faster this is the more times per second we can evaluate and react faster
+        //    Bitmap b = image;
 
 
+        //    var origWidth = b.Width;
+        //    var origHeight = b.Height;
+
+        //    //Remember this is running in the background and every CPU cycle counts!!
+        //    //This has to be FAST it is executing every 250 miliseconds 4 times a second
+        //    //The faster this is the more times per second we can evaluate and react faster
 
 
-            // It is expected that in the game the font on the hotkey text will be set to R:25 B:255 G:255 The font set to mica, and the size set to 40.
-            // We filter out everying that isn't close to the color we want.
-            // Doing it this way because it wwwas FAST.  This could be doing by doing a find conture and area but that takes alot more caculation than just a simple color filter
-
-            b = ImageHelpers.FilterByColor(b, System.Drawing.Color.FromArgb(CurrentA, CurrentR, CurrentG, CurrentB), CurrentThreshold);
-            b = ImageHelpers.RescaleImageToDpi(b, 300);
-            //UpdateImageControl(Convert(b));
-            // Bring the levels to somthing predictable, to simplify we convert it to greyscale
-            b = ImageHelpers.ConvertToGrayscaleFast(b);
-            b = ImageHelpers.BumpToBlack(b, 160);
-
-            if (ImageHelpers.FindColorInFirstQuarter(b, System.Drawing.Color.White, CurrentThreshold))
-            {
-                b = ImageHelpers.BumpToWhite(b, 180);
-
-                // For tesseract it doesn't like HUGE text so we bring it back down to the original size
-                b = ImageHelpers.ResizeImage(b, origWidth, origHeight);
-
-                // Bitmap DisplayImage = b;
 
 
-                // Work Contourse later to find the main text and crop it out
-                // Just leaving the code here  just incase I can come up with a fast way of doing this
-                //var points = ImageHelpers.FindContours(b,128);
-                //foreach (var contour in points)
-                //{
-                //    System.Console.WriteLine("Contour found with points:");
-                //    var area = ImageHelpers.CalculateContourArea(contour);
-                //    var BoundingRect = ImageHelpers.GetBoundingRect(contour);
-                //    var ar = BoundingRect.Width / (float)(BoundingRect.Height);
-                //    if (area > 200 & ar > .25 & ar < 1.2)
-                //    {
-                //        DisplayImage = ImageHelpers.DrawRectangle(b, BoundingRect, System.Drawing.Color.Red);
-                //    }
-                //}
+        //    // It is expected that in the game the font on the hotkey text will be set to R:25 B:255 G:255 The font set to mica, and the size set to 40.
+        //    // We filter out everying that isn't close to the color we want.
+        //    // Doing it this way because it wwwas FAST.  This could be doing by doing a find conture and area but that takes alot more caculation than just a simple color filter
+
+        //    b = ImageHelpers.FilterByColor(b, System.Drawing.Color.FromArgb(CurrentA, CurrentR, CurrentG, CurrentB), CurrentThreshold);
+        //    b = ImageHelpers.RescaleImageToDpi(b, 300);
+        //    //UpdateImageControl(Convert(b));
+        //    // Bring the levels to somthing predictable, to simplify we convert it to greyscale
+        //    b = ImageHelpers.ConvertToGrayscaleFast(b);
+        //    b = ImageHelpers.BumpToBlack(b, 160);
+
+        //    if (ImageHelpers.FindColorInFirstQuarter(b, System.Drawing.Color.White, CurrentThreshold))
+        //    {
+        //        b = ImageHelpers.BumpToWhite(b, 180);
+
+        //        // For tesseract it doesn't like HUGE text so we bring it back down to the original size
+        //        b = ImageHelpers.ResizeImage(b, origWidth, origHeight);
+
+        //        // Bitmap DisplayImage = b;
 
 
-                UpdateImageControl(Convert(b));
+        //        // Work Contourse later to find the main text and crop it out
+        //        // Just leaving the code here  just incase I can come up with a fast way of doing this
+        //        //var points = ImageHelpers.FindContours(b,128);
+        //        //foreach (var contour in points)
+        //        //{
+        //        //    System.Console.WriteLine("Contour found with points:");
+        //        //    var area = ImageHelpers.CalculateContourArea(contour);
+        //        //    var BoundingRect = ImageHelpers.GetBoundingRect(contour);
+        //        //    var ar = BoundingRect.Width / (float)(BoundingRect.Height);
+        //        //    if (area > 200 & ar > .25 & ar < 1.2)
+        //        //    {
+        //        //        DisplayImage = ImageHelpers.DrawRectangle(b, BoundingRect, System.Drawing.Color.Red);
+        //        //    }
+        //        //}
 
-                string s = OCRProcess(b);
-                lDetectedValue.Content = s;
-            }
-            else
-            {
-                // nothing found
-                UpdateImageControl(Convert(_holderBitmap));
-                lDetectedValue.Content = "";
 
-            }
+        //        UpdateImageControl(Convert(b));
 
-        }
+        //        string s = OCRProcess(b);
+        //        lDetectedValue.Content = s;
+        //    }
+        //    else
+        //    {
+        //        // nothing found
+        //        UpdateImageControl(Convert(_holderBitmap));
+        //        lDetectedValue.Content = "";
 
-        private Scalar ConvertRgbToHsvRange(Scalar rgbColor, Scalar rgbColorTolerance, bool? isLowerBound)
-        {
-            Mat rgbMat = new Mat(1, 1, MatType.CV_8UC3, rgbColor);
-            Mat hsvMat = new Mat();
-            Cv2.CvtColor(rgbMat, hsvMat, ColorConversionCodes.BGR2HSV_FULL);
-            Vec3b hsvColor = hsvMat.Get<Vec3b>(0, 0);
+        //    }
 
-            // Adjust the HSV range based on the tolerance
-            int h = hsvColor[0];
-            int s = hsvColor[1];
-            int v = hsvColor[2];
-            int hTol = (int)rgbColorTolerance[0];
-            int sTol = (int)rgbColorTolerance[1];
-            int vTol = (int)rgbColorTolerance[2];
-            if (isLowerBound == null)
-            {
-                return new Scalar(
-                    h ,
-                    s ,
-                    v );
-
-            } else
-
-            return new Scalar(
-                isLowerBound.Value ? h : h + hTol,
-                isLowerBound.Value ? s - sTol : s + sTol,
-                isLowerBound.Value ? v - vTol : v + vTol);
-        }
-
+        //}
 
         private Scalar ConvertRgbToHsvRange(Scalar rgbColor, double Threshold, bool? isLowerBound)
         {
-            Mat rgbMat = new Mat(1, 1, MatType.CV_8UC3, rgbColor);
+            Mat rgbMat = new Mat(1, 1, MatType.CV_8UC4, rgbColor);
             Mat hsvMat = new Mat();
             Cv2.CvtColor(rgbMat, hsvMat, ColorConversionCodes.BGR2HSV_FULL);
-            Vec3b hsvColor = hsvMat.Get<Vec3b>(0, 0);
+
+
+            Vec4b hsvColor = hsvMat.Get<Vec4b>(0, 0);
 
             // Adjust the HSV range based on the tolerance
             int h = hsvColor[0];
@@ -515,6 +573,14 @@ namespace HekiliHelper
             int hTol = (int)(h * Threshold);
             int sTol = (int)(s * Threshold);
             int vTol = (int)(v * Threshold);
+
+            //if (h + hTol > 255) { hTol = 0; }
+            //if (s + sTol > 255) { sTol = 0; }
+            //if (v + vTol > 255) { vTol = 0; }
+            //if (h - hTol < 0) { hTol = 0; }
+            //if (s - sTol < 0) { sTol = 0; }
+            //if (v - vTol < 0) { vTol = 0; }
+
             if (isLowerBound == null)
             {
                 return new Scalar(
@@ -524,31 +590,104 @@ namespace HekiliHelper
 
             }
             else
-
                 return new Scalar(
-                    isLowerBound.Value ? h - hTol : h + hTol,
-                    isLowerBound.Value ? s - sTol : s + sTol,
+                    isLowerBound.Value ? h - 10 : h + 10,
+                    isLowerBound.Value ? s - 20 : s + 20,
                     isLowerBound.Value ? v - vTol : v + vTol);
         }
 
-        public Mat IsolateColor(Mat src, Scalar rgbColor, Scalar rgbColorTolerance, double Threshold)
+
+        private Scalar ConvertRgbToHlsRange(Scalar rgbColor, double Threshold, bool? isLowerBound)
+        {
+            Mat rgbMat = new Mat(1, 1, MatType.CV_8UC3, rgbColor);
+            Mat hslMat = new Mat();
+            Cv2.CvtColor(rgbMat, hslMat, ColorConversionCodes.BGR2HLS); //.BGR2HLS_FULL
+            Vec3b hslColor = hslMat.Get<Vec3b>(0, 0);
+
+            // Adjust the HSL range based on the tolerance
+            int h = hslColor[0];
+            int l = hslColor[1];
+            int s = hslColor[2];
+
+            int hTol = 0;// (int)(h * Threshold);
+            int lTol = (int)(l * Threshold);
+            int sTol = (int)(s * Threshold);
+            if (h + hTol > 255) { hTol = 0; }
+            if (l + lTol > 255) { lTol = 0; }
+            if (s + sTol > 255) { sTol = 0; }
+            if (h - hTol < 0) { hTol = 0; }
+            if (l - lTol < 0) { lTol = 0; }
+            if (s - sTol < 0) { sTol = 0; }
+
+            //if (isLowerBound == null)
+            //{
+            //    return new Scalar(
+            //        h ,
+            //        l ,
+            //        s );
+
+            //} else
+
+            return new Scalar(
+                isLowerBound.Value ? h - hTol : h + hTol,
+                isLowerBound.Value ? l - lTol : l + lTol,
+                isLowerBound.Value ? s - sTol : s + sTol
+
+                );
+        }
+
+
+
+        private Scalar ConvertBGRToBGRRange(Scalar rgbColor, double Threshold, bool? isLowerBound)
+        {
+            // Mat rgbMat = new Mat(1, 1, MatType.CV_8UC3, rgbColor);
+            // Mat hslMat = new Mat();
+            // Cv2.CvtColor(rgbMat, hslMat, ColorConversionCodes.RGB2BGR); //.BGR2HLS_FULL
+            // Vec3b hslColor = rgbMat.Get<Vec3b>(0, 0);
+
+            // Adjust the HSL range based on the tolerance
+            byte b = (byte)rgbColor[0];
+            byte g = (byte)rgbColor[1];
+            byte r = (byte)rgbColor[2];
+            int bTol = (int)(b * Threshold);// Threshold);
+            int gTol = (int)(g * Threshold);
+            int rTol = (int)(r * Threshold);
+
+            if (b + bTol > 255) { bTol = 0; }
+            if (g + gTol > 255) { gTol = 0; }
+            if (r + rTol > 255) { rTol = 0; }
+            if (b - bTol < 0) { bTol = 0; }
+            if (g - gTol < 0) { gTol = 0; }
+            if (r - rTol < 0) { rTol = 0; }
+
+
+            if (isLowerBound == null)
+            {
+                return new Scalar(
+                    b,
+                    g,
+                    r);
+
+            }
+            else
+
+                return new Scalar(
+                    isLowerBound.Value ? b - bTol : b + bTol,
+                    isLowerBound.Value ? g - gTol : g + gTol,
+                    isLowerBound.Value ? r - rTol : r + rTol);
+        }
+
+
+        public Mat IsolateColorHSV(Mat src, Scalar rgbColor, double Threshold)
         {
             // Convert the RGB color and tolerance to HSV
             Scalar upperBound = ConvertRgbToHsvRange(rgbColor, Threshold, false);
             Scalar lowerBound = ConvertRgbToHsvRange(rgbColor, Threshold, true);
-            Scalar centerBound = ConvertRgbToHsvRange(rgbColor, Threshold, null);
-            //Scalar lowerBound = new Scalar(
-            //    centerBound.Val0,
-            //    centerBound.Val1 - 10,
-            //   centerBound.Val2
-            //    );
-
+            //      Scalar centerBound = ConvertRgbToHsvRange(rgbColor, Threshold, null);
 
             // Convert the image to HSV color space
             Mat hsv = new Mat();
             Cv2.CvtColor(src, hsv, ColorConversionCodes.BGR2HSV_FULL);
-
-
 
             // Create a mask for the desired color range
             Mat mask = new Mat();
@@ -561,9 +700,55 @@ namespace HekiliHelper
             return result;
         }
 
+        public Mat IsolateColorHLS(Mat src, Scalar rgbColor, double Threshold)
+        {
+            // Convert the RGB color and tolerance to HSV
+            Scalar upperBound = ConvertRgbToHlsRange(rgbColor, Threshold, false);
+            Scalar lowerBound = ConvertRgbToHlsRange(rgbColor, Threshold, true);
+            //    Scalar centerBound = ConvertRgbToHlsRange(rgbColor, Threshold, null);
+
+            // Convert the image to HSV color space
+            Mat hls = new Mat();
+            Cv2.CvtColor(src, hls, ColorConversionCodes.BGR2HLS);
+
+            // Create a mask for the desired color range
+            Mat mask = new Mat();
+            Cv2.InRange(hls, lowerBound, upperBound, mask);
+
+            // Bitwise-AND mask and original image to isolate the color
+            Mat result = new Mat();
+            Cv2.BitwiseAnd(src, src, result, mask);
+
+            return result;
+        }
+
+        public Mat IsolateColorRGB(Mat src, Scalar rgbColor, double Threshold)
+        {
+            // Convert the RGB color and tolerance to HSV
+            Scalar upperBound = ConvertBGRToBGRRange(rgbColor, Threshold, false);
+            Scalar lowerBound = ConvertBGRToBGRRange(rgbColor, Threshold, true);
+            //           Scalar centerBound = ConvertBGRToBGRRange(rgbColor, Threshold, null);
+
+            // Convert the image to HSV color space
+            //       Mat hsv = new Mat();
+            //  Cv2.CvtColor(src, src, ColorConversionCodes.RGB2BGR);
+            //            Mat hsv = src.Clone();
+
+            // Create a mask for the desired color range
+            Mat mask = new Mat();
+            Cv2.InRange(src, lowerBound, upperBound, mask);
+
+            // Bitwise-AND mask and original image to isolate the color
+            Mat result = new Mat();
+            Cv2.BitwiseAnd(src, src, result, mask);
+
+            return result;
+        }
+
+
         public Mat RescaleImageToNewDpi(Mat src, double currentDpi, double newDpi)
         {
-        
+
             // Calculate the scaling factor
             double scaleFactor = newDpi / currentDpi;
 
@@ -592,13 +777,13 @@ namespace HekiliHelper
 
             var x = (src.Width / 8) + (src.Width / 16);
             var y = (src.Height / 16);
-            var width = (src.Width / 2) - (src.Width / 5);
+            var width = (src.Width / 2) - (src.Width / 4);
             var height = (src.Height / 2) / 2;
             OpenCvSharp.Rect roi = new OpenCvSharp.Rect(
-                x, y, width, height 
+                x, y, width, height
     );
 
-            Mat firstQuarter = src.Clone( roi);// new Mat(src, roi);
+            Mat firstQuarter = src.Clone(roi);// new Mat(src, roi);
 
             // Convert to grayscale
             //Mat gray = new Mat();
@@ -630,9 +815,9 @@ namespace HekiliHelper
 
             //    );
 
-            var x1 = (src.Width / 2) + (src.Width / 32);
+            var x1 = (src.Width / 2) + (src.Width / 16);
             var y1 = (src.Height / 16);
-            var width1 = (src.Width / 2) - (src.Width / 5);
+            var width1 = (src.Width / 2) - (src.Width / 4);
             var height1 = (src.Height / 2) / 2;
             OpenCvSharp.Rect roi1 = new OpenCvSharp.Rect(x1, y1, width1, height1);
 
@@ -654,173 +839,227 @@ namespace HekiliHelper
 
         }
 
-        private void DrawMarkers (ref Mat src)
+        public bool IsThereAnImageInBottomLeftQuarter(Mat src)
         {
-            Cv2.Line(src, (int)(src.Width / 2), 0, (int)(src.Width / 2), src.Height, Scalar.FromRgb(255, 0, 0), 1, LineTypes.Link8);
-            Cv2.Line(src, 0, (int)(src.Height / 2), src.Width, (int)(src.Height / 2), Scalar.FromRgb(255, 0, 0), 1, LineTypes.Link8);
+            // Define the region of interest (ROI) as the first quarter of the image
+            //OpenCvSharp.Rect roi = new OpenCvSharp.Rect(0, 0, (src.Width / 3), (src.Height / 3));
+            //OpenCvSharp.Rect roi = new OpenCvSharp.Rect( (int)((src.Width / 2) / 2.5), 0, (int)((src.Width / 2) / 1.2), (src.Height / 3) );
+
+
+            //       Cv2.Rectangle(resizedMat,
+            //new OpenCvSharp.Point((resizedMat.Width / 4), 0),
+            //new OpenCvSharp.Point((resizedMat.Width / 8) + (resizedMat.Width / 4), (resizedMat.Height / 3)),
+
+            var x = (src.Width / 8) + (src.Width / 16);
+            var y = (src.Height / 2) + (src.Height / 8);
+            var width = (src.Width / 2) - (src.Width / 4);
+            var height = (src.Height / 2) / 2;
+            OpenCvSharp.Rect roi = new OpenCvSharp.Rect(x, y, width, height);
+
+            Mat firstQuarter = src.Clone(roi);// new Mat(src, roi);
+
+            // Convert to grayscale
+            //Mat gray = new Mat();
+            //Cv2.CvtColor(firstQuarter, gray, ColorConversionCodes.BGR2GRAY);
+
+            // Apply edge detection (e.g., using Canny)
+            Mat edges = new Mat();
+            //        Cv2.BitwiseNot(firstQuarter, edges);
+            var x1 = Cv2.Mean(firstQuarter);
+            if (x1.Val0 <= 250)
+                return true;
+            else
+                return false;
+
+        }
+
+        public bool IsThereAnImageInBottomCenter(Mat src)
+        {
+            // Define the region of interest (ROI) as the first quarter of the image
+            //OpenCvSharp.Rect roi = new OpenCvSharp.Rect(0, 0, (src.Width / 3), (src.Height / 3));
+            //OpenCvSharp.Rect roi = new OpenCvSharp.Rect( (int)((src.Width / 2) / 2.5), 0, (int)((src.Width / 2) / 1.2), (src.Height / 3) );
+
+
+            //       Cv2.Rectangle(resizedMat,
+            //new OpenCvSharp.Point((resizedMat.Width / 4), 0),
+            //new OpenCvSharp.Point((resizedMat.Width / 8) + (resizedMat.Width / 4), (resizedMat.Height / 3)),
+            var width = (src.Width / 2) - (src.Width / 4);
+            var height = (src.Height / 2) / 2;
+            var x = (src.Width / 2) - (width / 2);
+            var y = (src.Height / 2) + (src.Height / 8);
+
+            OpenCvSharp.Rect roi = new OpenCvSharp.Rect(x, y, width, height);
+
+            Mat firstQuarter = src.Clone(roi);// new Mat(src, roi);
+
+            // Convert to grayscale
+            //Mat gray = new Mat();
+            //Cv2.CvtColor(firstQuarter, gray, ColorConversionCodes.BGR2GRAY);
+
+            // Apply edge detection (e.g., using Canny)
+            Mat edges = new Mat();
+            //        Cv2.BitwiseNot(firstQuarter, edges);
+            var x1 = Cv2.Mean(firstQuarter);
+            if (x1.Val0 <= 250)
+                return true;
+            else
+                return false;
+
+        }
+
+
+        private void DrawMarkers(ref Mat src)
+        {
+            Cv2.Line(src, (int)(src.Width / 2), 0, (int)(src.Width / 2), src.Height, Scalar.FromRgb(255, 0, 0), 2, LineTypes.AntiAlias);
+            Cv2.Line(src, 0, (int)(src.Height / 2), src.Width, (int)(src.Height / 2), Scalar.FromRgb(255, 0, 0), 2, LineTypes.AntiAlias);
 
 
             //Draw top left sensor
             var x = (src.Width / 8) + (src.Width / 16);
             var y = (src.Height / 16);
-            var width = (src.Width / 2) - (src.Width / 5);
+            var width = (src.Width / 2) - (src.Width / 4);
             var height = (src.Height / 2) / 2;
             OpenCvSharp.Rect roi = new OpenCvSharp.Rect(x, y, width, height);
-            Cv2.Rectangle(src, roi, Scalar.Red, 1, LineTypes.Link8);
+            Cv2.Rectangle(src, roi, Scalar.Red, 2, LineTypes.AntiAlias);
 
             //Draw top right sensor
-            var x1 = (src.Width / 2) + (src.Width / 32);
+            var x1 = (src.Width / 2) + (src.Width / 16);
             var y1 = (src.Height / 16);
-            var width1 = (src.Width / 2) - (src.Width / 5);
+            var width1 = (src.Width / 2) - (src.Width / 4);
             var height1 = (src.Height / 2) / 2;
             OpenCvSharp.Rect roi1 = new OpenCvSharp.Rect(x1, y1, width1, height1);
-            Cv2.Rectangle(src, roi1, Scalar.Red, 1, LineTypes.Link8);
+            Cv2.Rectangle(src, roi1, Scalar.Red, 2, LineTypes.AntiAlias);
+
+
+            //Draw Left Lower Sensor
+            var x2 = (src.Width / 8) + (src.Width / 16);
+            var y2 = (src.Height / 2) + (src.Height / 8);
+            var width2 = (src.Width / 2) - (src.Width / 4);
+            var height2 = (src.Height / 2) / 2;
+            OpenCvSharp.Rect roi2 = new OpenCvSharp.Rect(x2, y2, width2, height2);
+            Cv2.Rectangle(src, roi2, Scalar.Red, 2, LineTypes.AntiAlias);
+
+            //Draw Bottom Center Sensor
+            var width3 = (src.Width / 2) - (src.Width / 4);
+            var height3 = (src.Height / 2) / 2;
+            var x3 = (src.Width / 2) - (width3 / 2) ;
+            var y3 = (src.Height / 2) + (src.Height / 8);
+            
+            OpenCvSharp.Rect roi3 = new OpenCvSharp.Rect(x3, y3, width3, height3);
+            Cv2.Rectangle(src, roi3, Scalar.Blue, 2, LineTypes.AntiAlias);
 
         }
-        private void ProcessImageOpenCV (Bitmap image)
+
+
+
+        private string ProcessImageOpenCV(Bitmap image, ref System.Windows.Controls.Label label, ref string _DetectedValue, ref int _DetectedSameCount, ref string CurrentKeyToSend, ref System.Windows.Controls.Image DisplayControl, double Threshold, ref DetectionRegions regions)
         {
             var origWidth = image.Width;
             var origHeight = image.Height;
-            double trasThreshold = CurrentThreshold == 0 ? 0.0 : CurrentThreshold / 100;
-            int Rscale =  ((int)(CurrentR * ((CurrentR * trasThreshold) / CurrentR)));
-            int Gscale =  ((int)(CurrentG * ((CurrentG * trasThreshold) / CurrentG)));
-            int Bscale =  ((int)(CurrentB * ((CurrentB * trasThreshold) / CurrentB)));
 
-      
+            int Rscale = ((int)(CurrentR * ((CurrentR * Threshold) / CurrentR)));
+            int Gscale = ((int)(CurrentG * ((CurrentG * Threshold) / CurrentG)));
+            int Bscale = ((int)(CurrentB * ((CurrentB * Threshold) / CurrentB)));
+
+            string result = "";
+            BitmapSource? OutImageSource;
             var CVMat = BitmapSourceConverter.ToMat(Convert(image));
             Mat resizedMat;
+
+
             resizedMat = RescaleImageToNewDpi(CVMat, image.HorizontalResolution, 300);
 
+            var IsolatedColor = IsolateColorHSV(resizedMat, Scalar.FromRgb(CurrentR, CurrentG, CurrentB), Threshold);
 
 
-            var IsolatedColor = IsolateColor(resizedMat, Scalar.FromRgb(CurrentR, CurrentG, CurrentB), Scalar.FromRgb(Rscale, Gscale, Bscale), trasThreshold);
-
-           
             Mat gray = new Mat();
             Cv2.CvtColor(IsolatedColor, gray, ColorConversionCodes.BGR2GRAY);
-        
+
             // Apply Otsu's thresholding
             Cv2.Threshold(gray, gray, 1, 255, ThresholdTypes.Otsu | ThresholdTypes.BinaryInv); //
+            resizedMat = gray.Clone();
+            regions.TopLeft = IsThereAnImageInTopLeftQuarter(gray);
+            regions.TopRight = IsThereAnImageInTopRightQuarter(gray);
+            regions.BottomLeft = IsThereAnImageInBottomLeftQuarter(gray);
+            regions.BottomCenter = IsThereAnImageInBottomCenter(gray);
+            resizedMat = RescaleImageToNewDpi(resizedMat, image.HorizontalResolution, 96);
 
-            //Mat invertedMask = new Mat();
-            //Cv2.BitwiseNot(gray, invertedMask);
-            if (IsThereAnImageInTopRightQuarter(gray) ) 
-            if ( !IsThereAnImageInTopLeftQuarter(gray) && Properties.Settings.Default.QuickDecode == false )
+            if (regions.TopRight)
             {
-                Cv2.CvtColor(gray, gray, ColorConversionCodes.BayerBG2RGB);
-                    DrawMarkers(ref  gray);
-
-                      var OutImageSource = BitmapSourceConverter.ToBitmapSource(gray);
-
-                    UpdateImageControl(OutImageSource);
-                lDetectedValue.Content = "";
-                return;
-            }
-             resizedMat = gray;
-           // resizedMat = RescaleImageToNewDpi(gray, image.HorizontalResolution, 300);
-
-         
-
-            //This  currently not working and just taking up CPU cycles.  Not sure what is going on.
-            //Will figure this out later.
-
-            // Dilation
-            Mat kernel = Cv2.GetStructuringElement(MorphShapes.Rect, new OpenCvSharp.Size(3, 3));
-            Mat dilation = new Mat();
-            Cv2.Dilate(resizedMat, dilation, kernel);
-            //var OutImageSource = BitmapSourceConverter.ToBitmapSource(dilation);
-      
-
-            // Find contours
-            OpenCvSharp.Point[][] contours;
-            HierarchyIndex[] hierarchy;
-            Cv2.FindContours(dilation, out  contours, out  hierarchy, RetrievalModes.External, ContourApproximationModes.ApproxNone);
-
-            foreach (var contour in contours)
-            {
-                OpenCvSharp.Rect rect = Cv2.BoundingRect(contour);
-               // Cv2.Rectangle(CVMat, rect, new Scalar(0, 255, 0), 2);
-
-                // Crop and OCR
-                Mat cropped = new Mat(resizedMat, rect);
-                var OutImage = OpenCvSharp.Extensions.BitmapConverter.ToBitmap(cropped);
-    
-   
-                string s = OCRProcess(OpenCvSharp.Extensions.BitmapConverter.ToBitmap(resizedMat));
-                Cv2.CvtColor(resizedMat, resizedMat, ColorConversionCodes.BayerBG2RGB);
-
-                DrawMarkers(ref resizedMat);
-
-                //Cv2.Line(resizedMat, (int)(resizedMat.Width / 2), 0, (int)(resizedMat.Width / 2), resizedMat.Height, Scalar.FromRgb(255, 0, 0), 1, LineTypes.Link8);
-                //Cv2.Line(resizedMat, 0, (int)(resizedMat.Height / 2), resizedMat.Width, (int)(resizedMat.Height / 2), Scalar.FromRgb(255, 0, 0), 1, LineTypes.Link8);
-
-                ////Draw top left sensor
-                //var x = (resizedMat.Width / 8) + (resizedMat.Width / 16);
-                //var y = (resizedMat.Height / 16);
-                //var width = (resizedMat.Width / 2) - (resizedMat.Width / 5);
-                //var height = (resizedMat.Height / 2) / 2;
-                //OpenCvSharp.Rect roi = new OpenCvSharp.Rect(x, y, width, height);
-                //Cv2.Rectangle(resizedMat, roi, Scalar.Red, 1, LineTypes.Link8);
-
-                ////Draw top right sensor
-                //var x1 = (resizedMat.Width / 2) + (resizedMat.Width / 32);
-                //var y1 = (resizedMat.Height / 16);
-                //var width1 = (resizedMat.Width / 2) - (resizedMat.Width / 5);
-                //var height1 = (resizedMat.Height / 2) / 2;
-                //OpenCvSharp.Rect roi1 = new OpenCvSharp.Rect(x1, y1, width1, height1);
-                //Cv2.Rectangle(resizedMat, roi1, Scalar.Red, 1, LineTypes.Link8);
-                
-                
-                //Cv2.Rectangle(resizedMat,
-                //    new OpenCvSharp.Point((resizedMat.Width / 4), 0),
-                //    new OpenCvSharp.Point((resizedMat.Width / 8)+(resizedMat.Width / 4), (resizedMat.Height / 3)),
-
-                //    Scalar.Red, 1, LineTypes.Link8);
-
-                //Cv2.Rectangle(resizedMat,
-                //         new OpenCvSharp.Point((resizedMat.Width / 2) + (resizedMat.Width / 8), 0),
-                //         new OpenCvSharp.Point((resizedMat.Width / 2) + (resizedMat.Width / 4), (resizedMat.Height / 3)),
-                //         Scalar.Red, 1, LineTypes.Link8);
-
-
-                var OutImageSource = BitmapSourceConverter.ToBitmapSource(resizedMat);
-
-                UpdateImageControl(OutImageSource);
-                //if ( _DetectedSameCount >= (int)(Properties.Settings.Default.CaptureRateMS * 0.05))
-                if ( _DetectedSameCount >= 1)
+                if (!regions.TopLeft && Properties.Settings.Default.QuickDecode == false)
                 {
-                    lDetectedValue.Content = s;
-                    _DetectedValue = s;
-                    _DetectedSameCount = 0;
+                    Cv2.CvtColor(resizedMat, resizedMat, ColorConversionCodes.BayerBG2RGB);
+                    DrawMarkers(ref resizedMat);
+
+                    OutImageSource = BitmapSourceConverter.ToBitmapSource(resizedMat);
+                    DisplayControl.Source = OutImageSource;
+                    label.Content = "";
+                    result = "";
+                    return result;
                 }
-                else
+                if (!regions.BottomLeft && Properties.Settings.Default.QuickDecode == true)
                 {
-                    if (lDetectedValue.Content.ToString() != s)
+                    Cv2.CvtColor(resizedMat, resizedMat, ColorConversionCodes.BayerBG2RGB);
+                    DrawMarkers(ref resizedMat);
+
+                    OutImageSource = BitmapSourceConverter.ToBitmapSource(resizedMat);
+                    DisplayControl.Source = OutImageSource;
+                    label.Content = "";
+                    result = "";
+                    return result;
+                }
+
+
+            }
+  
+
+
+            string s = OCRProcess(OpenCvSharp.Extensions.BitmapConverter.ToBitmap(gray));
+            CurrentKeyToSend = s;
+            Cv2.CvtColor(resizedMat, resizedMat, ColorConversionCodes.BayerBG2RGB);
+
+            DrawMarkers(ref resizedMat);
+
+            OutImageSource = BitmapSourceConverter.ToBitmapSource(resizedMat);
+            DisplayControl.Source = OutImageSource;
+
+            if (_DetectedSameCount >= 2)
+            {
+                label.Content = s;
+                _DetectedValue = s;
+                _DetectedSameCount = 0;
+            }
+            else
+            {
+                if (label.Content.ToString() != s)
                     lDetectedValue.Content = "";
-                    _DetectedSameCount++;
-                }
-                
+                _DetectedSameCount++;
             }
 
-
-
-           // var OutImage = BitmapSourceConverter.ToBitmapSource(gray);
-
-            
-            //string s = OCRProcess(OpenCvSharp.Extensions.BitmapConverter.ToBitmap(gray));
-            //lDetectedValue.Content = s;
+            result = _DetectedValue;
+            return result;
         }
+
 
         public void StartCaptureProcess()
         {
             // Define the area of the screen you want to capture
-            int x = (int)magnifier.Left, 
-                y = (int)magnifier.Top, 
-                width = (int)magnifier.Width, 
+            int x = (int)magnifier.Left,
+                y = (int)magnifier.Top,
+                width = (int)magnifier.Width,
                 height = (int)magnifier.Height;
 
+            int x2 = (int)magnifier2.Left,
+                y2 = (int)magnifier2.Top,
+                width2 = (int)magnifier2.Width,
+                height2 = (int)magnifier2.Height;
+
+
             // Initialize CaptureScreen with the dispatcher and the UI update action
-            captureScreen = new CaptureScreen(x, y, width, height,0);
+            System.Windows.Rect[] regions = new System.Windows.Rect[2];
+            regions[0] = new System.Windows.Rect { X = (double)x, Y = (double)y, Width = width, Height = height };
+            regions[1] = new System.Windows.Rect { X = (double)x2, Y = (double)y2, Width = width2, Height = height2 };
+            captureScreen = new CaptureScreen(regions, 0);
             //  image.Source = Convert(captureScreen.CapturedImage);
 
             // Create an instance of ContinuousScreenCapture with the CaptureScreen object
@@ -830,68 +1069,354 @@ namespace HekiliHelper
                 captureScreen
             );
 
+
+            // Only process the 2nd image if it is active.  The image will still be captured behind the scenes,  but no OCR will be done on it.
+
+            screenCapture.UpdateSecondImage += (Bitmap image) =>
+            {
+                if (Properties.Settings.Default.Use2ndImageDetection)
+                {
+                    //ProcessImageLocal(image);
+                    double trasThreshold = CurrentThreshold == 0 ? 0.0 : CurrentThreshold / 100;
+                    ProcessImageOpenCV(image, ref lDetectedValue2, ref _DetectedValueSecond, ref _DetectedSameCount[1], ref _currentKeyToSend[1], ref imageCap2, trasThreshold, ref CurrentImageRegions.SecondImageRegions);
+                }
+                else
+                {
+                    // Not capturing so set values back to 0-state
+                    lDetectedValue2.Content = "";
+                    _DetectedValueSecond = "";
+                    _DetectedSameCount[1] = 0;
+                    _currentKeyToSend[1] = "";
+                }
+            };
+
             // Assign a handler to the UpdateUIImage event
-            screenCapture.UpdateUIImage += (Bitmap image) =>
+            screenCapture.UpdateFirstImage += (Bitmap image) =>
             {
                 //ProcessImageLocal(image);
-                ProcessImageOpenCV(image);
+                double trasThreshold = CurrentThreshold == 0 ? 0.0 : CurrentThreshold / 100;
+                ProcessImageOpenCV(image, ref lDetectedValue, ref _DetectedValueFirst, ref _DetectedSameCount[0], ref _currentKeyToSend[0], ref imageCap, trasThreshold, ref CurrentImageRegions.FirstImageRegions);
             };
+
+
+            
+
+
         }
 
-        private System.Windows.Threading.DispatcherTimer _timer;
 
-        private MagnifierWindow magnifier;
+
+
         // Method to open the MagnifierWindow
         private void OpenMagnifierWindow()
         {
             magnifier.Show();
+            magnifier2.Show();
         }
 
-
-
-
-
-        // Method to retrieve properties from the MagnifierWindow
-        private void RetrieveMagnifierProperties()
+        string lastKey = "";
+        private async void mainTimerTick(object? sender, EventArgs args)
         {
-            if (magnifier != null)
+            // If key is already processing skip this tick
+            if (keyProcessing || keyProcessing2 || key1Pressed)
+                return;
+
+            if (_currentKeyToSend[0] == "")
+                return;
+
+            if (lastKey == _currentKeyToSend[0])
             {
-                double x = magnifier.ScaledX;
-                double y = magnifier.ScaledY;
-                double width = magnifier.ScaledWidth;
-                double height = magnifier.ScaledHeight;
-
-                // Do something with the properties, e.g., display them
-                MessageBox.Show($"Magnified Position: ({x}, {y})\n" +
-                                $"Magnified Size: {width} x {height}");
+                await Task.Delay(200);
+                lastKey = "";
             }
-        }
 
-        private void CloseMagnifierWindow()
-        {
-            if (magnifier != null)
+
+            if (CurrentImageRegions.FirstImageRegions.TopLeft == false)
             {
-                magnifier.Close();
-                // May want to destroy the window on close to free up the resources and everything tied to it
-                // but have to update the code that reads the chords directly from the magnifier so use the last values stored local
+                _currentKeyToSend[0] = "";
+                return;
             }
+            
+
+            var currentKeyToSend = _currentKeyToSend[0];
+            var currentKeyToSend1 = _currentKeyToSend[1];
+
+
+            // THis is a brute force way of trying to keep a key from being rapidly pressed
+
+            // Check the key dictionary if the key is one we should handle
+            if ((!VirtualKeyCodeMapper.HasKey(currentKeyToSend)) || (VirtualKeyCodeMapper.HasExcludeKey(currentKeyToSend)))
+            {
+                keyProcessing = false;
+                _currentKeyToSend[0] = "";
+                return;
+            }
+
+            keyProcessing = true;
+
+
+
+
+            int vkCode = 0;
+
+
+            if (_wowWindowHandle != nint.Zero)
+            {
+                //assuming we got here means we can do anything we want with the regions settings as they will update to the true values in the background
+                //and we know what keys we want to send
+                CurrentImageRegions.FirstImageRegions.TopLeft = false;
+                CurrentImageRegions.FirstImageRegions.TopRight = false;
+                CurrentImageRegions.FirstImageRegions.BottomLeft = false;
+                CurrentImageRegions.FirstImageRegions.BottomCenter = false;
+
+
+
+
+
+                ImageCapBorder.BorderBrush = System.Windows.Media.Brushes.Red;
+                ImageCap2Border.BorderBrush = System.Windows.Media.Brushes.Black;
+
+                // I keep poking at this trying to figure out how to only send the key press again if a new key is to me pressed.
+                // It fails if the next key to press is the same.
+                // There would have to some logic in the capture to say its a new detection
+
+                // Tranlate the char to the virtual Key Code
+                vkCode = VirtualKeyCodeMapper.GetVirtualKeyCode(currentKeyToSend);
+
+                // command is tied to CTRL or ALT So have to press them
+                if (currentKeyToSend[0] == 'C') //&& CtrlPressed == false
+                    PostMessage(_wowWindowHandle, WM_KEYDOWN, VK_CONTROL, 0);
+                else
+                //    // Command isn't tied to CTRL so send a CTRL Up.
+                //    // This should really be peeking in the message buffer to see if the the key is really pressed or not. and only send the up if it is. 
+                //    // This could also be accomlished buy storing off the value in the message processor and storing a flag local if it saw one or not.
+                //    // keyboards are global so that may work.
+                    PostMessage(_wowWindowHandle, WM_KEYUP, VK_CONTROL, 0);  
+                if (currentKeyToSend[0] == 'A') // && AltPressed == false
+                    PostMessage(_wowWindowHandle, WM_KEYDOWN, VK_MENU, 0);
+                else
+                    // See Notes on CTRL.
+                    PostMessage(_wowWindowHandle, WM_KEYUP, VK_MENU, 0);
+
+                // Press the command Key Down
+                PostMessage(_wowWindowHandle, WM_KEYDOWN, vkCode, 0);
+                
+                
+                // CTRL and ALT do not need to be held down just only pressed initally for the command to be interpeted correctly
+                if (currentKeyToSend[0] == 'C' ) PostMessage(_wowWindowHandle, WM_KEYUP, VK_CONTROL, 0); //&& CtrlPressed == true
+                if (currentKeyToSend[0] == 'A' ) PostMessage(_wowWindowHandle, WM_KEYUP, VK_MENU, 0); //&& AltPressed == true
+                //     await Task.Delay((int)sliderCaptureRateMS.Value); // Give some time for hekili to refresh
+
+
+                // I want atleast 1 cycle to go thru
+                while (CurrentImageRegions.FirstImageRegions.TopRight == false)
+                {
+                    await Task.Delay(1);
+                    await Task.Yield();
+                }
+                _currentKeyToSend[0] = "";
+       
+
+                if (_keyPressMode)
+                {
+                    await Task.Yield();
+                    while (CurrentImageRegions.FirstImageRegions.TopLeft == false && button_Start.IsEnabled == false)
+                    {
+
+
+                        //await Task.Delay(5);
+                        await Task.Yield();
+                        // Lets explore some second options while this is on cooldown
+                        if (Properties.Settings.Default.Use2ndImageDetection == true )
+                        {
+                      //      var currentKeyToSend1 = _currentKeyToSend[1];
+                            if (currentKeyToSend1 == "")
+                                continue;
+
+                            // This is to avoid duplicate keypresses.  not sure if blocking it is helpful or not, in theory it should just pop to the primary,
+                            // but allowing it to press early should make it fire a little faster.   unsure...  skipping it avoids the question.  
+                            if (currentKeyToSend1 == currentKeyToSend)
+                                continue;
+
+
+
+
+
+                            #region 2nd Key Options
+
+                            keyProcessing2 = true;
+
+                            //if (CurrentImageRegions.FirstImageRegions.TopLeft == false)
+                            //{
+                            //    keyProcessing2 = false;
+                            //    _currentKeyToSend[1] = "";
+                            //    continue;
+                            //}
+
+                            //   if (CurrentImageRegions.SecondImageRegions.TopLeft == false)
+                            //{
+                            //    keyProcessing2 = false;
+                            //    _currentKeyToSend[1] = "";
+                            //    continue;
+                            //}
+
+                            if ((!VirtualKeyCodeMapper.HasKey(currentKeyToSend1)) || (VirtualKeyCodeMapper.HasExcludeKey(currentKeyToSend1))
+                            )
+                            {
+                                keyProcessing2 = false;
+                                _currentKeyToSend[1] = "";
+                                break;
+                            }
+                            CurrentImageRegions.SecondImageRegions.TopLeft = false;
+                            CurrentImageRegions.SecondImageRegions.TopRight = false;
+                            CurrentImageRegions.SecondImageRegions.BottomLeft = false;
+                            CurrentImageRegions.SecondImageRegions.BottomCenter = false;
+                            _currentKeyToSend[1] = "";
+
+                            int vkCode2 = 0;
+                            if (_wowWindowHandle != nint.Zero)
+                            {
+
+             
+
+                                ImageCap2Border.BorderBrush = System.Windows.Media.Brushes.Red;
+                                // Let up on the 1st command key
+             
+                                ImageCapBorder.BorderBrush = System.Windows.Media.Brushes.Black;
+
+
+                                // I keep poking at this trying to figure out how to only send the key press again if a new key is to me pressed.
+                                // It fails if the next key to press is the same.
+                                // There would have to some logic in the capture to say its a new detection
+
+
+                                await Task.Yield();
+
+
+
+                                if (_keyPressMode)
+                                {
+                                    while (CurrentImageRegions.SecondImageRegions.TopRight == true && button_Start.IsEnabled == false) // delay our press till we make sure hekili has chosen a new cast
+                                    {
+                                        await Task.Yield();
+                                    }
+                      
+       
+
+                                    while (CurrentImageRegions.FirstImageRegions.TopLeft == false && button_Start.IsEnabled == false) // delay our press till we make sure hekili has chosen a new cast
+                                    {
+                                        await Task.Delay(30);
+                                    }
+                                    PostMessage(_wowWindowHandle, WM_KEYUP, vkCode, 0);
+                                    // Handle the if command is tied to CTRL or ALT
+                                    if (currentKeyToSend1[1] == 'C') //&& CtrlPressed == false
+                                        PostMessage(_wowWindowHandle, WM_KEYDOWN, VK_CONTROL, 0);
+                                    else
+                                        PostMessage(_wowWindowHandle, WM_KEYUP, VK_CONTROL, 0);
+
+                                    if (currentKeyToSend1[1] == 'A') //&& AltPressed == false
+                                        PostMessage(_wowWindowHandle, WM_KEYDOWN, VK_MENU, 0);
+                                    else
+                                        PostMessage(_wowWindowHandle, WM_KEYUP, VK_MENU, 0);
+
+
+                                    // Tranlate the char to the virtual Key Code
+                                    vkCode2 = VirtualKeyCodeMapper.GetVirtualKeyCode(currentKeyToSend1);
+                                    PostMessage(_wowWindowHandle, WM_KEYDOWN, vkCode2, 0);
+                                    // CTRL and ALT do not need to be held down just only pressed initally for the command to be interpeted correctly
+                                    if (currentKeyToSend1[1] == 'C') // && CtrlPressed == true
+                                        PostMessage(_wowWindowHandle, WM_KEYUP, VK_CONTROL, 0);
+
+                                    if (currentKeyToSend1[1] == 'A') // && AltPressed == true
+                                        PostMessage(_wowWindowHandle, WM_KEYUP, VK_MENU, 0);
+                                    // Now we pause until top is filled then we release the key that should queue the command.
+                                    while (CurrentImageRegions.FirstImageRegions.TopLeft == false && button_Start.IsEnabled == false)
+                                    {
+                                        await Task.Yield();
+                                        await Task.Delay(30);
+                                       
+                                    }
+                                }
+
+                                PostMessage(_wowWindowHandle, WM_KEYUP, vkCode2, 0);
+
+                                // this stops the sending of the key till the timer is almost up.  
+                                // it takes advantage of the cooldown visual cue in the game that darkens the font (changes the color)
+                                // the OCR doesn't see a new char until it is almost times out, at that point it can be pressed and would be added to the action queue
+
+                                keyProcessing2 = false;
+        
+                                #endregion
+
+
+                            }
+
+                        }
+                    }
+                }
+
+
+
+                // If where not watching for when things time out, we insert a hard delay
+                if (!_keyPressMode)
+                {
+                    await Task.Delay(Random.Shared.Next() % 5 + CurrentKeyDownDelayMS);
+                }
+
+                // Let up on the command key
+                PostMessage(_wowWindowHandle, WM_KEYUP, vkCode, 0);
+
+                ImageCapBorder.BorderBrush = System.Windows.Media.Brushes.Black;
+                keyProcessing = false;
+           
+
+                // this stops the sending of the key till the timer is almost up.  
+                // it takes advantage of the cooldown visual cue in the game that darkens the font (changes the color)
+                // the OCR doesn't see a new char until it is almost times out, at that point it can be pressed and would be added to the action queue
+                _DetectedValueFirst = "";
+                }
+
+            
+
+            ImageCap2Border.BorderBrush = System.Windows.Media.Brushes.Black;
+
+            keyProcessing = false;
         }
+    
 
 
-        Bitmap _holderBitmap;
+//        Bitmap _holderBitmap;
         public MainWindow()
         {
             InitializeComponent();
+            mainWindowDispatcher = this.Dispatcher;
+
 
             magnifier = new MagnifierWindow();
-            magnifier.SizeChanged += Magnifier_SizeChanged;
-            magnifier.LocationChanged += Magnifier_LocationChanged;
-
-
             magnifier.Left = Properties.Settings.Default.CapX > SystemParameters.PrimaryScreenWidth ? 100 : Properties.Settings.Default.CapX;
             magnifier.Top = Properties.Settings.Default.CapY > SystemParameters.PrimaryScreenHeight ? 100 : Properties.Settings.Default.CapY;
             magnifier.Width = Properties.Settings.Default.CapWidth;
             magnifier.Height = Properties.Settings.Default.CapHeight;
+            magnifier.SizeChanged += Magnifier_SizeChanged;
+            magnifier.LocationChanged += Magnifier_LocationChanged;
+       
+
+
+
+
+            magnifier2 = new MagnifierWindow();
+            magnifier2.border.BorderBrush = BorderBrush = System.Windows.Media.Brushes.Blue;
+            magnifier2.Left = Properties.Settings.Default.CapX > SystemParameters.PrimaryScreenWidth ? 100 : Properties.Settings.Default.Cap2X;
+            magnifier2.Top = Properties.Settings.Default.CapY > SystemParameters.PrimaryScreenHeight ? 100 : Properties.Settings.Default.Cap2Y;
+            magnifier2.Width = Properties.Settings.Default.Cap2Width;
+            magnifier2.Height = Properties.Settings.Default.Cap2Height;
+            magnifier2.SizeChanged += Magnifier2_SizeChanged;
+            magnifier2.LocationChanged += Magnifier2_LocationChanged;
+
+
+
+
+
 
             //TargetColorPicker.ColorState =  new ColorPicker.Models.ColorState();
             TargetColorPicker.SelectedColor = System.Windows.Media.Color.FromArgb((byte)Properties.Settings.Default.TargetA, (byte)Properties.Settings.Default.TargetR, (byte)Properties.Settings.Default.TargetG, (byte)Properties.Settings.Default.TargetB);
@@ -900,7 +1425,7 @@ namespace HekiliHelper
             CurrentB = Properties.Settings.Default.TargetB;
             CurrentA = Properties.Settings.Default.TargetA; 
 
-            _holderBitmap = ImageHelpers.CreateBitmap(60, 60, System.Drawing.Color.Black);
+  //          _holderBitmap = ImageHelpers.CreateBitmap(60, 60, System.Drawing.Color.Black);
 
             tbVariance.Text = Properties.Settings.Default.VariancePercent.ToString();
             sliderColorVariancePercent.Value = Properties.Settings.Default.VariancePercent;
@@ -914,9 +1439,15 @@ namespace HekiliHelper
             cbPushRelease.IsChecked = Properties.Settings.Default.PushAndRelease;
             cbQuickDecode.IsChecked = Properties.Settings.Default.QuickDecode;
             cbStayOnTop.IsChecked = Properties.Settings.Default.KeepOnTop;
+
+            cbUse2ndImage.IsChecked = Properties.Settings.Default.Use2ndImageDetection;
+            
+            ImageCap2Border.Visibility = cbUse2ndImage.IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
+            lDetectedValue2.Visibility = ImageCap2Border.Visibility; // no need to reeval the vars, we already know.  (yeah this can be done in xaml bindings..  but right now I don't know how and don't feel like looking it up.)
+
             //Properties.Settings.Default.ActivationKey
 
-                this.Topmost = Properties.Settings.Default.KeepOnTop;
+            this.Topmost = Properties.Settings.Default.KeepOnTop;
 
 
             foreach (var x in cbActivationKey.Items)
@@ -934,115 +1465,33 @@ namespace HekiliHelper
             this.Top = Properties.Settings.Default.AppStartY;
 
             CurrentKeyToPress = "";
+          
+            
             _proc = HookCallbackActionKey;
 
             _mouseProc = MouseHookCallback;
 
 
-        _wowWindowHandle = FindWindow(null, "World of Warcraft");
+            _wowWindowHandle = FindWindow(null, "World of Warcraft");
 
  
             StartCaptureProcess();
 
 
             // This timer handles the key sending
-            _timer = new System.Windows.Threading.DispatcherTimer();
+          
+            _timer = new System.Windows.Threading.DispatcherTimer(DispatcherPriority.Background);
             _timer.Interval = TimeSpan.FromMilliseconds(50);
-            _timer.Tick += async (sender, args) =>
-            {
-                if (keyProcessing == true) return;
-                // Check the key dictionary if the key is one we should handle
-                keyProcessing = true;
-                if ((!VirtualKeyCodeMapper.HasKey(_currentKeyToSend)) || (VirtualKeyCodeMapper.HasExcludeKey(_currentKeyToSend)))
-                {
-                    keyProcessing = false;
-                    return;
-                }
-               // _wowWindowHandle = FindWindow(null, "World of Warcraft");
-                var l_currentKeyToSend = _currentKeyToSend;
-                int vkCode = 0;
-                // Tranlate the char to the virtual Key Code
-                vkCode = VirtualKeyCodeMapper.GetVirtualKeyCode(l_currentKeyToSend);
-               // int vkCode = _currentKeyToSend + 0x30; // 0x30 is the virtual-key code for "0"
-                //KeyInterop.VirtualKeyFromKey(e.Key)
-                if (_wowWindowHandle != IntPtr.Zero)
-                {
-                    // I keep poking at this trying to figure out how to only send the key press again if a new key is to me pressed.
-                    // It fails if the next key to press is the same.
-                    // There would have to some logic in the capture to say its a new detection
-                    // if (_lastKeyToSend != _currentKeyToSend)
-                    {
-                        if (l_currentKeyToSend[0] == 'C')
-                        {
-                            PostMessage(_wowWindowHandle, WM_KEYDOWN, VK_CONTROL, 0);
-                        }
-                        if (l_currentKeyToSend[0] == 'A')
-                        {
-                            PostMessage(_wowWindowHandle, WM_KEYDOWN, VK_MENU, 0);
-                        }
-
-                        PostMessage(_wowWindowHandle, WM_KEYDOWN, vkCode, 0);
-
-
-                        while (
-                            (
-                                (
-                                 (!VirtualKeyCodeMapper.HasKey(_currentKeyToSend)) || VirtualKeyCodeMapper.HasExcludeKey(_currentKeyToSend)
-                                )
-                                || _currentKeyToSend == ""
-                             )
-
-                            && _keyPressMode
-                        )
-                        {
-                            await Task.Delay(5);
-                        }
-
-                        // It may not be necessary to send WM_KEYUP immediately after WM_KEYDOWN
-                        // because it simulates a very quick key tap rather than a sustained key press.
-
-                        if (!_keyPressMode)
-                        {
-                            await Task.Delay(Random.Shared.Next() % 5 + CurrentKeyDownDelayMS);
-                        }
-                            PostMessage(_wowWindowHandle, WM_KEYUP, vkCode, 0);
-                        if (l_currentKeyToSend[0] == 'C')
-                        {
-                            PostMessage(_wowWindowHandle, WM_KEYUP, VK_CONTROL, 0);
-                        }
-                        if (l_currentKeyToSend[0] == 'A')
-                        {
-                            PostMessage(_wowWindowHandle, WM_KEYUP, VK_MENU, 0);
-                        }
-
-                        if (_keyPressMode)
-                        {
-                            await Task.Delay(25);
-                        }
+            _timer.Tick += mainTimerTick;
 
 
 
-                        _lastKeyToSend = l_currentKeyToSend;
 
-                        // this stops the sending of the key till the timer is almost up.  
-                        // it takes advantage of the cooldown visual cue in the game that darkens the font (changes the color)
-                        // the OCR doesn't see a new char until it is almost times out, at that point it can be pressed and would be added to the action queue
-                        _currentKeyToSend = "";
-                        _DetectedValue = "";
-
-
-
-                    }
-                }
-                keyProcessing = false;
-
-            };
-
-            
 
 
         }
 
+  
         #region UI Event handlers
         private void button_Click(object sender, RoutedEventArgs e)
         {
@@ -1068,6 +1517,7 @@ namespace HekiliHelper
                 if (!screenCapture.IsCapturing)
                 {
                     Magnifier_LocationChanged(sender, e);
+                    Magnifier2_LocationChanged(sender, e);
                     screenCapture.StartCapture();
 
                     _hookID = _hookID == 0 ? SetHookActionKey(_proc) : 0; 
@@ -1112,20 +1562,6 @@ namespace HekiliHelper
                 encoder.Save(fileStream);
             }
         }
-        private void OpenMagnifierButton_Click(object sender, RoutedEventArgs e)
-        {
-            OpenMagnifierWindow();
-        }
-
-        private void GetPropertiesButton_Click(object sender, RoutedEventArgs e)
-        {
-            RetrieveMagnifierProperties();
-        }
-
-        private void CloseMagnifierButton_Click(object sender, RoutedEventArgs e)
-        {
-            CloseMagnifierWindow();
-        }
 
         private void bToggleMagBorder_Click(object sender, RoutedEventArgs e)
         {
@@ -1137,37 +1573,17 @@ namespace HekiliHelper
             {
                 magnifier.Visibility = Visibility.Visible;
             }
-        }
-        private void setMagnifierPosition (double x, double y, double width, double height)
-        {
-            var source = PresentationSource.FromVisual(this);
-            if (source?.CompositionTarget != null)
+
+            if (magnifier2.Visibility == Visibility.Visible)
             {
-                var dpiX = source.CompositionTarget.TransformToDevice.M11;
-                var dpiY = source.CompositionTarget.TransformToDevice.M22;
-
-                // Get the window's current location
-                var left = x;
-                var top = y;
-                var widthh = width;
-                var heightt = height;
-
-                // Adjust for DPI scaling
-                var scaledLeft = left * dpiX;
-                var scaledTop = top * dpiY;
-                var scaledWidth = widthh * dpiX;
-                var scaledHeight = heightt * dpiY;
-
-                magnifier.Left = scaledLeft;
-                magnifier.Top = scaledTop;
-                magnifier.Width = scaledWidth;
-                magnifier.Height = scaledHeight;
-
-
-                screenCapture.CaptureRegion = new System.Windows.Rect(scaledLeft, scaledTop, scaledWidth, scaledHeight);
-                //screenCapture.CaptureRegion = magnifier.CurrrentLocationValue;
-
+                magnifier2.Visibility = Visibility.Hidden;
             }
+            else
+            {
+                magnifier2.Visibility = Visibility.Visible;
+            }
+
+
 
         }
 
@@ -1192,9 +1608,14 @@ namespace HekiliHelper
                 var scaledLeft = left * dpiX;
                 var scaledTop = top * dpiY;
                 var scaledWidth = width * dpiX;
-                var scaledHeight = height * dpiY;
+                var scaledHeight = height * dpiY - 15;
+                //     if (screenCapture.CaptureRegion != null ) 
+                screenCapture.CaptureRegion = 
 
-                screenCapture.CaptureRegion = new System.Windows.Rect(scaledLeft+1, scaledTop+1, scaledWidth-1, scaledHeight-1);
+                    new System.Windows.Rect[2] 
+                    { new System.Windows.Rect(scaledLeft+1, scaledTop+1, scaledWidth-1, scaledHeight-1),
+                      screenCapture.CaptureRegion == null ? new System.Windows.Rect() : screenCapture.CaptureRegion[1]
+                     };
                 //screenCapture.CaptureRegion = magnifier.CurrrentLocationValue;
 
             }
@@ -1224,14 +1645,89 @@ namespace HekiliHelper
 
                 scaledWidth = scaledWidth < 0 ? 1 : scaledWidth;
                 scaledHeight = scaledHeight < 0 ? 1 : scaledHeight;
-                
-                
 
-                screenCapture.CaptureRegion = new System.Windows.Rect(scaledLeft , scaledTop, scaledWidth , scaledHeight);
-                //screenCapture.CaptureRegion = magnifier.CurrrentLocationValue;
+
+                //    if (screenCapture.CaptureRegion != null)
+                screenCapture.CaptureRegion = 
+                    new System.Windows.Rect[2]
+                    { 
+                        new System.Windows.Rect(scaledLeft+1, scaledTop+1, scaledWidth-1, scaledHeight-1),
+                      screenCapture.CaptureRegion == null ? new System.Windows.Rect() : screenCapture.CaptureRegion[1]
+                     };                //screenCapture.CaptureRegion = magnifier.CurrrentLocationValue;
 
             }
         }
+
+        private void Magnifier2_LocationChanged(object? sender, EventArgs e)
+        {
+            //            if (screenCapture == null) return;
+            //            screenCapture.CaptureRegion = magnifier.CurrrentLocationValue;
+            if (screenCapture == null) return;
+            var source = PresentationSource.FromVisual(this);
+            if (source?.CompositionTarget != null)
+            {
+                var dpiX = source.CompositionTarget.TransformToDevice.M11;
+                var dpiY = source.CompositionTarget.TransformToDevice.M22;
+
+                // Get the window's current location
+                var left = magnifier2.CurrrentLocationValue.X;
+                var top = magnifier2.CurrrentLocationValue.Y;
+                var width = magnifier2.CurrrentLocationValue.Width;
+                var height = magnifier2.CurrrentLocationValue.Height;
+
+                // Adjust for DPI scaling
+                var scaledLeft = left * dpiX;
+                var scaledTop = top * dpiY;
+                var scaledWidth = width * dpiX;
+                var scaledHeight = height * dpiY -15;
+                // if (screenCapture.CaptureRegion != null)
+                screenCapture.CaptureRegion = //new System.Windows.Rect(scaledLeft + 1, scaledTop + 1, scaledWidth - 1, scaledHeight - 1);
+                    new System.Windows.Rect[2]
+                    {
+                      screenCapture.CaptureRegion == null ? new System.Windows.Rect() : screenCapture.CaptureRegion[0],
+                     new System.Windows.Rect(scaledLeft+1, scaledTop+1, scaledWidth-1, scaledHeight-1)
+                     };                //screenCapture.CaptureRegion = magnifier.CurrrentLocationValue;
+
+            }
+
+        }
+
+        private void Magnifier2_SizeChanged(object sender, SizeChangedEventArgs e)
+        {
+            if (screenCapture == null) return;
+            var source = PresentationSource.FromVisual(this);
+            if (source?.CompositionTarget != null)
+            {
+                var dpiX = source.CompositionTarget.TransformToDevice.M11;
+                var dpiY = source.CompositionTarget.TransformToDevice.M22;
+
+                // Get the window's current location
+                var left = magnifier2.CurrrentLocationValue.X;
+                var top = magnifier2.CurrrentLocationValue.Y;
+                var width = magnifier2.CurrrentLocationValue.Width;
+                var height = magnifier2.CurrrentLocationValue.Height;
+
+                // Adjust for DPI scaling
+                var scaledLeft = (left * dpiX) + 1;
+                var scaledTop = (top * dpiY) + 1;
+                var scaledWidth = (width * dpiX) - 1;
+                var scaledHeight = (height * dpiY) - 15;
+
+                scaledWidth = scaledWidth < 0 ? 1 : scaledWidth;
+                scaledHeight = scaledHeight < 0 ? 1 : scaledHeight;
+
+
+                //     if (screenCapture.CaptureRegion != null)
+                screenCapture.CaptureRegion = //new System.Windows.Rect(scaledLeft + 1, scaledTop + 1, scaledWidth - 1, scaledHeight - 1);
+                    new System.Windows.Rect[2]
+                    {
+                      screenCapture.CaptureRegion == null ? new System.Windows.Rect() : screenCapture.CaptureRegion[0],
+                     new System.Windows.Rect(scaledLeft+1, scaledTop+1, scaledWidth-1, scaledHeight-1)
+                     };                //screenCapture.CaptureRegion = magnifier.CurrrentLocationValue;
+
+            }
+        }
+
 
         private void Window_Closed(object sender, EventArgs e)
         {
@@ -1242,6 +1738,10 @@ namespace HekiliHelper
             Properties.Settings.Default.CapY = magnifier.Top;
             Properties.Settings.Default.CapWidth = magnifier.Width;
             Properties.Settings.Default.CapHeight = magnifier.Height;
+            Properties.Settings.Default.Cap2X = magnifier2.Left;
+            Properties.Settings.Default.Cap2Y = magnifier2.Top;
+            Properties.Settings.Default.Cap2Width = magnifier2.Width;
+            Properties.Settings.Default.Cap2Height = magnifier2.Height;
             Properties.Settings.Default.AppStartX = this.Left;
             Properties.Settings.Default.AppStartY = this.Top;
             Properties.Settings.Default.TargetR = CurrentR;
@@ -1251,7 +1751,9 @@ namespace HekiliHelper
 
             Properties.Settings.Default.Save();
 
-            magnifier.Close();  
+            magnifier.Close();
+            magnifier2.Close();
+
             if (screenCapture.IsCapturing)
             {
                 screenCapture.StopCapture();
@@ -1274,25 +1776,12 @@ namespace HekiliHelper
         }
         #endregion
 
-        private void sliderTargetR_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
-        {
-
-        }
-
-        private void sliderTargetG_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
-        {
-
-        }
-
-        private void sliderTargetB_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
-        {
-
-        }
  
         private void buPicker_Click(object sender, RoutedEventArgs e)
         {
             _MouseHookID = MouseSetHook(_mouseProc);
-            ChangeCursor();
+            //ChangeCursor();
+            this.TargetColorPicker.SelectedColor = System.Windows.Media.Color.FromArgb(255, 0, 0, 0);
             // Other application logic
         }
 
@@ -1409,6 +1898,7 @@ namespace HekiliHelper
         {
             e.Handled = _regex.IsMatch(e.Text);
         }
+
         private void TextBoxPasting(object sender, DataObjectPastingEventArgs e)
         {
             if (e.DataObject.GetDataPresent(typeof(String)))
@@ -1457,6 +1947,11 @@ namespace HekiliHelper
             magnifier.Width = Properties.Settings.Default.CapWidth;
             magnifier.Height = Properties.Settings.Default.CapHeight;
 
+            magnifier2.Left = Properties.Settings.Default.Cap2X > SystemParameters.PrimaryScreenWidth ? 100 : Properties.Settings.Default.CapX;
+            magnifier2.Top = Properties.Settings.Default.Cap2Y > SystemParameters.PrimaryScreenHeight ? 100 : Properties.Settings.Default.CapY;
+            magnifier2.Width = Properties.Settings.Default.Cap2Width;
+            magnifier2.Height = Properties.Settings.Default.Cap2Height;
+
         }
 
         private void cbPushRelease_Checked(object sender, RoutedEventArgs e)
@@ -1482,6 +1977,34 @@ namespace HekiliHelper
         private void cbQuickDecode_Unchecked(object sender, RoutedEventArgs e)
         {
             Properties.Settings.Default.QuickDecode = false;
+        }
+
+        private void TargetColorPicker_ColorChanged(object sender, RoutedEventArgs e)
+        {
+          
+            Properties.Settings.Default.TargetR = TargetColorPicker.SelectedColor.R;
+            Properties.Settings.Default.TargetG = TargetColorPicker.SelectedColor.G; 
+            Properties.Settings.Default.TargetB = TargetColorPicker.SelectedColor.B;
+            Properties.Settings.Default.TargetA = TargetColorPicker.SelectedColor.A;
+            CurrentR = TargetColorPicker.SelectedColor.R;
+            CurrentG = TargetColorPicker.SelectedColor.G;
+            CurrentB = TargetColorPicker.SelectedColor.B;
+        }
+
+        private void cbUse2ndImage_Checked(object sender, RoutedEventArgs e)
+        {
+            Properties.Settings.Default.Use2ndImageDetection = true;
+            ImageCap2Border.Visibility = Visibility.Visible;
+            lDetectedValue2.Visibility = Visibility.Visible;
+
+        }
+
+        private void cbUse2ndImage_Unchecked(object sender, RoutedEventArgs e)
+        {
+            Properties.Settings.Default.Use2ndImageDetection = false;
+            ImageCap2Border.Visibility = Visibility.Collapsed;
+            lDetectedValue2.Visibility = Visibility.Collapsed;
+
         }
     }
 }

@@ -48,31 +48,43 @@ namespace HekiliHelper
         IScreenCaptureService screenCaptureService;
         IEnumerable<GraphicsCard> graphicsCards;
         IEnumerable<Display> displays;
-        private Rect _captureRegion;
+        private Rect[] _captureRegion = {new Rect(), new Rect()};
         private int _maxHeight;
         private int _maxWidth;
-        public Rect CaptureRegion { get => _captureRegion; set
+        IScreenCapture screenCapture;
+        ICaptureZone capZone1 = null;
+        ICaptureZone capZone2 = null;
+        public Bitmap CapturedImageFirst { get; private set; }
+        public Bitmap CapturedImageSecond { get; private set; }
+
+        public Rect[] CaptureRegion { get => _captureRegion; set
             {
                 if (_captureRegion == value) return;
-                _captureRegion.X = (value.X >= 0 && value.X <= _maxWidth)? value.X : 0;
-                _captureRegion.Y = (value.Y >= 0 && value.Y <= _maxHeight)? value.Y : 0;
-                _captureRegion.Width = (value.Width >= 0 && value.Width <= _maxWidth) ? value.Width : 0;
-                _captureRegion.Height = (value.Height >= 0 && value.Height <= _maxHeight) ? value.Height : 0;
-                if (topLeft != null)
+                for (var i = 0; i < value.Length; i++)
                 {
-                    
-                    screenCapture.UpdateCaptureZone(topLeft, (int)_captureRegion.X, (int)_captureRegion.Y, (int)_captureRegion.Width, (int)_captureRegion.Height, downscaleLevel: 0);
+
+                    _captureRegion[i].X = (value[i].X >= 0 && value[i].X <= _maxWidth) ? value[i].X : 0;
+                    _captureRegion[i].Y = (value[i].Y >= 0 && value[i].Y <= _maxHeight) ? value[i].Y : 0;
+                    _captureRegion[i].Width = (value[i].Width >= 0 && value[i].Width <= _maxWidth) ? value[i].Width : 0;
+                    _captureRegion[i].Height = (value[i].Height >= 0 && value[i].Height <= _maxHeight) ? value[i].Height : 0;
+                    if (capZone1 != null && i == 0)
+                    {
+                        screenCapture.UpdateCaptureZone(capZone1, (int)_captureRegion[i].X, (int)_captureRegion[i].Y, (int)_captureRegion[i].Width, (int)_captureRegion[i].Height, downscaleLevel: 0);
+                    }
+                    if (capZone2 != null && i == 1)
+                    {
+                        screenCapture.UpdateCaptureZone(capZone2, (int)_captureRegion[i].X, (int)_captureRegion[i].Y, (int)_captureRegion[i].Width, (int)_captureRegion[i].Height, downscaleLevel: 0);
+                    }
+
+
                 }
             } 
         }
-        IScreenCapture screenCapture;
-        ICaptureZone topLeft = null;
+
         
-      //  public Rect capRegion { get; set; }
 
 
 
-        public Bitmap CapturedImage { get;private set; }
 
 
         public void GrabScreen ()
@@ -87,10 +99,10 @@ namespace HekiliHelper
             // Do something with the captured image - e.g. access all pixels (same could be done with topLeft)
 
             //Lock the zone to access the data. Remember to dispose the returned disposable to unlock again.
-            using (topLeft.Lock())
+            using (capZone1.Lock())
             {
 
-                CapturedImage = ImageExtension.ToBitmap(topLeft.Image);
+                CapturedImageFirst = ImageExtension.ToBitmap(capZone1.Image);
 
                 //// You have multiple options now:
                 //// 1. Access the raw byte-data
@@ -122,13 +134,19 @@ namespace HekiliHelper
 
                 // All of the things above (rows, columns, sub-images) do NOT allocate new memory so they are fast and memory efficient, but for that reason don't provide raw byte access.
             }
+            using (capZone2.Lock())
+            {
+                CapturedImageSecond = ImageExtension.ToBitmap(capZone2.Image);
+            }
+
 
         }
-
-        public CaptureScreen(int x, int y, int width, int height, int ?downscaleLevel)
+        //int x, int y, int width, int height,
+        public CaptureScreen(Rect[] Regions, int ?downscaleLevel)
         {
-            _captureRegion = new Rect { X = (double)x, Y = (double)y, Width = width, Height = height };
-
+            //            _captureRegion[0] = //new Rect { X = (double)x, Y = (double)y, Width = width, Height = height };
+            //           _captureRegion[1] = //new Rect { X = (double)x, Y = (double)y, Width = width, Height = height };
+            _captureRegion = Regions;
             // Create a screen-capture service
             screenCaptureService = new DX11ScreenCaptureService();
 
@@ -142,19 +160,18 @@ namespace HekiliHelper
             screenCapture = screenCaptureService.GetScreenCapture(displays.First());
             _maxHeight = displays.First().Height ;
             _maxWidth = displays.First().Width ;
-            
-            
 
             // Register the regions you want to capture om the screen
             // Capture the whole screen
             // ICaptureZone fullscreen = screenCapture.RegisterCaptureZone(0, 0, screenCapture.Display.Width, screenCapture.Display.Height);
             // Capture a 100x100 region at the top left and scale it down to 50x50
-            topLeft = screenCapture.RegisterCaptureZone((int)_captureRegion.X, (int)_captureRegion.Y, (int)_captureRegion.Width, (int)_captureRegion.Height, downscaleLevel: 0);
+            capZone1 = screenCapture.RegisterCaptureZone((int)_captureRegion[0].X, (int)_captureRegion[0].Y, (int)_captureRegion[0].Width, (int)_captureRegion[0].Height, downscaleLevel: 0);
+            capZone2 = screenCapture.RegisterCaptureZone((int)_captureRegion[1].X, (int)_captureRegion[1].Y, (int)_captureRegion[1].Width, (int)_captureRegion[1].Height, downscaleLevel: 0);
+        }
 
-                //GrabScreen();
 
 
-            }
+
     }
 
 

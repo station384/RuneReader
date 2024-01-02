@@ -34,8 +34,9 @@ Height="Auto"
         </StackPanel>
 
         <StackPanel Grid.Row="0" Grid.Column="1" Margin="2,0,5,2">
-            <Label Name="LabelDecoded" Content="Decoded Values" HorizontalAlignment="Center"></Label>
-            <Label x:Name="lDetectedValue" Content="" HorizontalAlignment="Center"  VerticalAlignment="Top"  Width="50"/>
+
+            <!--<Label Name="LabelDecoded" Content="Decoded Values" HorizontalAlignment="Center"></Label>-->
+         
             <Button x:Name="button_Capture" Content="Capture" HorizontalAlignment="Center"  VerticalAlignment="Top"  Click="Capture_Click" Visibility="Hidden" ToolTip="Enable/Disable capture frame"/>
             <Button x:Name="bToggleMagBorder" Content="Scan Selection" HorizontalAlignment="Center" VerticalAlignment="Top" Click="bToggleMagBorder_Click" ToolTip="Emergecy postion reset of capture frame" />
             <Button x:Name="bResetMagPosition" Content="Reset Selection" HorizontalAlignment="Center" VerticalAlignment="Top" Click="bResetMagPosition_Click" Margin="0,5,0,0"/>
@@ -54,15 +55,21 @@ Height="Auto"
             </StackPanel>
             <CheckBox Name="cbPushRelease" Content="Push And Release mode" IsChecked="False" Checked="cbPushRelease_Checked" Unchecked="cbPushRelease_Unchecked" ToolTip="Commands will be pressed until next command is detected, or fixed time"></CheckBox>
             <CheckBox Name="cbQuickDecode" Content="Quick Decode" IsChecked="False" Checked="cbQuickDecode_Checked" Unchecked="cbQuickDecode_Unchecked" ToolTip="Wait for detection in upper left region"></CheckBox>
+            <CheckBox Name="cbUse2ndImage" Content="2nd Image Detection" IsChecked="False" Checked="cbUse2ndImage_Checked"  Unchecked="cbUse2ndImage_Unchecked"  ToolTip="Utilize 2nd Region Detection"></CheckBox>
 
 
         </StackPanel>
 
         <StackPanel Grid.Row="0" Grid.Column="0" Width="Auto" Margin="2,0,5,2" >
             <Label Name="ImageLabel" Content="Captured Image" HorizontalAlignment="Center"></Label>
-            <Border BorderThickness="3"  Background="Black"  Width="150" Height="150">
-                <Image x:Name="imageCap"  Stretch="Uniform" Margin="5,5,5,5"/>
+            <Border Name="ImageCapBorder" BorderThickness="5"  BorderBrush="Black" Background="Black"  Width="150" Height="150">
+                <Image x:Name="imageCap"  Stretch="Uniform" Margin="5,5,5,5" />
             </Border>
+            <Label x:Name="lDetectedValue"   Content="" HorizontalAlignment="Center"  VerticalAlignment="Top"  Width="50"/>
+            <Border Name="ImageCap2Border" BorderThickness="5" BorderBrush="Black" Background="Black"  Width="150" Height="150">
+                <Image x:Name="imageCap2"  Stretch="Uniform" Margin="5,5,5,5" />
+            </Border>
+            <Label x:Name="lDetectedValue2" Content="" HorizontalAlignment="Center"  VerticalAlignment="Top"  Width="50"/>
         </StackPanel>
 
 
@@ -101,7 +108,7 @@ Height="Auto"
                 <!--<colorpicker:StandardColorPicker x:Name="main" Width="200" Height="380" Grid.Column="0" Grid.Row="6" Grid.ColumnSpan="2"/>-->
                 <StackPanel Grid.Column="3" Grid.RowSpan="6" VerticalAlignment ="Center" Orientation="Vertical">
                     
-                <colorpicker:PortableColorPicker Name="TargetColorPicker"  Width="40" Height="40" ShowAlpha="False"/>
+                <colorpicker:PortableColorPicker Name="TargetColorPicker"  Width="40" Height="40" ShowAlpha="False" ColorChanged="TargetColorPicker_ColorChanged"/>
                     <Button Click="buPicker_Click">Pick</Button>
                 </StackPanel>
             </Grid>
