@@ -777,7 +777,7 @@ namespace HekiliHelper
 
             var x = (src.Width / 8) + (src.Width / 16);
             var y = (src.Height / 16);
-            var width = (src.Width / 2) - (src.Width / 5);
+            var width = (src.Width / 2) - (src.Width / 4);
             var height = (src.Height / 2) / 2;
             OpenCvSharp.Rect roi = new OpenCvSharp.Rect(
                 x, y, width, height
@@ -815,9 +815,9 @@ namespace HekiliHelper
 
             //    );
 
-            var x1 = (src.Width / 2) + (src.Width / 32);
+            var x1 = (src.Width / 2) + (src.Width / 16);
             var y1 = (src.Height / 16);
-            var width1 = (src.Width / 2) - (src.Width / 5);
+            var width1 = (src.Width / 2) - (src.Width / 4);
             var height1 = (src.Height / 2) / 2;
             OpenCvSharp.Rect roi1 = new OpenCvSharp.Rect(x1, y1, width1, height1);
 
@@ -851,8 +851,8 @@ namespace HekiliHelper
             //new OpenCvSharp.Point((resizedMat.Width / 8) + (resizedMat.Width / 4), (resizedMat.Height / 3)),
 
             var x = (src.Width / 8) + (src.Width / 16);
-            var y = (src.Height / 2);
-            var width = (src.Width / 2) - (src.Width / 5);
+            var y = (src.Height / 2) + (src.Height / 8);
+            var width = (src.Width / 2) - (src.Width / 4);
             var height = (src.Height / 2) / 2;
             OpenCvSharp.Rect roi = new OpenCvSharp.Rect(x, y, width, height);
 
@@ -883,11 +883,11 @@ namespace HekiliHelper
             //       Cv2.Rectangle(resizedMat,
             //new OpenCvSharp.Point((resizedMat.Width / 4), 0),
             //new OpenCvSharp.Point((resizedMat.Width / 8) + (resizedMat.Width / 4), (resizedMat.Height / 3)),
-
-            var x = (src.Width / 4) + (src.Width / 16);
-            var y = (src.Height / 2);
-            var width = (src.Width / 2) - (src.Width / 5);
+            var width = (src.Width / 2) - (src.Width / 4);
             var height = (src.Height / 2) / 2;
+            var x = (src.Width / 2) - (width / 2);
+            var y = (src.Height / 2) + (src.Height / 8);
+
             OpenCvSharp.Rect roi = new OpenCvSharp.Rect(x, y, width, height);
 
             Mat firstQuarter = src.Clone(roi);// new Mat(src, roi);
@@ -910,42 +910,43 @@ namespace HekiliHelper
 
         private void DrawMarkers(ref Mat src)
         {
-            Cv2.Line(src, (int)(src.Width / 2), 0, (int)(src.Width / 2), src.Height, Scalar.FromRgb(255, 0, 0), 1, LineTypes.Link8);
-            Cv2.Line(src, 0, (int)(src.Height / 2), src.Width, (int)(src.Height / 2), Scalar.FromRgb(255, 0, 0), 1, LineTypes.Link8);
+            Cv2.Line(src, (int)(src.Width / 2), 0, (int)(src.Width / 2), src.Height, Scalar.FromRgb(255, 0, 0), 2, LineTypes.AntiAlias);
+            Cv2.Line(src, 0, (int)(src.Height / 2), src.Width, (int)(src.Height / 2), Scalar.FromRgb(255, 0, 0), 2, LineTypes.AntiAlias);
 
 
             //Draw top left sensor
             var x = (src.Width / 8) + (src.Width / 16);
             var y = (src.Height / 16);
-            var width = (src.Width / 2) - (src.Width / 5);
+            var width = (src.Width / 2) - (src.Width / 4);
             var height = (src.Height / 2) / 2;
             OpenCvSharp.Rect roi = new OpenCvSharp.Rect(x, y, width, height);
-            Cv2.Rectangle(src, roi, Scalar.Red, 1, LineTypes.Link8);
+            Cv2.Rectangle(src, roi, Scalar.Red, 2, LineTypes.AntiAlias);
 
             //Draw top right sensor
-            var x1 = (src.Width / 2) + (src.Width / 32);
+            var x1 = (src.Width / 2) + (src.Width / 16);
             var y1 = (src.Height / 16);
-            var width1 = (src.Width / 2) - (src.Width / 5);
+            var width1 = (src.Width / 2) - (src.Width / 4);
             var height1 = (src.Height / 2) / 2;
             OpenCvSharp.Rect roi1 = new OpenCvSharp.Rect(x1, y1, width1, height1);
-            Cv2.Rectangle(src, roi1, Scalar.Red, 1, LineTypes.Link8);
+            Cv2.Rectangle(src, roi1, Scalar.Red, 2, LineTypes.AntiAlias);
 
 
             //Draw Left Lower Sensor
             var x2 = (src.Width / 8) + (src.Width / 16);
-            var y2 = ((src.Height / 2));
-            var width2 = (src.Width / 2) - (src.Width / 5);
+            var y2 = (src.Height / 2) + (src.Height / 8);
+            var width2 = (src.Width / 2) - (src.Width / 4);
             var height2 = (src.Height / 2) / 2;
             OpenCvSharp.Rect roi2 = new OpenCvSharp.Rect(x2, y2, width2, height2);
-            Cv2.Rectangle(src, roi2, Scalar.Red, 1, LineTypes.Link8);
+            Cv2.Rectangle(src, roi2, Scalar.Red, 2, LineTypes.AntiAlias);
 
             //Draw Bottom Center Sensor
-            var x3 = ((src.Width / 4) + (src.Width / 16)) ;
-            var y3 = ((src.Height / 2));
-            var width3 = (src.Width / 2) - (src.Width / 5);
+            var width3 = (src.Width / 2) - (src.Width / 4);
             var height3 = (src.Height / 2) / 2;
+            var x3 = (src.Width / 2) - (width3 / 2) ;
+            var y3 = (src.Height / 2) + (src.Height / 8);
+            
             OpenCvSharp.Rect roi3 = new OpenCvSharp.Rect(x3, y3, width3, height3);
-            Cv2.Rectangle(src, roi3, Scalar.Blue, 1, LineTypes.Link8);
+            Cv2.Rectangle(src, roi3, Scalar.Blue, 2, LineTypes.AntiAlias);
 
         }
 
@@ -981,7 +982,7 @@ namespace HekiliHelper
             regions.TopRight = IsThereAnImageInTopRightQuarter(gray);
             regions.BottomLeft = IsThereAnImageInBottomLeftQuarter(gray);
             regions.BottomCenter = IsThereAnImageInBottomCenter(gray);
-
+            resizedMat = RescaleImageToNewDpi(resizedMat, image.HorizontalResolution, 96);
 
             if (regions.TopRight)
             {
@@ -1252,7 +1253,7 @@ namespace HekiliHelper
                             //    continue;
                             //}
 
-                         //   if (CurrentImageRegions.SecondImageRegions.TopLeft == false)
+                            //   if (CurrentImageRegions.SecondImageRegions.TopLeft == false)
                             //{
                             //    keyProcessing2 = false;
                             //    _currentKeyToSend[1] = "";
@@ -1280,7 +1281,7 @@ namespace HekiliHelper
 
                                 ImageCap2Border.BorderBrush = System.Windows.Media.Brushes.Red;
                                 // Let up on the 1st command key
-                                PostMessage(_wowWindowHandle, WM_KEYUP, vkCode, 0);
+             
                                 ImageCapBorder.BorderBrush = System.Windows.Media.Brushes.Black;
 
 
@@ -1291,36 +1292,48 @@ namespace HekiliHelper
 
                                 await Task.Yield();
 
-                                // Handle the if command is tied to CTRL or ALT
-                                if (currentKeyToSend1[1] == 'C') //&& CtrlPressed == false
-                                    PostMessage(_wowWindowHandle, WM_KEYDOWN, VK_CONTROL, 0);
-                                else
-                                    PostMessage(_wowWindowHandle, WM_KEYUP, VK_CONTROL, 0);
-
-                                if (currentKeyToSend1[1] == 'A') //&& AltPressed == false
-                                    PostMessage(_wowWindowHandle, WM_KEYDOWN, VK_MENU, 0);
-                                else
-                                    PostMessage(_wowWindowHandle, WM_KEYUP, VK_MENU, 0);
-
-                         
-                                // Tranlate the char to the virtual Key Code
-                                vkCode2 = VirtualKeyCodeMapper.GetVirtualKeyCode(currentKeyToSend1);
-                                _currentKeyToSend[0] = "";
-                                PostMessage(_wowWindowHandle, WM_KEYDOWN, vkCode2, 0);
-                                // CTRL and ALT do not need to be held down just only pressed initally for the command to be interpeted correctly
-                                if (currentKeyToSend1[1] == 'C') // && CtrlPressed == true
-                                    PostMessage(_wowWindowHandle, WM_KEYUP, VK_CONTROL, 0);
-
-                                if (currentKeyToSend1[1] == 'A') // && AltPressed == true
-                                    PostMessage(_wowWindowHandle, WM_KEYUP, VK_MENU, 0);
 
 
                                 if (_keyPressMode)
                                 {
+                                    while (CurrentImageRegions.SecondImageRegions.TopRight == true && button_Start.IsEnabled == false) // delay our press till we make sure hekili has chosen a new cast
+                                    {
+                                        await Task.Yield();
+                                    }
+                      
+       
+
+                                    while (CurrentImageRegions.FirstImageRegions.TopLeft == false && button_Start.IsEnabled == false) // delay our press till we make sure hekili has chosen a new cast
+                                    {
+                                        await Task.Delay(30);
+                                    }
+                                    PostMessage(_wowWindowHandle, WM_KEYUP, vkCode, 0);
+                                    // Handle the if command is tied to CTRL or ALT
+                                    if (currentKeyToSend1[1] == 'C') //&& CtrlPressed == false
+                                        PostMessage(_wowWindowHandle, WM_KEYDOWN, VK_CONTROL, 0);
+                                    else
+                                        PostMessage(_wowWindowHandle, WM_KEYUP, VK_CONTROL, 0);
+
+                                    if (currentKeyToSend1[1] == 'A') //&& AltPressed == false
+                                        PostMessage(_wowWindowHandle, WM_KEYDOWN, VK_MENU, 0);
+                                    else
+                                        PostMessage(_wowWindowHandle, WM_KEYUP, VK_MENU, 0);
+
+
+                                    // Tranlate the char to the virtual Key Code
+                                    vkCode2 = VirtualKeyCodeMapper.GetVirtualKeyCode(currentKeyToSend1);
+                                    PostMessage(_wowWindowHandle, WM_KEYDOWN, vkCode2, 0);
+                                    // CTRL and ALT do not need to be held down just only pressed initally for the command to be interpeted correctly
+                                    if (currentKeyToSend1[1] == 'C') // && CtrlPressed == true
+                                        PostMessage(_wowWindowHandle, WM_KEYUP, VK_CONTROL, 0);
+
+                                    if (currentKeyToSend1[1] == 'A') // && AltPressed == true
+                                        PostMessage(_wowWindowHandle, WM_KEYUP, VK_MENU, 0);
                                     // Now we pause until top is filled then we release the key that should queue the command.
                                     while (CurrentImageRegions.FirstImageRegions.TopLeft == false && button_Start.IsEnabled == false)
                                     {
                                         await Task.Yield();
+                                        await Task.Delay(30);
                                        
                                     }
                                 }
@@ -1386,6 +1399,7 @@ namespace HekiliHelper
             magnifier.Height = Properties.Settings.Default.CapHeight;
             magnifier.SizeChanged += Magnifier_SizeChanged;
             magnifier.LocationChanged += Magnifier_LocationChanged;
+       
 
 
 
@@ -1594,7 +1608,7 @@ namespace HekiliHelper
                 var scaledLeft = left * dpiX;
                 var scaledTop = top * dpiY;
                 var scaledWidth = width * dpiX;
-                var scaledHeight = height * dpiY;
+                var scaledHeight = height * dpiY - 15;
                 //     if (screenCapture.CaptureRegion != null ) 
                 screenCapture.CaptureRegion = 
 
@@ -1665,7 +1679,7 @@ namespace HekiliHelper
                 var scaledLeft = left * dpiX;
                 var scaledTop = top * dpiY;
                 var scaledWidth = width * dpiX;
-                var scaledHeight = height * dpiY;
+                var scaledHeight = height * dpiY -15;
                 // if (screenCapture.CaptureRegion != null)
                 screenCapture.CaptureRegion = //new System.Windows.Rect(scaledLeft + 1, scaledTop + 1, scaledWidth - 1, scaledHeight - 1);
                     new System.Windows.Rect[2]
