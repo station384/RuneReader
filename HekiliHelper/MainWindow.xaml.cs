@@ -82,6 +82,8 @@ namespace HekiliHelper
             {"8", (int)VirtualKeyCodes.VirtualKeyStates.VK_Alphanumeric_8},
             {"9", (int)VirtualKeyCodes.VirtualKeyStates.VK_Alphanumeric_9},
             {"0", (int)VirtualKeyCodes.VirtualKeyStates.VK_Alphanumeric_0},
+            {"AF4", (int)VirtualKeyCodes.VirtualKeyStates.VK_F4},   // Durr.....  What would happen if you sent ALT-F4 to the game....   
+
             // Had to remove these keys as that can't be detected using OCR very well.   only about a 30% accuarcy
            {"-", (int)VirtualKeyCodes.VirtualKeyStates.VK_OEM_MINUS},
             {"=", 187}, // This key can be different depending on country, i.e.  US its the = key,  Spanish is the ? (upside down)
@@ -131,10 +133,13 @@ namespace HekiliHelper
             {"CF10", (int)VirtualKeyCodes.VirtualKeyStates.VK_F10},
             {"CF11", (int)VirtualKeyCodes.VirtualKeyStates.VK_F11},
             {"CF12", (int)VirtualKeyCodes.VirtualKeyStates.VK_F12},
+   
+            
+            
             {"AF1", (int)VirtualKeyCodes.VirtualKeyStates.VK_F1},
             {"AF2", (int)VirtualKeyCodes.VirtualKeyStates.VK_F2},
             {"AF3", (int)VirtualKeyCodes.VirtualKeyStates.VK_F3},
-            {"AF4", (int)VirtualKeyCodes.VirtualKeyStates.VK_F4},
+           // {"AF4", (int)VirtualKeyCodes.VirtualKeyStates.VK_F4},
             {"AF5", (int)VirtualKeyCodes.VirtualKeyStates.VK_F5},
             {"AF6", (int)VirtualKeyCodes.VirtualKeyStates.VK_F6},
             {"AF7", (int)VirtualKeyCodes.VirtualKeyStates.VK_F7},
