@@ -466,23 +466,28 @@ namespace HekiliHelper
  
             _timer.Stop();
             // If key is already processing skip this tick
-            if (keyProcessingFirst || keyProcessingSecond )
+            if (keyProcessingFirst || keyProcessingSecond)
+            {
+                if (activationKeyPressed) _timer.Start();
                 return;
-
+            }
             if (_currentKeyToSend[0] == "" && keyProcessingFirst == true)
             {
+                if (activationKeyPressed) _timer.Start();
                 return;
             }
 
 
             if (CurrentImageRegions.FirstImageRegions.TopLeft == false && keyProcessingFirst == true)  // First Image is almost done processing
             {
+                if (activationKeyPressed) _timer.Start();
                 return;
             }
 
             if (_currentKeyToSend[0] == "")  // check again if the OCR is done if it isn't try again
             {
                 keyProcessingFirst = false;
+                if (activationKeyPressed) _timer.Start();
                 return;
             }
 
