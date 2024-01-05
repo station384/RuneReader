@@ -464,6 +464,7 @@ namespace HekiliHelper
         private async void mainTimerTick(object? sender, EventArgs args)
         {
  
+            _timer.Stop();
             // If key is already processing skip this tick
             if (keyProcessingFirst || keyProcessingSecond )
                 return;
@@ -500,6 +501,7 @@ namespace HekiliHelper
             if (VirtualKeyCodeMapper.HasExcludeKey(keyToSendFirst))
             {
                 keyProcessingFirst = false;
+                if (activationKeyPressed) _timer.Start();
                 return;
             }
 
@@ -507,6 +509,7 @@ namespace HekiliHelper
             if (!VirtualKeyCodeMapper.HasKey(keyToSendFirst))
             {
                 keyProcessingFirst = false;
+                if (activationKeyPressed) _timer.Start();
                 return;
             }
 
@@ -574,9 +577,12 @@ namespace HekiliHelper
                 while (_currentKeyToSend[0] != "")
                 {
                     await Task.Delay(1);
-                    if (DateTime.Now > currentTime.AddMilliseconds(1000)) // Its been 1 second.  lets break out and try again. 
+                    if (DateTime.Now > currentTime.AddMilliseconds(250)) // Its been 1 second.  lets break out and try again. 
                     {
-                        break;
+                        keyProcessingFirst = false;
+                        WindowsAPICalls.PostMessage(_wowWindowHandle, WindowsAPICalls.WM_KEYUP, vkCode, 0);
+                        if (activationKeyPressed) _timer.Start();
+                        return;
 
                     }
                 }
@@ -585,6 +591,11 @@ namespace HekiliHelper
 
                 if (_keyPressMode)
                 {
+                    while (CurrentImageRegions.FirstImageRegions.BottomLeft == false && button_Start.IsEnabled == false && activationKeyPressed == true)  // Do this loop till we have see we have a value starting to appear
+                    {
+                        await Task.Delay(1);
+                    }
+                    WindowsAPICalls.PostMessage(_wowWindowHandle, WindowsAPICalls.WM_KEYUP, vkCode, 0);
 
                     while (CurrentImageRegions.FirstImageRegions.TopLeft == false && button_Start.IsEnabled == false && activationKeyPressed == true)  // Do this loop till we have see we have a value starting to appear
                     {
@@ -621,21 +632,21 @@ namespace HekiliHelper
                                 keyProcessingSecond = false;
                                 continue;
                             }
+                            ImageCapBorder.BorderBrush = System.Windows.Media.Brushes.Black;
+                            //   if (CurrentImageRegions.SecondImageRegions.TopLeft == false)
+                            //{
+                            //    keyProcessing2 = false;
+                            //    _currentKeyToSend[1] = "";
+                            //    continue;
+                            //}
 
-                        //   if (CurrentImageRegions.SecondImageRegions.TopLeft == false)
-                        //{
-                        //    keyProcessing2 = false;
-                        //    _currentKeyToSend[1] = "";
-                        //    continue;
-                        //}
- 
                             if ((!VirtualKeyCodeMapper.HasKey(keyToSendSecond)) || (VirtualKeyCodeMapper.HasExcludeKey(keyToSendSecond))
                             )
                             {
                                 keyProcessingSecond = false;
                                 continue;
                             }
-
+                            ImageCap2Border.BorderBrush = System.Windows.Media.Brushes.Red;
                             //CurrentImageRegions.SecondImageRegions.TopLeft = false;
                             //CurrentImageRegions.SecondImageRegions.TopRight = false;
                             //CurrentImageRegions.SecondImageRegions.BottomLeft = false;
@@ -655,7 +666,7 @@ namespace HekiliHelper
                                 // There would have to some logic in the capture to say its a new detection
 
 
-                                await Task.Yield();
+                                await Task.Delay(1);
 
 
 
@@ -666,12 +677,12 @@ namespace HekiliHelper
                                     //    await Task.Yield();
                                     //}
 
-                                    ImageCap2Border.BorderBrush = System.Windows.Media.Brushes.Red;
+                             
                            
 
                                     while (CurrentImageRegions.FirstImageRegions.TopLeft == false && button_Start.IsEnabled == false ) // delay our press till we make sure hekili has chosen a new cast
                                     {
-                                        await Task.Yield();
+                                        await Task.Delay(1);
                                     }
 
                            
@@ -709,22 +720,23 @@ namespace HekiliHelper
                                     // Now we pause until top is filled then we release the key that should queue the command.
                                     while (CurrentImageRegions.FirstImageRegions.TopLeft == false && button_Start.IsEnabled == false)
                                     {
-                                        await Task.Yield();
+                                        await Task.Delay(1);
                                     }
                                     WindowsAPICalls.PostMessage(_wowWindowHandle, WindowsAPICalls.WM_KEYUP, vkCode2, 0);
-                                    ImageCap2Border.BorderBrush = System.Windows.Media.Brushes.Black;
-                                    if (_currentKeyToSend[1] != "")
+                                 
+                                    if (_currentKeyToSend[1] != "" && _currentKeyToSend[1] == "")
                                     {
                                         keyToSendSecond = _currentKeyToSend[1];
                                         keyToSendFirst = "";
                                         goto DoSecondKeyAgain;
                                     }
+                                 
                                 }
                                 // this stops the sending of the key till the timer is almost up.  
                                 // it takes advantage of the cooldown visual cue in the game that darkens the font (changes the color)
                                 // the OCR doesn't see a new char until it is almost times out, at that point it can be pressed and would be added to the action queue
 
-
+                                ImageCap2Border.BorderBrush = System.Windows.Media.Brushes.Black;
                                 keyProcessingSecond = false;
 
 
@@ -739,8 +751,8 @@ namespace HekiliHelper
 
                 }
          
-                    WindowsAPICalls.PostMessage(_wowWindowHandle, WindowsAPICalls.WM_KEYUP, vkCode, 0);
-                ImageCapBorder.BorderBrush = System.Windows.Media.Brushes.Black;
+              
+         
 
 
 
@@ -765,15 +777,17 @@ namespace HekiliHelper
 
             
 
-            ImageCap2Border.BorderBrush = System.Windows.Media.Brushes.Black;
+            ImageCapBorder.BorderBrush = System.Windows.Media.Brushes.Black;
 
             keyProcessingFirst = false;
+            if (activationKeyPressed) _timer.Start();
+
 
         }
-    
 
 
-//        Bitmap _holderBitmap;
+
+        //        Bitmap _holderBitmap;
         public MainWindow()
         {
             InitializeComponent();
@@ -868,7 +882,7 @@ namespace HekiliHelper
             // This timer handles the key sending
           
             _timer = new System.Windows.Threading.DispatcherTimer(DispatcherPriority.Background);
-            _timer.Interval = TimeSpan.FromMilliseconds(50);
+            _timer.Interval = TimeSpan.FromMilliseconds(25);
             _timer.Tick += mainTimerTick;
 
 
