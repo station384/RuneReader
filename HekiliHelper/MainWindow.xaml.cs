@@ -804,6 +804,7 @@ namespace HekiliHelper
             magnifier.Top = Properties.Settings.Default.CapY > SystemParameters.PrimaryScreenHeight ? 100 : Properties.Settings.Default.CapY;
             magnifier.Width = Properties.Settings.Default.CapWidth;
             magnifier.Height = Properties.Settings.Default.CapHeight;
+            magnifier.ShowInTaskbar = false;
             magnifier.SizeChanged += Magnifier_SizeChanged;
             magnifier.LocationChanged += Magnifier_LocationChanged;
        
@@ -817,22 +818,74 @@ namespace HekiliHelper
             magnifier2.Top = Properties.Settings.Default.CapY > SystemParameters.PrimaryScreenHeight ? 100 : Properties.Settings.Default.Cap2Y;
             magnifier2.Width = Properties.Settings.Default.Cap2Width;
             magnifier2.Height = Properties.Settings.Default.Cap2Height;
+            magnifier2.ShowInTaskbar = false;
             magnifier2.SizeChanged += Magnifier2_SizeChanged;
             magnifier2.LocationChanged += Magnifier2_LocationChanged;
 
 
 
 
+            //CurrentR = Properties.Settings.Default.TargetR;
+            //CurrentG = Properties.Settings.Default.TargetG;
+            //CurrentB = Properties.Settings.Default.TargetB;
+            //CurrentA = Properties.Settings.Default.TargetA;
+
+            ColorPicker.PortableColorPicker cp;
+            cp = (ColorPicker.PortableColorPicker)cbColorDruid.Content;
+            cp.SelectedColor = System.Windows.Media.Color.FromArgb((byte)Properties.Settings.Default.DruidTargetA, (byte)Properties.Settings.Default.DruidTargetR, (byte)Properties.Settings.Default.DruidTargetG, (byte)Properties.Settings.Default.DruidTargetB);
+
+            cp = (ColorPicker.PortableColorPicker)cbColorPaladin.Content;
+            cp.SelectedColor = System.Windows.Media.Color.FromArgb((byte)Properties.Settings.Default.PaladinTargetA, (byte)Properties.Settings.Default.PaladinTargetR, (byte)Properties.Settings.Default.PaladinTargetG, (byte)Properties.Settings.Default.PaladinTargetB);
+
+            cp = (ColorPicker.PortableColorPicker)cbColorWarlock.Content;
+            cp.SelectedColor = System.Windows.Media.Color.FromArgb((byte)Properties.Settings.Default.WarlockTargetA, (byte)Properties.Settings.Default.WarlockTargetR, (byte)Properties.Settings.Default.WarlockTargetG, (byte)Properties.Settings.Default.WarlockTargetB);
+
+            cp = (ColorPicker.PortableColorPicker)cbColorShaman.Content;
+            cp.SelectedColor = System.Windows.Media.Color.FromArgb((byte)Properties.Settings.Default.ShamanTargetA, (byte)Properties.Settings.Default.ShamanTargetR, (byte)Properties.Settings.Default.ShamanTargetG, (byte)Properties.Settings.Default.ShamanTargetB);
+
+            cp = (ColorPicker.PortableColorPicker)cbColorRogue.Content;
+            cp.SelectedColor = System.Windows.Media.Color.FromArgb((byte)Properties.Settings.Default.RogueTargetA, (byte)Properties.Settings.Default.RogueTargetR, (byte)Properties.Settings.Default.RogueTargetG, (byte)Properties.Settings.Default.RogueTargetB);
+
+            cp = (ColorPicker.PortableColorPicker)cbColorWarrior.Content;
+            cp.SelectedColor = System.Windows.Media.Color.FromArgb((byte)Properties.Settings.Default.WarriorTargetA, (byte)Properties.Settings.Default.WarriorTargetR, (byte)Properties.Settings.Default.WarriorTargetG, (byte)Properties.Settings.Default.WarriorTargetB);
+
+            cp = (ColorPicker.PortableColorPicker)cbColorEvoker.Content;
+            cp.SelectedColor = System.Windows.Media.Color.FromArgb((byte)Properties.Settings.Default.EvokerTargetA, (byte)Properties.Settings.Default.EvokerTargetR, (byte)Properties.Settings.Default.EvokerTargetG, (byte)Properties.Settings.Default.EvokerTargetB);
+
+            cp = (ColorPicker.PortableColorPicker)cbColorHunter.Content;
+            cp.SelectedColor = System.Windows.Media.Color.FromArgb((byte)Properties.Settings.Default.HunterTargetA, (byte)Properties.Settings.Default.HunterTargetR, (byte)Properties.Settings.Default.HunterTargetG, (byte)Properties.Settings.Default.HunterTargetB);
+
+            cp = (ColorPicker.PortableColorPicker)cbColorMage.Content;
+            cp.SelectedColor = System.Windows.Media.Color.FromArgb((byte)Properties.Settings.Default.MageTargetA, (byte)Properties.Settings.Default.MageTargetR, (byte)Properties.Settings.Default.MageTargetG, (byte)Properties.Settings.Default.MageTargetB);
+            cp = (ColorPicker.PortableColorPicker)cbColorPriest.Content;
+            cp.SelectedColor = System.Windows.Media.Color.FromArgb((byte)Properties.Settings.Default.PriestTargetA, (byte)Properties.Settings.Default.PriestTargetR, (byte)Properties.Settings.Default.PriestTargetG, (byte)Properties.Settings.Default.PriestTargetB);
+            cp = (ColorPicker.PortableColorPicker)cbColorMonk.Content;
+            cp.SelectedColor = System.Windows.Media.Color.FromArgb((byte)Properties.Settings.Default.MonkTargetA, (byte)Properties.Settings.Default.MonkTargetR, (byte)Properties.Settings.Default.MonkTargetG, (byte)Properties.Settings.Default.MonkTargetB);
+            cp = (ColorPicker.PortableColorPicker)cbColorDemonHunter.Content;
+            cp.SelectedColor = System.Windows.Media.Color.FromArgb((byte)Properties.Settings.Default.DemonHunterTargetA, (byte)Properties.Settings.Default.DemonHunterTargetR, (byte)Properties.Settings.Default.DemonHunterTargetG, (byte)Properties.Settings.Default.DemonHunterTargetB);
+            
+            cp = (ColorPicker.PortableColorPicker)cbColorDefault.Content;
+            cp.SelectedColor = System.Windows.Media.Color.FromArgb((byte)Properties.Settings.Default.TargetA, (byte)Properties.Settings.Default.TargetR, (byte)Properties.Settings.Default.TargetG, (byte)Properties.Settings.Default.TargetB);
+
+
+
+            CheckBox cb =  GetSelectedCheckBox();
+            cp = (ColorPicker.PortableColorPicker)cb.Content;
+            CurrentR = cp.SelectedColor.R;
+            CurrentG = cp.SelectedColor.G;
+            CurrentB = cp.SelectedColor.B;
+            CurrentA = cp.SelectedColor.A;
+
 
 
             //TargetColorPicker.ColorState =  new ColorPicker.Models.ColorState();
-            TargetColorPicker.SelectedColor = System.Windows.Media.Color.FromArgb((byte)Properties.Settings.Default.TargetA, (byte)Properties.Settings.Default.TargetR, (byte)Properties.Settings.Default.TargetG, (byte)Properties.Settings.Default.TargetB);
-            CurrentR = Properties.Settings.Default.TargetR;
-            CurrentG = Properties.Settings.Default.TargetG;
-            CurrentB = Properties.Settings.Default.TargetB;
-            CurrentA = Properties.Settings.Default.TargetA; 
+            //TargetColorPicker.SelectedColor = System.Windows.Media.Color.FromArgb((byte)Properties.Settings.Default.TargetA, (byte)Properties.Settings.Default.TargetR, (byte)Properties.Settings.Default.TargetG, (byte)Properties.Settings.Default.TargetB);
+            //CurrentR = Properties.Settings.Default.TargetR;
+            //CurrentG = Properties.Settings.Default.TargetG;
+            //CurrentB = Properties.Settings.Default.TargetB;
+            //CurrentA = Properties.Settings.Default.TargetA;
 
-  //          _holderBitmap = ImageHelpers.CreateBitmap(60, 60, System.Drawing.Color.Black);
+
 
             tbVariance.Text = Properties.Settings.Default.VariancePercent.ToString();
             sliderColorVariancePercent.Value = Properties.Settings.Default.VariancePercent;
@@ -1143,10 +1196,10 @@ namespace HekiliHelper
             Properties.Settings.Default.Cap2Height = magnifier2.Height;
             Properties.Settings.Default.AppStartX = this.Left;
             Properties.Settings.Default.AppStartY = this.Top;
-            Properties.Settings.Default.TargetR = CurrentR;
-            Properties.Settings.Default.TargetG = CurrentG;
-            Properties.Settings.Default.TargetB = CurrentB;
-            Properties.Settings.Default.TargetA = 255;
+            //Properties.Settings.Default.TargetR = CurrentR;
+            //Properties.Settings.Default.TargetG = CurrentG;
+            //Properties.Settings.Default.TargetB = CurrentB;
+            //Properties.Settings.Default.TargetA = 255;
 
             Properties.Settings.Default.Save();
 
@@ -1176,10 +1229,183 @@ namespace HekiliHelper
         #endregion
 
  
+
+        private CheckBox GetSelectedCheckBox ()
+        {
+            // Im tired so I'm just bruteforcing all of this.  Its not flexable and I know I will regert it later when a new one is added.
+            if (cbColorDruid.IsChecked == true)
+            {
+                return cbColorDruid;
+            }
+            if (cbColorPaladin.IsChecked == true)
+            {
+                return cbColorPaladin;
+            }
+            if (cbColorWarlock.IsChecked == true)
+            {
+                return cbColorWarlock;
+            }
+            if (cbColorShaman.IsChecked == true)
+            {
+                return cbColorShaman;
+            }
+            if (cbColorRogue.IsChecked == true)
+            {
+                return cbColorRogue;
+            }
+            if (cbColorWarrior.IsChecked == true)
+            {
+                return cbColorWarrior;
+            }
+            if (cbColorEvoker.IsChecked == true)
+            {
+                return cbColorEvoker;
+            }
+            if (cbColorHunter.IsChecked == true)
+            {
+                return cbColorHunter;
+            }
+            if (cbColorMage.IsChecked == true)
+            {
+                return cbColorMage;
+            }
+            if (cbColorPriest.IsChecked == true)
+            {
+                return cbColorPriest;
+            }
+            if (cbColorMonk.IsChecked == true)
+            {
+                return cbColorMonk;
+            }
+            if (cbColorDemonHunter.IsChecked == true)
+            {
+                return cbColorDemonHunter;
+            }
+            cbColorDefault.IsChecked = true;
+            cbColorDefault.Tag = "default";
+            return cbColorDefault;
+        }
+
+        private void SetAssociatedSetting (CheckBox SelectedCheckbox, byte R, byte G, byte B, byte A)
+        {
+            CheckBox item = SelectedCheckbox;
+            ColorPicker.PortableColorPicker cp = (ColorPicker.PortableColorPicker)item.Content;
+            //cp.SelectedColor = System.Windows.Media.Color.FromArgb(R, G, B, A);
+            cp.SelectedColor = System.Windows.Media.Color.FromArgb(A, R, G, B);
+
+
+
+            if ((string)item.Tag == "default")
+            {
+                Settings.Default.TargetR = R;
+                Settings.Default.TargetG = G;
+                Settings.Default.TargetB = B;
+                Settings.Default.TargetA = A;
+            }
+            if ((string)item.Tag == "druid")
+            {
+                Settings.Default.DruidTargetR = R;
+                Settings.Default.DruidTargetG = G;
+                Settings.Default.DruidTargetB = B;
+                Settings.Default.DruidTargetA = A;
+            }
+            if ((string)item.Tag == "paladin") {
+                Settings.Default.PaladinTargetR = R;
+                Settings.Default.PaladinTargetG = G;
+                Settings.Default.PaladinTargetB = B;
+                Settings.Default.PaladinTargetA = A;
+            }
+            if ((string)item.Tag == "warlock")
+            {
+                Settings.Default.WarlockTargetR = R;
+                Settings.Default.WarlockTargetG = G;
+                Settings.Default.WarlockTargetB = B;
+                Settings.Default.WarlockTargetA = A;
+            }
+            if ((string)item.Tag == "shaman")
+            {
+                Settings.Default.ShamanTargetR = R;
+                Settings.Default.ShamanTargetG = G;
+                Settings.Default.ShamanTargetB = B;
+                Settings.Default.ShamanTargetA = A;
+            }
+            if ((string)item.Tag == "rogue")
+            {
+                Settings.Default.RogueTargetR = R;
+                Settings.Default.RogueTargetG = G;
+                Settings.Default.RogueTargetB = B;
+                Settings.Default.RogueTargetA = A;
+            }
+            if ((string)item.Tag == "warrior")
+            {
+                Settings.Default.WarriorTargetR = R;
+                Settings.Default.WarriorTargetG = G;
+                Settings.Default.WarriorTargetB = B;
+                Settings.Default.WarriorTargetA = A;
+            }
+            if ((string)item.Tag == "evoker")
+            {
+                Settings.Default.EvokerTargetR = R;
+                Settings.Default.EvokerTargetG = G;
+                Settings.Default.EvokerTargetB = B;
+                Settings.Default.EvokerTargetA = A;
+            }
+            if ((string)item.Tag == "hunter")
+            {
+                Settings.Default.HunterTargetR = R;
+                Settings.Default.HunterTargetG = G;
+                Settings.Default.HunterTargetB = B;
+                Settings.Default.HunterTargetA = A;
+            }
+            if ((string)item.Tag == "mage")
+            {
+                Settings.Default.MageTargetR = R;
+                Settings.Default.MageTargetG = G;
+                Settings.Default.MageTargetB = B;
+                Settings.Default.MageTargetA = A;
+            }
+            if ((string)item.Tag == "priest")
+            {
+                Settings.Default.PriestTargetR = R;
+                Settings.Default.PriestTargetG = G;
+                Settings.Default.PriestTargetB = B;
+                Settings.Default.PriestTargetA = A;
+            }
+            if ((string)item.Tag == "monk")
+            {
+                Settings.Default.MonkTargetR = R;
+                Settings.Default.MonkTargetG = G;
+                Settings.Default.MonkTargetB = B;
+                Settings.Default.MonkTargetA = A;
+            }
+            if ((string)item.Tag == "demonhunter")
+            {
+                Settings.Default.DemonHunterTargetR = R;
+                Settings.Default.DemonHunterTargetG = G;
+                Settings.Default.DemonHunterTargetB = B;
+                Settings.Default.DemonHunterTargetA = A;
+
+            }
+            CurrentR = R;
+            CurrentG = G;
+            CurrentB = B;
+
+        
+
+
+
+
+        }
+
         private void buPicker_Click(object sender, RoutedEventArgs e)
         {
             _MouseHookID = MouseSetHook(_mouseProc);
-            this.TargetColorPicker.SelectedColor = System.Windows.Media.Color.FromArgb(255, 0, 0, 0);
+            CheckBox item = GetSelectedCheckBox();
+            ColorPicker.PortableColorPicker cp = (ColorPicker.PortableColorPicker)item.Content;
+            cp.SelectedColor = System.Windows.Media.Color.FromArgb(255, 0, 0, 0);
+            // ((ColorPicker.PortableColorPicker)item.Content) = System.Windows.Media.Color.FromArgb(255, 0, 0, 0);
+            //this.TargetColorPicker.SelectedColor = System.Windows.Media.Color.FromArgb(255, 0, 0, 0);
+
             // Other application logic
         }
 
@@ -1232,15 +1458,14 @@ namespace HekiliHelper
                     // Get the color of the pixel
                     System.Drawing.Color pixelColor = bmp.GetPixel(0, 0);
 
+                    CheckBox item = GetSelectedCheckBox();
+                    ColorPicker.PortableColorPicker cp = (ColorPicker.PortableColorPicker)item.Content;
+                
+
+
                     // Convert System.Drawing.Color to System.Windows.Media.Color
-                    this.TargetColorPicker.SelectedColor = System.Windows.Media.Color.FromArgb(pixelColor.A, pixelColor.R, pixelColor.G, pixelColor.B);
-                    Properties.Settings.Default.TargetR = pixelColor.R;
-                    Properties.Settings.Default.TargetG = pixelColor.G;
-                    Properties.Settings.Default.TargetB = pixelColor.B;
-                    Properties.Settings.Default.TargetA = pixelColor.A;
-                    CurrentR = pixelColor.R;
-                    CurrentG = pixelColor.G;
-                    CurrentB = pixelColor.B;
+                    SetAssociatedSetting(item, pixelColor.R, pixelColor.G, pixelColor.B, pixelColor.A);
+
 
 
                 }
@@ -1398,6 +1623,67 @@ namespace HekiliHelper
             ImageCap2Border.Visibility = Visibility.Collapsed;
             lDetectedValue2.Visibility = Visibility.Collapsed;
 
+        }
+
+        private CheckBox currentCheckbox;
+        private void cbColorDruid_Checked(object sender, RoutedEventArgs e)
+        {
+            CheckBox cb = (CheckBox)sender;
+            if (cb.IsChecked is null) return;
+            if (cb.Tag is null) return;
+
+            if ((string)cb.Tag != "druid")  cbColorDruid.IsChecked = false;
+            if ((string)cb.Tag != "paladin") cbColorPaladin.IsChecked = false;
+            if ((string)cb.Tag != "warlock") cbColorWarlock.IsChecked = false;
+            if ((string)cb.Tag != "shaman") cbColorShaman.IsChecked = false;
+            if ((string)cb.Tag != "rogue") cbColorRogue.IsChecked = false;
+            if ((string)cb.Tag != "warrior") cbColorWarrior.IsChecked = false;
+            if ((string)cb.Tag != "evoker") cbColorEvoker.IsChecked = false;
+            if ((string)cb.Tag != "hunter") cbColorHunter.IsChecked = false;
+            if ((string)cb.Tag != "mage") cbColorMage.IsChecked = false;
+            if ((string)cb.Tag != "priest") cbColorPriest.IsChecked = false;
+            if ((string)cb.Tag != "monk") cbColorMonk.IsChecked = false;
+            if ((string)cb.Tag != "demonhunter") cbColorDemonHunter.IsChecked = false;
+            if ((string)cb.Tag != "default") cbColorDefault.IsChecked = false;
+
+            
+            ColorPicker.PortableColorPicker cp = (ColorPicker.PortableColorPicker)cb.Content;
+            //cp.SelectedColor = System.Windows.Media.Color.FromArgb(R, G, B, A);
+            CurrentA = cp.SelectedColor.A;
+            CurrentR = cp.SelectedColor.R;
+            CurrentG = cp.SelectedColor.G;
+            CurrentB = cp.SelectedColor.B;
+
+        
+
+           cb.IsChecked = true;
+
+        }
+
+        private void cbColorDefault_Unchecked(object sender, RoutedEventArgs e)
+        {
+            CheckBox cb = (CheckBox)sender;
+            if (cb.IsChecked is null) return;
+            if (cb.Tag is null) return;
+     
+            
+           
+            
+
+            //if ((string)cb.Tag == "druid") cbColorDruid.IsChecked = false;
+            //if ((string)cb.Tag != "paladin") cbColorPaladin.IsChecked = false;
+            //if ((string)cb.Tag != "warlock") cbColorWarlock.IsChecked = false;
+            //if ((string)cb.Tag != "shaman") cbColorShaman.IsChecked = false;
+            //if ((string)cb.Tag != "rogue") cbColorRogue.IsChecked = false;
+            //if ((string)cb.Tag != "warrior") cbColorWarrior.IsChecked = false;
+            //if ((string)cb.Tag != "evoker") cbColorEvoker.IsChecked = false;
+            //if ((string)cb.Tag != "hunter") cbColorHunter.IsChecked = false;
+            //if ((string)cb.Tag != "mage") cbColorMage.IsChecked = false;
+            //if ((string)cb.Tag != "priest") cbColorPriest.IsChecked = false;
+            //if ((string)cb.Tag != "monk") cbColorMonk.IsChecked = false;
+            //if ((string)cb.Tag != "demonhunter") cbColorDemonHunter.IsChecked = false;
+            //cbColorDefault.IsChecked = true;
+            
         }
     }
 }
