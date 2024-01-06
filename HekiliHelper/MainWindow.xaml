@@ -40,44 +40,37 @@ Height="Auto"
             <CheckBox x:Name="cbStayOnTop" Content="Stay on top" IsChecked="False"  Click="button_Click"  />
         </StackPanel>
 
-        <StackPanel Grid.Row="1" Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Left"  Margin="41,0,0,2" Width="61">
-            <Button x:Name="button_Start" Content="Start" Margin="1,1,1,1" HorizontalAlignment="Left" VerticalAlignment="Top"  Click="StartButton_Click"  />
-            <Button x:Name="button_Stop" Content="Stop" Margin="1,1,1,1" HorizontalAlignment="Left"  VerticalAlignment="Top"  Click="StopButton_Click" IsEnabled="False" />
-        </StackPanel>
 
         <StackPanel Grid.Row="0" Grid.Column="1" Margin="2,0,-3,2" Grid.ColumnSpan="1">
+            
+            <StackPanel  Orientation="Horizontal" HorizontalAlignment="Center" Margin="20">
+                <Button x:Name="button_Start" Content="Start" Click="StartButton_Click"  Width="60"  />
+                <Button x:Name="button_Stop" Content="Stop" Click="StopButton_Click" IsEnabled="False" Width="60"  />
+            </StackPanel>
 
             <!--<Label Name="LabelDecoded" Content="Decoded Values" HorizontalAlignment="Center"></Label>-->
 
-            <Button x:Name="button_Capture" Content="Capture" HorizontalAlignment="Center"  VerticalAlignment="Top"  Click="Capture_Click" Visibility="Hidden" ToolTip="Enable/Disable capture frame"/>
-            <Button x:Name="bToggleMagBorder" Content="Scan Selection" HorizontalAlignment="Center" VerticalAlignment="Top" Click="bToggleMagBorder_Click" ToolTip="Emergecy postion reset of capture frame" />
-            <Button x:Name="bResetMagPosition" Content="Reset Selection" HorizontalAlignment="Center" VerticalAlignment="Top" Click="bResetMagPosition_Click" Margin="0,5,0,0"/>
+            <Button x:Name="button_Capture" Content="Capture" HorizontalAlignment="Center"  VerticalAlignment="Top" Click="Capture_Click" Visibility="Hidden" ToolTip="Enable/Disable capture frame"/>
+            <Button x:Name="bToggleMagBorder" Content="Scan Selection Toggle" HorizontalAlignment="Center" VerticalAlignment="Top" Click="bToggleMagBorder_Click" Width="150"/>
+            <Button x:Name="bResetMagPosition" Content="Reset Selection" HorizontalAlignment="Center" VerticalAlignment="Top" Click="bResetMagPosition_Click" Margin="0,5,0,5" ToolTip="Emergecy postion reset of capture frame" />
 
-            <StackPanel Orientation="Horizontal" Margin="0,5,0,0">
-                <Label Content="Key"></Label>
-                <ComboBox x:Name="cbActivationKey" SelectionChanged="cbActivationKey_SelectionChanged" Width="120">
-                    <ComboBoxItem Content="1"/>
-                    <ComboBoxItem Content="2"/>
-                    <ComboBoxItem Content="3"/>
-                    <ComboBoxItem Content="`"/>
-                    <ComboBoxItem Content="Q"/>
-                    <ComboBoxItem Content="E"/>
-                    <ComboBoxItem Content="W"/>
-                </ComboBox>
+
+
+
+
+            <Button Click="buPicker_Click" ToolTip="Click on the screen to get the color of the pixel under the cursor" Margin="0,5,0,5">Pick Text Color</Button>
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,5,0,5">
+                <Label VerticalAlignment="Center">Variance</Label>
+                <Slider Name="sliderColorVariancePercent" VerticalAlignment="Center" Width="120" Minimum="0" Maximum="100" ValueChanged="sliderColorVariance_ValueChanged" Visibility="Visible" Height="18" SmallChange="1" LargeChange="2"></Slider>
+                <TextBox Name="tbVariance" VerticalAlignment="Center" Width="30" MaxLength="3" MaxLines="1" PreviewTextInput="PreviewTextInput" DataObject.Pasting="TextBoxPasting" TextChanged="tbVariance_TextChanged"></TextBox>
             </StackPanel>
-            <CheckBox Name="cbPushRelease" Content="Push And Release mode" IsChecked="False" Checked="cbPushRelease_Checked" Unchecked="cbPushRelease_Unchecked" ToolTip="Commands will be pressed until next command is detected, or fixed time"></CheckBox>
-            <CheckBox Name="cbQuickDecode" Content="Quick Decode" IsChecked="False" Checked="cbQuickDecode_Checked" Unchecked="cbQuickDecode_Unchecked" ToolTip="Wait for detection in upper left region"></CheckBox>
-            <CheckBox Name="cbUse2ndImage" Content="2nd Image Detection" IsChecked="False" Checked="cbUse2ndImage_Checked"  Unchecked="cbUse2ndImage_Unchecked"  ToolTip="Utilize 2nd Region Detection"></CheckBox>
-
-
-            <Button Click="buPicker_Click">Pick Color</Button>
             <WrapPanel Orientation="Horizontal">
                 
                 
                 <StackPanel Orientation="Horizontal" Width="120">
-                    <CheckBox Name="cbColorDefault" HorizontalAlignment="Center" VerticalAlignment="Center" IsChecked="True" Tag="default"  Checked="cbColorDruid_Checked" Unchecked="cbColorDefault_Unchecked" >
+                    <RadioButton Name="cbColorDefault" HorizontalAlignment="Center" VerticalAlignment="Center" IsChecked="True" Tag="default"  GroupName="ClassColor" Checked="cbColorDruid_Checked" >
                         <colorpicker:PortableColorPicker Name="TargetColorPicker"  Width="15" Height="15" ShowAlpha="False" ColorChanged="TargetColorPicker_ColorChanged"/>
-                    </CheckBox>
+                    </RadioButton>
                     <Label>Default</Label>
                 </StackPanel>
 
@@ -86,88 +79,88 @@ Height="Auto"
 
 
                 <StackPanel Orientation="Horizontal" Width="120">
-                    <CheckBox Name="cbColorPaladin" HorizontalAlignment="Center" VerticalAlignment="Center" Tag="paladin"  Checked="cbColorDruid_Checked" Unchecked="cbColorDefault_Unchecked">
+                    <RadioButton Name="cbColorPaladin" HorizontalAlignment="Center" VerticalAlignment="Center" Tag="paladin"   GroupName="ClassColor" Checked="cbColorDruid_Checked" >
                         <colorpicker:PortableColorPicker Name="cpColorPaladin"  Width="15" Height="15" ShowAlpha="False" />
-                    </CheckBox>
+                    </RadioButton>
                     <Label>Paladin</Label>
                 </StackPanel>
 
                 <StackPanel Orientation="Horizontal" Width="120">
-                    <CheckBox Name="cbColorDruid" HorizontalAlignment="Center" VerticalAlignment="Center" Checked="cbColorDruid_Checked" Tag="druid" Unchecked="cbColorDefault_Unchecked">
+                    <RadioButton Name="cbColorDruid" HorizontalAlignment="Center" VerticalAlignment="Center" Checked="cbColorDruid_Checked" Tag="druid"  GroupName="ClassColor" >
                         <colorpicker:PortableColorPicker Name="cpDruid"  Width="15" Height="15" ShowAlpha="False" />
-                    </CheckBox>
+                    </RadioButton>
                     <Label>Druid</Label>
                 </StackPanel>
 
                 <StackPanel Orientation="Horizontal" Width="120">
-                    <CheckBox Name="cbColorWarlock" HorizontalAlignment="Center" VerticalAlignment="Center" Tag="warlock"  Checked="cbColorDruid_Checked" Unchecked="cbColorDefault_Unchecked">
+                    <RadioButton Name="cbColorWarlock" HorizontalAlignment="Center" VerticalAlignment="Center" Tag="warlock"   GroupName="ClassColor" Checked="cbColorDruid_Checked" >
                         <colorpicker:PortableColorPicker Name="cpWarlock"  Width="15" Height="15" ShowAlpha="False" />
-                    </CheckBox>
+                    </RadioButton>
                     <Label>Warlock</Label>
                 </StackPanel>
 
                 <StackPanel Orientation="Horizontal" Width="120">
-                    <CheckBox Name="cbColorShaman" HorizontalAlignment="Center" VerticalAlignment="Center" Tag="shaman"  Checked="cbColorDruid_Checked" Unchecked="cbColorDefault_Unchecked">
+                    <RadioButton Name="cbColorShaman" HorizontalAlignment="Center" VerticalAlignment="Center" Tag="shaman"   GroupName="ClassColor" Checked="cbColorDruid_Checked" >
                         <colorpicker:PortableColorPicker Name="cpShamam"  Width="15" Height="15" ShowAlpha="False" />
-                    </CheckBox>
+                    </RadioButton>
                     <Label>Shaman</Label>
                 </StackPanel>
 
                 <StackPanel Orientation="Horizontal" Width="120">
-                    <CheckBox Name="cbColorRogue" HorizontalAlignment="Center" VerticalAlignment="Center" Tag="rogue"  Checked="cbColorDruid_Checked" Unchecked="cbColorDefault_Unchecked">
+                    <RadioButton Name="cbColorRogue" HorizontalAlignment="Center" VerticalAlignment="Center" Tag="rogue"   GroupName="ClassColor" Checked="cbColorDruid_Checked" >
                         <colorpicker:PortableColorPicker Name="cpRogue"  Width="15" Height="15" ShowAlpha="False" />
-                    </CheckBox>
+                    </RadioButton>
                     <Label>Rogue</Label>
                 </StackPanel>
 
                 <StackPanel Orientation="Horizontal" Width="120">
-                    <CheckBox Name="cbColorWarrior" HorizontalAlignment="Center" VerticalAlignment="Center" Tag="warrior"  Checked="cbColorDruid_Checked" Unchecked="cbColorDefault_Unchecked">
+                    <RadioButton Name="cbColorWarrior" HorizontalAlignment="Center" VerticalAlignment="Center" Tag="warrior"   GroupName="ClassColor" Checked="cbColorDruid_Checked" >
                         <colorpicker:PortableColorPicker Name="cpWarrior"  Width="15" Height="15" ShowAlpha="False" />
-                    </CheckBox>
+                    </RadioButton>
                     <Label>Warrior</Label>
                 </StackPanel>
 
                 <StackPanel Orientation="Horizontal" Width="120">
-                    <CheckBox Name="cbColorEvoker" HorizontalAlignment="Center" VerticalAlignment="Center" Tag="evoker"  Checked="cbColorDruid_Checked" Unchecked="cbColorDefault_Unchecked">
+                    <RadioButton Name="cbColorEvoker" HorizontalAlignment="Center" VerticalAlignment="Center" Tag="evoker"   GroupName="ClassColor" Checked="cbColorDruid_Checked" >
                         <colorpicker:PortableColorPicker Name="cpEvoker"  Width="15" Height="15" ShowAlpha="False" />
-                    </CheckBox>
+                    </RadioButton>
                     <Label>Evoker</Label>
                 </StackPanel>
 
 
                 <StackPanel Orientation="Horizontal" Width="120">
-                    <CheckBox Name="cbColorHunter" HorizontalAlignment="Center" VerticalAlignment="Center" Tag="hunter"  Checked="cbColorDruid_Checked" Unchecked="cbColorDefault_Unchecked">
+                    <RadioButton Name="cbColorHunter" HorizontalAlignment="Center" VerticalAlignment="Center" Tag="hunter"   GroupName="ClassColor" Checked="cbColorDruid_Checked" >
                         <colorpicker:PortableColorPicker Name="cpHunter"  Width="15" Height="15" ShowAlpha="False" />
-                    </CheckBox>
+                    </RadioButton>
                     <Label>Hunter</Label>
                 </StackPanel>
 
                 <StackPanel Orientation="Horizontal" Width="120">
-                    <CheckBox Name="cbColorMage" HorizontalAlignment="Center" VerticalAlignment="Center" Tag="mage"  Checked="cbColorDruid_Checked" Unchecked="cbColorDefault_Unchecked">
+                    <RadioButton Name="cbColorMage" HorizontalAlignment="Center" VerticalAlignment="Center" Tag="mage"   GroupName="ClassColor" Checked="cbColorDruid_Checked" >
                         <colorpicker:PortableColorPicker Name="cpMage"  Width="15" Height="15" ShowAlpha="False"/>
-                    </CheckBox>
+                    </RadioButton>
                     <Label>Mage</Label>
                 </StackPanel>
 
                 <StackPanel Orientation="Horizontal" Width="120">
-                    <CheckBox Name="cbColorPriest" HorizontalAlignment="Center" VerticalAlignment="Center" Tag="priest"  Checked="cbColorDruid_Checked" Unchecked="cbColorDefault_Unchecked">
+                    <RadioButton Name="cbColorPriest" HorizontalAlignment="Center" VerticalAlignment="Center" Tag="priest"   GroupName="ClassColor" Checked="cbColorDruid_Checked" >
                         <colorpicker:PortableColorPicker Name="cpPriest"  Width="15" Height="15" ShowAlpha="False" />
-                    </CheckBox>
+                    </RadioButton>
                     <Label>Priest</Label>
                 </StackPanel>
 
 
                 <StackPanel Orientation="Horizontal" Width="120">
-                    <CheckBox Name="cbColorMonk" HorizontalAlignment="Center" VerticalAlignment="Center" Tag="monk"  Checked="cbColorDruid_Checked" Unchecked="cbColorDefault_Unchecked">
+                    <RadioButton Name="cbColorMonk" HorizontalAlignment="Center" VerticalAlignment="Center" Tag="monk"   GroupName="ClassColor" Checked="cbColorDruid_Checked" >
                         <colorpicker:PortableColorPicker Name="cpMonk"  Width="15" Height="15" ShowAlpha="False" />
-                    </CheckBox>
+                    </RadioButton>
                     <Label>Monk</Label>
                 </StackPanel>
 
                 <StackPanel Orientation="Horizontal" Width="120">
-                    <CheckBox Name="cbColorDemonHunter" HorizontalAlignment="Center" VerticalAlignment="Center" Tag="hunter"  Checked="cbColorDruid_Checked" Unchecked="cbColorDefault_Unchecked">
+                    <RadioButton Name="cbColorDemonHunter" HorizontalAlignment="Center" VerticalAlignment="Center" Tag="hunter"   GroupName="ClassColor" Checked="cbColorDruid_Checked" >
                         <colorpicker:PortableColorPicker Name="cpDemonHunter"  Width="15" Height="15" ShowAlpha="False" />
-                    </CheckBox>
+                    </RadioButton>
                     <Label>Demon Hunter</Label>
                 </StackPanel>
 
@@ -179,43 +172,36 @@ Height="Auto"
 
 
         <Expander x:Name="expander" HorizontalAlignment="Left" Height="Auto" Header="Advanced Options" Margin="2,3,0,0" Grid.Column="0" Grid.Row="2" Grid.ColumnSpan="3" VerticalAlignment="Top" Grid.RowSpan="2" Width="319">
-            <Grid>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="100"></ColumnDefinition>
-                    <ColumnDefinition Width="130"></ColumnDefinition>
-                    <ColumnDefinition></ColumnDefinition>
-                    <ColumnDefinition></ColumnDefinition>
-                </Grid.ColumnDefinitions>
-                <Grid.RowDefinitions>
-                    <RowDefinition></RowDefinition>
-                    <RowDefinition></RowDefinition>
-                    <RowDefinition></RowDefinition>
-                    <RowDefinition></RowDefinition>
-                    <RowDefinition></RowDefinition>
-                    <RowDefinition></RowDefinition>
-                    <RowDefinition></RowDefinition>
+            <StackPanel Orientation="Vertical">
+                <StackPanel Orientation="Horizontal" Margin="0,5,0,5">
+                    <Label Content="Activation Key"></Label>
+                    <ComboBox x:Name="cbActivationKey" SelectionChanged="cbActivationKey_SelectionChanged" Width="120">
+                        <ComboBoxItem Content="1"/>
+                        <ComboBoxItem Content="2"/>
+                        <ComboBoxItem Content="3"/>
+                        <ComboBoxItem Content="`"/>
+                        <ComboBoxItem Content="Q"/>
+                        <ComboBoxItem Content="E"/>
+                        <ComboBoxItem Content="W"/>
+                    </ComboBox>
+                </StackPanel>
+                <CheckBox Name="cbPushRelease" Content="Push And Release mode" IsChecked="False" Checked="cbPushRelease_Checked" Unchecked="cbPushRelease_Unchecked" ToolTip="Commands will be pressed until next command is detected, or fixed time"></CheckBox>
+                <CheckBox Name="cbQuickDecode" Content="Quick Decode" IsChecked="False" Checked="cbQuickDecode_Checked" Unchecked="cbQuickDecode_Unchecked" ToolTip="Wait for detection in upper left region"></CheckBox>
+                <CheckBox Name="cbUse2ndImage" Content="2nd Image Detection" IsChecked="False" Checked="cbUse2ndImage_Checked"  Unchecked="cbUse2ndImage_Unchecked"  ToolTip="Utilize 2nd Region Detection"></CheckBox>
 
-                </Grid.RowDefinitions>
-
-                <Label HorizontalAlignment="Right" Grid.Column="0" Grid.Row="3">Variance</Label>
-                <Slider Name="sliderColorVariancePercent" HorizontalAlignment="Left"  Grid.Column="1" Grid.Row="3"  VerticalAlignment="Top" Width="120" Minimum="0" Maximum="100" ValueChanged="sliderColorVariance_ValueChanged" Visibility="Visible" Height="18" SmallChange="1" LargeChange="2"></Slider>
-                <TextBox Name="tbVariance" Width="30" HorizontalAlignment="Left" Grid.Column="2" Grid.Row="3" MaxLength="3" MaxLines="1" PreviewTextInput="PreviewTextInput" DataObject.Pasting="TextBoxPasting" TextChanged="tbVariance_TextChanged"></TextBox>
-
-
-                <Label HorizontalAlignment="Right" Grid.Column="0" Grid.Row="4">Screen Cap MS</Label>
-                <Slider Name="sliderCaptureRateMS" HorizontalAlignment="Left"  Grid.Column="1" Grid.Row="4"  VerticalAlignment="Top" Width="120" Minimum="0" Maximum="1000" ValueChanged="sliderCaptureRateMS_ValueChanged" Visibility="Visible" Height="18"  SmallChange="1" LargeChange="10"></Slider>
-                <TextBox Name="tbCaptureRateMS"  Width="30" HorizontalAlignment="Left" Grid.Column="2" Grid.Row="4" MaxLength="3" MaxLines="1" PreviewTextInput="PreviewTextInput" DataObject.Pasting="TextBoxPasting" TextChanged="tbCaptureRateMS_TextChanged"></TextBox>
-
-                <Label HorizontalAlignment="Right" Grid.Column="0" Grid.Row="5">Key Send MS</Label>
-                <Slider Name="sliderKeyRateMS" HorizontalAlignment="Left"  Grid.Column="1" Grid.Row="5" VerticalAlignment="Top" Width="120" Minimum="0" Maximum="1000" ValueChanged="sliderKeyRateMS_ValueChanged" Visibility="Visible" Height="18"  SmallChange="1" LargeChange="10"></Slider>
-                <TextBox Name="tbKeyRateMS" Width="30" HorizontalAlignment="Left" Grid.Column="2" Grid.Row="5" MaxLines="1"  PreviewTextInput="PreviewTextInput" DataObject.Pasting="TextBoxPasting" TextChanged="tbKeyRateMS_TextChanged"></TextBox>
+                <StackPanel Orientation="Horizontal">
+                    <Label >Screen Cap MS</Label>
+                    <Slider Name="sliderCaptureRateMS" VerticalAlignment="Center" Width="120" Minimum="0" Maximum="1000" ValueChanged="sliderCaptureRateMS_ValueChanged" Visibility="Visible" Height="18"  SmallChange="1" LargeChange="10"></Slider>
+                    <TextBox Name="tbCaptureRateMS"  Width="30" MaxLength="3" MaxLines="1" PreviewTextInput="PreviewTextInput" DataObject.Pasting="TextBoxPasting" TextChanged="tbCaptureRateMS_TextChanged"></TextBox>
+                </StackPanel>
+                <StackPanel Orientation="Horizontal">
+                    <Label >Key Send MS</Label>
+                    <Slider Name="sliderKeyRateMS" Width="120" Minimum="0" Maximum="1000" ValueChanged="sliderKeyRateMS_ValueChanged" Visibility="Visible" Height="18"  SmallChange="1" LargeChange="10"></Slider>
+                    <TextBox Name="tbKeyRateMS" Width="30" MaxLines="1"  PreviewTextInput="PreviewTextInput" DataObject.Pasting="TextBoxPasting" TextChanged="tbKeyRateMS_TextChanged"></TextBox>
+                </StackPanel>
 
                 <!--<colorpicker:StandardColorPicker x:Name="main" Width="200" Height="380" Grid.Column="0" Grid.Row="6" Grid.ColumnSpan="2"/>-->
-                <StackPanel Grid.Column="3" Grid.RowSpan="6" VerticalAlignment ="Center" Orientation="Vertical">
-
-
-                </StackPanel>
-            </Grid>
+            </StackPanel>
 
 
 

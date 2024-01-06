@@ -869,7 +869,7 @@ namespace HekiliHelper
 
 
 
-            CheckBox cb =  GetSelectedCheckBox();
+            RadioButton cb =  GetSelectedCheckBox();
             cp = (ColorPicker.PortableColorPicker)cb.Content;
             CurrentR = cp.SelectedColor.R;
             CurrentG = cp.SelectedColor.G;
@@ -885,10 +885,82 @@ namespace HekiliHelper
             //CurrentB = Properties.Settings.Default.TargetB;
             //CurrentA = Properties.Settings.Default.TargetA;
 
+            RadioButton rb = GetSelectedCheckBox();
 
 
-            tbVariance.Text = Properties.Settings.Default.VariancePercent.ToString();
-            sliderColorVariancePercent.Value = Properties.Settings.Default.VariancePercent;
+            if ((string)rb.Tag == "default")
+            {
+                tbVariance.Text = Properties.Settings.Default.VariancePercent.ToString();
+                sliderColorVariancePercent.Value = Properties.Settings.Default.VariancePercent;
+            }
+            if ((string)rb.Tag == "druid")
+            {
+                tbVariance.Text = Properties.Settings.Default.DruidVariancePercent.ToString();
+                sliderColorVariancePercent.Value = Properties.Settings.Default.DruidVariancePercent;
+            }
+            if ((string)rb.Tag == "paladin")
+            {
+                tbVariance.Text = Properties.Settings.Default.PaladinVariancePercent.ToString();
+                sliderColorVariancePercent.Value = Properties.Settings.Default.PaladinVariancePercent;
+            }
+            if ((string)rb.Tag == "warlock")
+            {
+                tbVariance.Text = Properties.Settings.Default.WarlockVariancePercent.ToString();
+                sliderColorVariancePercent.Value = Properties.Settings.Default.WarlockVariancePercent;
+            }
+            if ((string)rb.Tag == "shaman")
+            {
+                tbVariance.Text = Properties.Settings.Default.ShamanVariancePercent.ToString();
+                sliderColorVariancePercent.Value = Properties.Settings.Default.ShamanVariancePercent;
+            }
+            if ((string)rb.Tag == "rogue")
+            {
+                tbVariance.Text = Properties.Settings.Default.RogueVariancePercent.ToString();
+                sliderColorVariancePercent.Value = Properties.Settings.Default.RogueVariancePercent;
+            }
+            if ((string)rb.Tag == "warrior")
+            {
+                tbVariance.Text = Properties.Settings.Default.WarriorVariancePercent.ToString();
+                sliderColorVariancePercent.Value = Properties.Settings.Default.WarriorVariancePercent;
+            }
+            if ((string)rb.Tag == "evoker")
+            {
+                tbVariance.Text = Properties.Settings.Default.EvokerVariancePercent.ToString();
+                sliderColorVariancePercent.Value = Properties.Settings.Default.EvokerVariancePercent;
+            }
+            if ((string)rb.Tag == "hunter")
+            {
+                tbVariance.Text = Properties.Settings.Default.HunterVariancePercent.ToString();
+                sliderColorVariancePercent.Value = Properties.Settings.Default.HunterVariancePercent;
+            }
+            if ((string)rb.Tag == "mage")
+            {
+                tbVariance.Text = Properties.Settings.Default.MageVariancePercent.ToString();
+                sliderColorVariancePercent.Value = Properties.Settings.Default.MageVariancePercent;
+            }
+            if ((string)rb.Tag == "priest")
+            {
+                tbVariance.Text = Properties.Settings.Default.PriestVariancePercent.ToString();
+                sliderColorVariancePercent.Value = Properties.Settings.Default.PriestVariancePercent;
+            }
+            if ((string)rb.Tag == "monk")
+            {
+                tbVariance.Text = Properties.Settings.Default.MonkVariancePercent.ToString();
+                sliderColorVariancePercent.Value = Properties.Settings.Default.MonkVariancePercent;
+            }
+            if ((string)rb.Tag == "demonhunter")
+            {
+                tbVariance.Text = Properties.Settings.Default.DemonHunterVariancePercent.ToString();
+                sliderColorVariancePercent.Value = Properties.Settings.Default.DemonHunterVariancePercent;
+            }
+
+
+
+
+
+
+
+
 
             tbCaptureRateMS.Text = Properties.Settings.Default.CaptureRateMS.ToString();
             sliderCaptureRateMS.Value = Properties.Settings.Default.CaptureRateMS;
@@ -1230,7 +1302,7 @@ namespace HekiliHelper
 
  
 
-        private CheckBox GetSelectedCheckBox ()
+        private RadioButton GetSelectedCheckBox ()
         {
             // Im tired so I'm just bruteforcing all of this.  Its not flexable and I know I will regert it later when a new one is added.
             if (cbColorDruid.IsChecked == true)
@@ -1286,9 +1358,9 @@ namespace HekiliHelper
             return cbColorDefault;
         }
 
-        private void SetAssociatedSetting (CheckBox SelectedCheckbox, byte R, byte G, byte B, byte A)
+        private void SetAssociatedSetting (RadioButton SelectedCheckbox, byte R, byte G, byte B, byte A)
         {
-            CheckBox item = SelectedCheckbox;
+            RadioButton item = SelectedCheckbox;
             ColorPicker.PortableColorPicker cp = (ColorPicker.PortableColorPicker)item.Content;
             //cp.SelectedColor = System.Windows.Media.Color.FromArgb(R, G, B, A);
             cp.SelectedColor = System.Windows.Media.Color.FromArgb(A, R, G, B);
@@ -1400,9 +1472,9 @@ namespace HekiliHelper
         private void buPicker_Click(object sender, RoutedEventArgs e)
         {
             _MouseHookID = MouseSetHook(_mouseProc);
-            CheckBox item = GetSelectedCheckBox();
+            RadioButton item = GetSelectedCheckBox();
             ColorPicker.PortableColorPicker cp = (ColorPicker.PortableColorPicker)item.Content;
-            cp.SelectedColor = System.Windows.Media.Color.FromArgb(255, 0, 0, 0);
+            cp.SelectedColor = System.Windows.Media.Color.FromArgb(0, 0, 0, 0);
             // ((ColorPicker.PortableColorPicker)item.Content) = System.Windows.Media.Color.FromArgb(255, 0, 0, 0);
             //this.TargetColorPicker.SelectedColor = System.Windows.Media.Color.FromArgb(255, 0, 0, 0);
 
@@ -1458,7 +1530,7 @@ namespace HekiliHelper
                     // Get the color of the pixel
                     System.Drawing.Color pixelColor = bmp.GetPixel(0, 0);
 
-                    CheckBox item = GetSelectedCheckBox();
+                    RadioButton item = GetSelectedCheckBox();
                     ColorPicker.PortableColorPicker cp = (ColorPicker.PortableColorPicker)item.Content;
                 
 
@@ -1483,12 +1555,70 @@ namespace HekiliHelper
 
         private void sliderColorVariance_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
         {
-            Properties.Settings.Default.VariancePercent = (int)sliderColorVariancePercent.Value;
+//            Properties.Settings.Default.VariancePercent = (int)sliderColorVariancePercent.Value;
             CurrentThreshold = (int)sliderColorVariancePercent.Value;
             if (tbVariance != null)
                 tbVariance.Text = ((int)sliderColorVariancePercent.Value).ToString();
 
-            
+            RadioButton rb = GetSelectedCheckBox();
+
+
+            if ((string)rb.Tag == "default")
+            {
+                Properties.Settings.Default.VariancePercent = (int)sliderColorVariancePercent.Value;
+            }
+            if ((string)rb.Tag == "druid")
+            {
+                Properties.Settings.Default.DruidVariancePercent = (int)sliderColorVariancePercent.Value;
+
+            }
+            if ((string)rb.Tag == "paladin")
+            {
+                Properties.Settings.Default.PaladinVariancePercent = (int)sliderColorVariancePercent.Value;
+            }
+            if ((string)rb.Tag == "warlock")
+            {
+                Properties.Settings.Default.WarlockVariancePercent = (int)sliderColorVariancePercent.Value;
+            }
+            if ((string)rb.Tag == "shaman")
+            {
+                Properties.Settings.Default.ShamanVariancePercent = (int)sliderColorVariancePercent.Value;
+            }
+            if ((string)rb.Tag == "rogue")
+            {
+                Properties.Settings.Default.RogueVariancePercent = (int)sliderColorVariancePercent.Value;
+            }
+            if ((string)rb.Tag == "warrior")
+            {
+                Properties.Settings.Default.WarriorVariancePercent = (int)sliderColorVariancePercent.Value;
+            }
+            if ((string)rb.Tag == "evoker")
+            {
+                Properties.Settings.Default.EvokerVariancePercent = (int)sliderColorVariancePercent.Value;
+            }
+            if ((string)rb.Tag == "hunter")
+            {
+                Properties.Settings.Default.HunterVariancePercent = (int)sliderColorVariancePercent.Value;
+            }
+            if ((string)rb.Tag == "mage")
+            {
+                Properties.Settings.Default.MageVariancePercent = (int)sliderColorVariancePercent.Value;
+            }
+            if ((string)rb.Tag == "priest")
+            {
+                Properties.Settings.Default.PriestVariancePercent = (int)sliderColorVariancePercent.Value;
+            }
+            if ((string)rb.Tag == "monk")
+            {
+                Properties.Settings.Default.MonkVariancePercent = (int)sliderColorVariancePercent.Value;
+            }
+            if ((string)rb.Tag == "demonhunter")
+            {
+                Properties.Settings.Default.DemonHunterVariancePercent = (int)sliderColorVariancePercent.Value;
+            }
+
+
+
         }
 
         private void sliderCaptureRateMS_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
@@ -1628,62 +1758,75 @@ namespace HekiliHelper
         private CheckBox currentCheckbox;
         private void cbColorDruid_Checked(object sender, RoutedEventArgs e)
         {
-            CheckBox cb = (CheckBox)sender;
+            RadioButton cb = (RadioButton)sender;
             if (cb.IsChecked is null) return;
             if (cb.Tag is null) return;
 
-            if ((string)cb.Tag != "druid")  cbColorDruid.IsChecked = false;
-            if ((string)cb.Tag != "paladin") cbColorPaladin.IsChecked = false;
-            if ((string)cb.Tag != "warlock") cbColorWarlock.IsChecked = false;
-            if ((string)cb.Tag != "shaman") cbColorShaman.IsChecked = false;
-            if ((string)cb.Tag != "rogue") cbColorRogue.IsChecked = false;
-            if ((string)cb.Tag != "warrior") cbColorWarrior.IsChecked = false;
-            if ((string)cb.Tag != "evoker") cbColorEvoker.IsChecked = false;
-            if ((string)cb.Tag != "hunter") cbColorHunter.IsChecked = false;
-            if ((string)cb.Tag != "mage") cbColorMage.IsChecked = false;
-            if ((string)cb.Tag != "priest") cbColorPriest.IsChecked = false;
-            if ((string)cb.Tag != "monk") cbColorMonk.IsChecked = false;
-            if ((string)cb.Tag != "demonhunter") cbColorDemonHunter.IsChecked = false;
-            if ((string)cb.Tag != "default") cbColorDefault.IsChecked = false;
-
-            
             ColorPicker.PortableColorPicker cp = (ColorPicker.PortableColorPicker)cb.Content;
-            //cp.SelectedColor = System.Windows.Media.Color.FromArgb(R, G, B, A);
             CurrentA = cp.SelectedColor.A;
             CurrentR = cp.SelectedColor.R;
             CurrentG = cp.SelectedColor.G;
             CurrentB = cp.SelectedColor.B;
 
-        
+            if ((string)cb.Tag == "default")
+            {
+                sliderColorVariancePercent.Value = (int)Properties.Settings.Default.VariancePercent;
+            }
+            if ((string)cb.Tag == "druid")
+            {
+                sliderColorVariancePercent.Value = (int)Properties.Settings.Default.DruidVariancePercent;
 
-           cb.IsChecked = true;
+            }
+            if ((string)cb.Tag == "paladin")
+            {
+                sliderColorVariancePercent.Value = (int)Properties.Settings.Default.PaladinVariancePercent;
+            }
+            if ((string)cb.Tag == "warlock")
+            {
+                sliderColorVariancePercent.Value = (int)Properties.Settings.Default.WarlockVariancePercent;
+            }
+            if ((string)cb.Tag == "shaman")
+            {
+                sliderColorVariancePercent.Value = (int)Properties.Settings.Default.ShamanVariancePercent;
+            }
+            if ((string)cb.Tag == "rogue")
+            {
+                sliderColorVariancePercent.Value = (int)Properties.Settings.Default.RogueVariancePercent;
+            }
+            if ((string)cb.Tag == "warrior")
+            {
+                sliderColorVariancePercent.Value = (int)Properties.Settings.Default.WarriorVariancePercent;
+            }
+            if ((string)cb.Tag == "evoker")
+            {
+                sliderColorVariancePercent.Value = (int)Properties.Settings.Default.EvokerVariancePercent;
+            }
+            if ((string)cb.Tag == "hunter")
+            {
+                sliderColorVariancePercent.Value= (int)Properties.Settings.Default.HunterVariancePercent;
+            }
+            if ((string)cb.Tag == "mage")
+            {
+                sliderColorVariancePercent.Value= (int)Properties.Settings.Default.MageVariancePercent;
+            }
+            if ((string)cb.Tag == "priest")
+            {
+                sliderColorVariancePercent.Value= (int)Properties.Settings.Default.PriestVariancePercent;
+            }
+            if ((string)cb.Tag == "monk")
+            {
+                sliderColorVariancePercent.Value= (int)Properties.Settings.Default.MonkVariancePercent;
+            }
+            if ((string)cb.Tag == "demonhunter")
+            {
+                sliderColorVariancePercent.Value= (int)Properties.Settings.Default.DemonHunterVariancePercent;
+            }
+
+
+
 
         }
 
-        private void cbColorDefault_Unchecked(object sender, RoutedEventArgs e)
-        {
-            CheckBox cb = (CheckBox)sender;
-            if (cb.IsChecked is null) return;
-            if (cb.Tag is null) return;
-     
-            
-           
-            
 
-            //if ((string)cb.Tag == "druid") cbColorDruid.IsChecked = false;
-            //if ((string)cb.Tag != "paladin") cbColorPaladin.IsChecked = false;
-            //if ((string)cb.Tag != "warlock") cbColorWarlock.IsChecked = false;
-            //if ((string)cb.Tag != "shaman") cbColorShaman.IsChecked = false;
-            //if ((string)cb.Tag != "rogue") cbColorRogue.IsChecked = false;
-            //if ((string)cb.Tag != "warrior") cbColorWarrior.IsChecked = false;
-            //if ((string)cb.Tag != "evoker") cbColorEvoker.IsChecked = false;
-            //if ((string)cb.Tag != "hunter") cbColorHunter.IsChecked = false;
-            //if ((string)cb.Tag != "mage") cbColorMage.IsChecked = false;
-            //if ((string)cb.Tag != "priest") cbColorPriest.IsChecked = false;
-            //if ((string)cb.Tag != "monk") cbColorMonk.IsChecked = false;
-            //if ((string)cb.Tag != "demonhunter") cbColorDemonHunter.IsChecked = false;
-            //cbColorDefault.IsChecked = true;
-            
-        }
     }
 }
