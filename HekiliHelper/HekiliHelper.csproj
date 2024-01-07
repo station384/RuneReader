@@ -34,6 +34,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <None Remove="HelikiProfiles\Evoker-Devistation.txt" />
     <None Remove="tessdata\Config.cfg" />
     <None Remove="tessdata\en1.traineddata" />
     <None Remove="tessdata\en3.traineddata" />
@@ -203,7 +204,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="HelikiProfiles\" />
+    <Compile Include="HelikiProfiles\Evoker-Devistation.txt" />
   </ItemGroup>
 
 </Project>
