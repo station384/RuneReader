@@ -34,7 +34,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <None Remove="HelikiProfiles\Evoker-Devistation.txt" />
     <None Remove="tessdata\Config.cfg" />
     <None Remove="tessdata\en1.traineddata" />
     <None Remove="tessdata\en3.traineddata" />
@@ -201,10 +200,6 @@
 
   <ItemGroup>
     <None Remove="C:\Users\stati\.nuget\packages\tesseract\5.2.0\build\\..\x64\tesseract50.dll" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Compile Include="HelikiProfiles\Evoker-Devistation.txt" />
   </ItemGroup>
 
 </Project>

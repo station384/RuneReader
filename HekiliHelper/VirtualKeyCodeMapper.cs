@@ -34,16 +34,16 @@ namespace HekiliHelper
 
         private static readonly Dictionary<string, int> KeyMappings = new Dictionary<string, int>
         {
-           // {"1", (int)VirtualKeyCodes.VirtualKeyStates.VK_Alphanumeric_1},
-           // {"2", (int)VirtualKeyCodes.VirtualKeyStates.VK_Alphanumeric_2},
-           // {"3", (int)VirtualKeyCodes.VirtualKeyStates.VK_Alphanumeric_3},
-          //  {"4", (int)VirtualKeyCodes.VirtualKeyStates.VK_Alphanumeric_4},
-          //  {"5", (int)VirtualKeyCodes.VirtualKeyStates.VK_Alphanumeric_5},
-          //  {"6", (int)VirtualKeyCodes.VirtualKeyStates.VK_Alphanumeric_6},
-          //  {"7", (int)VirtualKeyCodes.VirtualKeyStates.VK_Alphanumeric_7},
-          //  {"8", (int)VirtualKeyCodes.VirtualKeyStates.VK_Alphanumeric_8},
-          //  {"9", (int)VirtualKeyCodes.VirtualKeyStates.VK_Alphanumeric_9},
-          //  {"0", (int)VirtualKeyCodes.VirtualKeyStates.VK_Alphanumeric_0},
+            //{"1", (int)VirtualKeyCodes.VirtualKeyStates.VK_Alphanumeric_1},
+            //{"2", (int)VirtualKeyCodes.VirtualKeyStates.VK_Alphanumeric_2},
+            //{"3", (int)VirtualKeyCodes.VirtualKeyStates.VK_Alphanumeric_3},
+            //{"4", (int)VirtualKeyCodes.VirtualKeyStates.VK_Alphanumeric_4},
+            //{"5", (int)VirtualKeyCodes.VirtualKeyStates.VK_Alphanumeric_5},
+            //{"6", (int)VirtualKeyCodes.VirtualKeyStates.VK_Alphanumeric_6},
+            //{"7", (int)VirtualKeyCodes.VirtualKeyStates.VK_Alphanumeric_7},
+            //{"8", (int)VirtualKeyCodes.VirtualKeyStates.VK_Alphanumeric_8},
+            //{"9", (int)VirtualKeyCodes.VirtualKeyStates.VK_Alphanumeric_9},
+            //{"0", (int)VirtualKeyCodes.VirtualKeyStates.VK_Alphanumeric_0},
             // Had to remove these keys as that can't be detected using OCR very well.   only about a 30% accuarcy
             // {"-", (int)VirtualKeyCodes.VirtualKeyStates.VK_OEM_MINUS},
           //    {"=", 187}, // This key can be different depending on country, i.e.  US its the = key,  Spanish is the ? (upside down)

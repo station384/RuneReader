@@ -360,6 +360,11 @@ namespace HekiliHelper
 
         }
 
+        public static void FillRectangle(ref Mat src, OpenCvSharp.Rect rect, Scalar color)
+        {
+            Cv2.Rectangle(src, rect, color, -1);
+
+        }
 
         public static void DrawMarkers(ref Mat src)
         {
