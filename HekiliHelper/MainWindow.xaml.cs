@@ -19,6 +19,8 @@ using HekiliHelper.Properties;
 using System.Windows.Threading;
 using HekiliHelper;
 using System.Reflection.Emit;
+using System.Diagnostics.Eventing.Reader;
+using System.Linq;
 
 namespace HekiliHelper
 {
@@ -201,11 +203,35 @@ namespace HekiliHelper
             return image;
         }
 
+        private string OCRProcess(Bitmap b, System.Windows.Rect region)
+        {
+            string Result = "";
+             //ocrResult;
+            var ocrResult = ocr.PerformPointOcr(b, region);
+
+            string s = ocrResult.Replace("\n", "");
+            if (VirtualKeyCodeMapper.HasKey(s) && (!VirtualKeyCodeMapper.HasExcludeKey(s)))
+            {
+                var CurrentKeyToPress = StringExtensions.Extract(s, 4);
+                if (!string.IsNullOrEmpty(CurrentKeyToPress.Trim()))
+                {
+                    Result = CurrentKeyToPress;
+                }
+
+            }
+            return Result;
+
+        }
+
+
         private string OCRProcess(Bitmap b)
         {
 
             string Result = "";
-            string s = ocr.PerformOcr(b).Replace("\n", "");
+            OcrResult ocrResult;
+            ocrResult = ocr.PerformFullOcr(b);
+
+            string s = ocrResult.DetectedText.Replace("\n", "");
             if (VirtualKeyCodeMapper.HasKey(s) && (!VirtualKeyCodeMapper.HasExcludeKey(s)))
             {
                 var CurrentKeyToPress = StringExtensions.Extract(s, 4);
@@ -318,13 +344,54 @@ namespace HekiliHelper
             Cv2.CvtColor(IsolatedColor, gray, ColorConversionCodes.BGR2GRAY);
 
             // Apply Otsu's thresholding
-            Cv2.Threshold(gray, gray, 1, 255, ThresholdTypes.Otsu | ThresholdTypes.BinaryInv); //
+            Cv2.Threshold(gray, gray, 250, 255, ThresholdTypes.Otsu | ThresholdTypes.BinaryInv); //
+
+            // Find the current bounding boxes, and try and get rid of the useless ones
+            System.Windows.Rect[] ocrRegions = ocr.GetRegions(OpenCvSharp.Extensions.BitmapConverter.ToBitmap(gray));
+            List<System.Windows.Rect> usefulRegions = new List<System.Windows.Rect>();  
+            if (ocrRegions.Length > 1)
+            {
+                for (int i = 0; i < ocrRegions.Length; i++)
+                {
+
+
+                    if (ocrRegions[i].Height * ocrRegions[i].Width < 1000)
+                    {
+                            ImageProcessingOpenCV.FillRectangle(ref gray, new OpenCvSharp.Rect((int)ocrRegions[i].X, (int)ocrRegions[i].Y, (int)ocrRegions[i].Width, (int)ocrRegions[i].Width),
+                                Scalar.FromRgb(255, 255, 255)
+                           //     Scalar.FromRgb(0, 0, 0)
+                                );
+                    } else
+                    {
+                        usefulRegions.Add(ocrRegions[i]);
+                    }
+                }
+                    Task.Yield();
+            } else
+            {
+                usefulRegions.Add(ocrRegions[0]);
+            }
+
+            var xMin = usefulRegions.Min(s => s.X);
+            var yMin = usefulRegions.Min(s => s.Y);
+            var xMax = usefulRegions.Max(s => s.X + s.Width);
+            var yMax = usefulRegions.Max(s => s.Y + s.Height);
+            var int32Rect = new Int32Rect((int)xMin, (int)yMin, (int)xMax - (int)xMin, (int)yMax - (int)yMin);
+
+
+
+            System.Windows.Rect finalRegion = new System.Windows.Rect(int32Rect.X, int32Rect.Y, int32Rect.Width, int32Rect.Height);
+
+
+
             resizedMat = gray.Clone();
+            resizedMat = ImageProcessingOpenCV.RescaleImageToNewDpi(resizedMat, image.HorizontalResolution, 96);
+
             regions.TopLeft = ImageProcessingOpenCV.IsThereAnImageInTopLeftQuarter(gray);
             regions.TopRight = ImageProcessingOpenCV.IsThereAnImageInTopRightQuarter(gray);
             regions.BottomLeft = ImageProcessingOpenCV.IsThereAnImageInBottomLeftQuarter(gray);
             regions.BottomCenter = ImageProcessingOpenCV.IsThereAnImageInBottomCenter(gray);
-            resizedMat = ImageProcessingOpenCV.RescaleImageToNewDpi(resizedMat, image.HorizontalResolution, 96);
+    
 
             if (regions.TopRight)
             {
@@ -355,10 +422,12 @@ namespace HekiliHelper
 
 
             }
-  
 
 
-            string s = OCRProcess(OpenCvSharp.Extensions.BitmapConverter.ToBitmap(gray));
+
+            //  string s = OCRProcess(OpenCvSharp.Extensions.BitmapConverter.ToBitmap(gray));
+            string s = OCRProcess(OpenCvSharp.Extensions.BitmapConverter.ToBitmap(gray), finalRegion);
+
             CurrentKeyToSend = s;
             Cv2.CvtColor(resizedMat, resizedMat, ColorConversionCodes.BayerBG2RGB);
 
