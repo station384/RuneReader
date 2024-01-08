@@ -4,6 +4,7 @@ using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
+using static HekiliHelper.DetectHDR;
 
 namespace HekiliHelper
 {
@@ -35,6 +36,20 @@ namespace HekiliHelper
 
         [DllImport("user32.dll", SetLastError = true)]
         public static extern IntPtr LoadCursor(IntPtr hInstance, int lpCursorName);
+
+        // Import necessary APIs from Dxva2.dll
+        [DllImport("Dxva2.dll", SetLastError = true)]
+        public static extern bool GetNumberOfPhysicalMonitorsFromHMONITOR(IntPtr hMonitor, ref uint pdwNumberOfPhysicalMonitors);
+
+        [DllImport("Dxva2.dll", SetLastError = true)]
+        public static extern bool GetPhysicalMonitorsFromHMONITOR(IntPtr hMonitor, uint dwPhysicalMonitorArraySize, [Out] PHYSICAL_MONITOR[] pPhysicalMonitorArray);
+
+        [DllImport("Dxva2.dll", SetLastError = true)]
+        public static extern bool DestroyPhysicalMonitors(uint dwPhysicalMonitorArraySize, PHYSICAL_MONITOR[] pPhysicalMonitorArray);
+
+        [DllImport("Dxva2.dll", SetLastError = true)]
+        public static extern bool GetMonitorCapabilities(IntPtr hMonitor, out uint pdwMonitorCapabilities, out uint pdwSupportedColorTemperatures);
+
 
         public static uint OCR_NORMAL = 32512;
         public static int IDC_HAND = 32649;
@@ -88,6 +103,51 @@ namespace HekiliHelper
             public IntPtr dwExtraInfo;
         }
         #endregion
+
+
+        // Define the structure that will hold monitor information
+        [StructLayout(LayoutKind.Sequential)]
+        public struct PHYSICAL_MONITOR
+        {
+            public IntPtr hPhysicalMonitor;
+            [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 128)]
+            public string szPhysicalMonitorDescription;
+        }
+
+        // Define the capabilities and color temperature flags
+        // These values are taken from highlevelmonitorconfigurationapi.h
+        [Flags]
+        public enum MC_CAPS
+        {
+            MC_CAPS_NONE = 0x00000000,
+            MC_CAPS_MONITOR_TECHNOLOGY_TYPE = 0x00000001,
+            MC_CAPS_BRIGHTNESS = 0x00000002,
+            MC_CAPS_CONTRAST = 0x00000004,
+            MC_CAPS_COLOR_TEMPERATURE = 0x00000008,
+            MC_CAPS_RED_GREEN_BLUE_GAIN = 0x00000010,
+            MC_CAPS_RED_GREEN_BLUE_DRIVE = 0x00000020,
+            MC_CAPS_DEGAUSS = 0x00000040,
+            MC_CAPS_DISPLAY_AREA_POSITION = 0x00000080,
+            MC_CAPS_DISPLAY_AREA_SIZE = 0x00000100,
+            MC_CAPS_RESTORE_FACTORY_DEFAULTS = 0x00000400,
+            MC_CAPS_RESTORE_FACTORY_COLOR_DEFAULTS = 0x00000800,
+            MC_RESTORE_FACTORY_DEFAULTS_ENABLES_MONITOR_SETTINGS = 0x00001000
+        }
+
+        [Flags]
+        public enum MC_DISPLAY_TECHNOLOGY_TYPE
+        {
+            MC_SHADOW_MASK_CATHODE_RAY_TUBE,
+            MC_APERTURE_GRILL_CATHODE_RAY_TUBE,
+            MC_THIN_FILM_TRANSISTOR,
+            MC_LIQUID_CRYSTAL_ON_SILICON,
+            MC_PLASMA,
+            MC_ORGANIC_LIGHT_EMITTING_DIODE,
+            MC_ELECTROLUMINESCENT,
+            MC_MICROELECTROMECHANICAL,
+            MC_FIELD_EMISSION_DEVICE,
+        }
+
 
         public static string GetActiveWindowTitle()
         {

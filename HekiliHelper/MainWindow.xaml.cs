@@ -24,21 +24,15 @@ using System.Linq;
 
 namespace HekiliHelper
 {
-    /// <summary>
-    /// Interaction logic for MainWindow.xaml
-    /// </summary>
+
     public partial class MainWindow : System.Windows.Window
     {
 
 
         private volatile string[] _currentKeyToSend = new string[] { string.Empty, string.Empty }; // Default key to send, can be changed dynamically
-        //private volatile string _DetectedValueFirst = string.Empty;
-        //private volatile string _DetectedValueSecond = string.Empty;
 
         private volatile bool keyProcessingFirst = false;
         private volatile bool keyProcessingSecond = false;
-
-
         private volatile bool activationKeyPressed = false;
 
 
@@ -51,13 +45,13 @@ namespace HekiliHelper
         private IntPtr _wowWindowHandle = IntPtr.Zero;
         private CaptureScreen captureScreen;
         private ContinuousScreenCapture screenCapture;
-        private ImageHelpers ImageHelpers = new ImageHelpers();
+
 
         private OcrModule ocr = new OcrModule();
         private MagnifierWindow magnifier;
         private MagnifierWindow magnifier2;
-        private  ImageRegions CurrentImageRegions = new ImageRegions();
-        private System.Windows.Threading.DispatcherTimer _timer;
+        private ImageRegions CurrentImageRegions = new ImageRegions();
+        private DispatcherTimer _timer;
 
 
 
@@ -65,9 +59,7 @@ namespace HekiliHelper
         private int CurrentG = 255;
         private int CurrentB = 255;
         private int CurrentA = 255;
-        private int CurrentH = 255;
-        private int CurrentS = 255;
-        private int CurrentV = 255;
+
         private double CurrentThreshold = 0.3;
         private int CurrentCaptureRateMS = 100;
         private int CurrentKeyPressSpeedMS = 125;
@@ -81,11 +73,16 @@ namespace HekiliHelper
 
         private IntPtr SetHookActionKey(WindowsAPICalls.WindowsMessageProc proc)
         {
+            IntPtr result = IntPtr.Zero;
             using (Process curProcess = Process.GetCurrentProcess())
-            using (ProcessModule curModule = curProcess.MainModule)
             {
-                return WindowsAPICalls.SetWindowsHookEx(WindowsAPICalls.WH_KEYBOARD_LL, proc, WindowsAPICalls.GetModuleHandle(curModule.ModuleName), 0);
+                if (curProcess.MainModule != null)
+                using (ProcessModule curModule = curProcess.MainModule)
+                {
+                    result = WindowsAPICalls.SetWindowsHookEx(WindowsAPICalls.WH_KEYBOARD_LL, proc, WindowsAPICalls.GetModuleHandle(curModule.ModuleName), 0);
+                }
             }
+            return result;
         }
 
         private bool AltPressed = false;
@@ -104,8 +101,6 @@ namespace HekiliHelper
                 if (!WindowsAPICalls.IsCurrentWindowWithTitle("World of Warcraft"))
                 {
                     _timer.Stop();
-      
-
 
                     // Let the key event go thru so the new focused app can handle it
                     keyProcessingFirst = false;
@@ -116,7 +111,7 @@ namespace HekiliHelper
                 }
                 else
                 {
-                    var item = ActivationKeyCodeMapper.GetVirtualKeyCode(Properties.Settings.Default.ActivationKey);
+                    var item = ActivationKeyCodeMapper.GetVirtualKeyCode(Settings.Default.ActivationKey);
                     if (keyProcessingFirst == false || keyProcessingSecond == false)
                         if (wParam == (IntPtr)WindowsAPICalls.WM_KEYDOWN && (int)key == item)
                         {
@@ -132,9 +127,6 @@ namespace HekiliHelper
 
                                 _timer.Start();
                                 mainTimerTick(this, new EventArgs());
-
-
-      
 
                                 // Don't let the message go thru.  this blocks the game from seeing the key press
                                 handled = true;
@@ -177,36 +169,15 @@ namespace HekiliHelper
 
             // If the keypress has been handled, return a non-zero value.
             // Otherwise, call the next hook in the chain.
-            // return handled ? (IntPtr)0:CallNextHookEx(_hookID, nCode, wParam, lParam); // Locks explorer
+
             return WindowsAPICalls.CallNextHookEx(_hookID, nCode, wParam, lParam); // Doesn't lock explorer
-                                                                   //   return handled ? (IntPtr)1:CallNextHookEx(_hookID, nCode, wParam, lParam); // Blocks input to game does not block windowss
-
-        }
-
-
-
-
-        /// <summary>
-        /// Takes a bitmap and converts it to an image that can be handled by WPF ImageBrush
-        /// </summary>
-        /// <param name="src">A bitmap image</param>
-        /// <returns>The image as a BitmapImage for WPF</returns>
-        public BitmapImage Convert(Bitmap src)
-        {
-            MemoryStream ms = new MemoryStream();
-            ((System.Drawing.Bitmap)src).Save(ms, System.Drawing.Imaging.ImageFormat.Bmp);
-            BitmapImage image = new BitmapImage();
-            image.BeginInit();
-            ms.Seek(0, SeekOrigin.Begin);
-            image.StreamSource = ms;
-            image.EndInit();
-            return image;
+            // return handled ? (IntPtr)0:CallNextHookEx(_hookID, nCode, wParam, lParam); // Locks explorer
+            // return handled ? (IntPtr)1:CallNextHookEx(_hookID, nCode, wParam, lParam); // Blocks input to game does not block windows
         }
 
         private string OCRProcess(Bitmap b, System.Windows.Rect region)
         {
             string Result = "";
-             //ocrResult;
             var ocrResult = ocr.PerformPointOcr(b, region);
 
             string s = ocrResult.Replace("\n", "");
@@ -217,7 +188,6 @@ namespace HekiliHelper
                 {
                     Result = CurrentKeyToPress;
                 }
-
             }
             return Result;
 
@@ -246,78 +216,6 @@ namespace HekiliHelper
         }
 
 
-        //private void ProcessImageLocal(Bitmap image)
-        //{
-        //    // This only works with non HDR,  for now.
-
-        //    Bitmap b = image;
-
-
-        //    var origWidth = b.Width;
-        //    var origHeight = b.Height;
-
-        //    //Remember this is running in the background and every CPU cycle counts!!
-        //    //This has to be FAST it is executing every 250 miliseconds 4 times a second
-        //    //The faster this is the more times per second we can evaluate and react faster
-
-
-
-
-        //    // It is expected that in the game the font on the hotkey text will be set to R:25 B:255 G:255 The font set to mica, and the size set to 40.
-        //    // We filter out everying that isn't close to the color we want.
-        //    // Doing it this way because it wwwas FAST.  This could be doing by doing a find conture and area but that takes alot more caculation than just a simple color filter
-
-        //    b = ImageHelpers.FilterByColor(b, System.Drawing.Color.FromArgb(CurrentA, CurrentR, CurrentG, CurrentB), CurrentThreshold);
-        //    b = ImageHelpers.RescaleImageToDpi(b, 300);
-        //    //UpdateImageControl(Convert(b));
-        //    // Bring the levels to somthing predictable, to simplify we convert it to greyscale
-        //    b = ImageHelpers.ConvertToGrayscaleFast(b);
-        //    b = ImageHelpers.BumpToBlack(b, 160);
-
-        //    if (ImageHelpers.FindColorInFirstQuarter(b, System.Drawing.Color.White, CurrentThreshold))
-        //    {
-        //        b = ImageHelpers.BumpToWhite(b, 180);
-
-        //        // For tesseract it doesn't like HUGE text so we bring it back down to the original size
-        //        b = ImageHelpers.ResizeImage(b, origWidth, origHeight);
-
-        //        // Bitmap DisplayImage = b;
-
-
-        //        // Work Contourse later to find the main text and crop it out
-        //        // Just leaving the code here  just incase I can come up with a fast way of doing this
-        //        //var points = ImageHelpers.FindContours(b,128);
-        //        //foreach (var contour in points)
-        //        //{
-        //        //    System.Console.WriteLine("Contour found with points:");
-        //        //    var area = ImageHelpers.CalculateContourArea(contour);
-        //        //    var BoundingRect = ImageHelpers.GetBoundingRect(contour);
-        //        //    var ar = BoundingRect.Width / (float)(BoundingRect.Height);
-        //        //    if (area > 200 & ar > .25 & ar < 1.2)
-        //        //    {
-        //        //        DisplayImage = ImageHelpers.DrawRectangle(b, BoundingRect, System.Drawing.Color.Red);
-        //        //    }
-        //        //}
-
-
-        //        UpdateImageControl(Convert(b));
-
-        //        string s = OCRProcess(b);
-        //        lDetectedValue.Content = s;
-        //    }
-        //    else
-        //    {
-        //        // nothing found
-        //        UpdateImageControl(Convert(_holderBitmap));
-        //        lDetectedValue.Content = "";
-
-        //    }
-
-        //}
-
-
-
-
 
         private string ProcessImageOpenCV(Bitmap image, ref System.Windows.Controls.Label label, ref string _DetectedValue, ref int _DetectedSameCount,  ref System.Windows.Controls.Image DisplayControl, double Threshold, ref DetectionRegions regions)
         {
@@ -331,7 +229,7 @@ namespace HekiliHelper
 
             string result = "";
             BitmapSource? OutImageSource;
-            var CVMat = BitmapSourceConverter.ToMat(Convert(image));
+            var CVMat = BitmapSourceConverter.ToMat(ImageHelpers.Convert(image));
             Mat resizedMat;
 
 
@@ -353,33 +251,26 @@ namespace HekiliHelper
             {
                 for (int i = 0; i < ocrRegions.Length; i++)
                 {
-
-
                     if (ocrRegions[i].Height * ocrRegions[i].Width < 1000)
                     {
-                            ImageProcessingOpenCV.FillRectangle(ref gray, new OpenCvSharp.Rect((int)ocrRegions[i].X, (int)ocrRegions[i].Y, (int)ocrRegions[i].Width, (int)ocrRegions[i].Width),
-                                Scalar.FromRgb(255, 255, 255)
-                           //     Scalar.FromRgb(0, 0, 0)
-                                );
+                            ImageProcessingOpenCV.FillRectangle(ref gray, new OpenCvSharp.Rect((int)ocrRegions[i].X, (int)ocrRegions[i].Y, (int)ocrRegions[i].Width, (int)ocrRegions[i].Width), Scalar.FromRgb(255, 255, 255) );
                     } else
                     {
                         usefulRegions.Add(ocrRegions[i]);
                     }
                 }
-                    Task.Yield();
+                Task.Yield();  // Not sure if we need to yield to other threads here. Put this here just incase the for loop is huge.  
             } else
             {
                 usefulRegions.Add(ocrRegions[0]);
             }
 
+            // Find the total region size of all the regions that were detected
             var xMin = usefulRegions.Min(s => s.X);
             var yMin = usefulRegions.Min(s => s.Y);
             var xMax = usefulRegions.Max(s => s.X + s.Width);
             var yMax = usefulRegions.Max(s => s.Y + s.Height);
             var int32Rect = new Int32Rect((int)xMin, (int)yMin, (int)xMax - (int)xMin, (int)yMax - (int)yMin);
-
-
-
             System.Windows.Rect finalRegion = new System.Windows.Rect(int32Rect.X, int32Rect.Y, int32Rect.Width, int32Rect.Height);
 
 
@@ -395,7 +286,7 @@ namespace HekiliHelper
 
             if (regions.TopRight)
             {
-                if (!regions.TopLeft && Properties.Settings.Default.QuickDecode == false)
+                if (!regions.TopLeft && Settings.Default.QuickDecode == false)
                 {
                     Cv2.CvtColor(resizedMat, resizedMat, ColorConversionCodes.BayerBG2RGB);
                     ImageProcessingOpenCV.DrawMarkers(ref resizedMat);
@@ -407,7 +298,7 @@ namespace HekiliHelper
                     result = "";
                     return result;
                 }
-                if (!regions.BottomLeft && Properties.Settings.Default.QuickDecode == true)
+                if (!regions.BottomLeft && Settings.Default.QuickDecode == true)
                 {
                     Cv2.CvtColor(resizedMat, resizedMat, ColorConversionCodes.BayerBG2RGB);
                     ImageProcessingOpenCV.DrawMarkers(ref resizedMat);
@@ -423,9 +314,6 @@ namespace HekiliHelper
 
             }
 
-
-
-            //  string s = OCRProcess(OpenCvSharp.Extensions.BitmapConverter.ToBitmap(gray));
             string s = OCRProcess(OpenCvSharp.Extensions.BitmapConverter.ToBitmap(gray), finalRegion);
 
             CurrentKeyToSend = s;
@@ -476,7 +364,7 @@ namespace HekiliHelper
             regions[0] = new System.Windows.Rect { X = (double)x, Y = (double)y, Width = width, Height = height };
             regions[1] = new System.Windows.Rect { X = (double)x2, Y = (double)y2, Width = width2, Height = height2 };
             captureScreen = new CaptureScreen(regions, 0);
-            //  image.Source = Convert(captureScreen.CapturedImage);
+            //  image.Source = Convert(captureScreen.CapturedImage); //debuging
 
             // Create an instance of ContinuousScreenCapture with the CaptureScreen object
             screenCapture = new ContinuousScreenCapture(
@@ -490,9 +378,8 @@ namespace HekiliHelper
 
             screenCapture.UpdateSecondImage += (Bitmap image) =>
             {
-                if (Properties.Settings.Default.Use2ndImageDetection)
+                if (Settings.Default.Use2ndImageDetection)
                 {
-                    //ProcessImageLocal(image);
                     double trasThreshold = CurrentThreshold == 0 ? 0.0 : CurrentThreshold / 100;
                     ProcessImageOpenCV(image, ref lDetectedValue2, ref  _currentKeyToSend[1], ref _DetectedSameCount[1], ref imageCap2, trasThreshold, ref CurrentImageRegions.SecondImageRegions);
                 }
@@ -508,14 +395,9 @@ namespace HekiliHelper
             // Assign a handler to the UpdateUIImage event
             screenCapture.UpdateFirstImage += (Bitmap image) =>
             {
-                //ProcessImageLocal(image);
                 double trasThreshold = CurrentThreshold == 0 ? 0.0 : CurrentThreshold / 100;
                 ProcessImageOpenCV(image, ref lDetectedValue, ref _currentKeyToSend[0], ref _DetectedSameCount[0], ref imageCap, trasThreshold, ref CurrentImageRegions.FirstImageRegions);
             };
-
-
-            
-
 
         }
 
@@ -529,7 +411,6 @@ namespace HekiliHelper
             magnifier2.Show();
         }
 
-        string lastKey = "";
         private async void mainTimerTick(object? sender, EventArgs args)
         {
  
@@ -571,7 +452,6 @@ namespace HekiliHelper
 
 
             // THis is a brute force way of trying to keep a key from being rapidly pressed
-
             if (VirtualKeyCodeMapper.HasExcludeKey(keyToSendFirst))
             {
                 keyProcessingFirst = false;
@@ -590,26 +470,12 @@ namespace HekiliHelper
             keyProcessingFirst = true;
 
 
-
-
             int vkCode = 0;
 
 
             if (_wowWindowHandle != nint.Zero)
             {
       
-
-                //assuming we got here means we can do anything we want with the regions settings as they will update to the true values in the background
-                //and we know what keys we want to send
-                //CurrentImageRegions.FirstImageRegions.TopLeft = false;
-                //CurrentImageRegions.FirstImageRegions.TopRight = false;
-                //CurrentImageRegions.FirstImageRegions.BottomLeft = false;
-                //CurrentImageRegions.FirstImageRegions.BottomCenter = false;
-
-
-
- 
-
                 ImageCapBorder.BorderBrush = System.Windows.Media.Brushes.Red;
 
 
@@ -643,8 +509,7 @@ namespace HekiliHelper
                 // CTRL and ALT do not need to be held down just only pressed initally for the command to be interpeted correctly
                 if (keyToSendFirst[0] == 'C' ) WindowsAPICalls.PostMessage(_wowWindowHandle, WindowsAPICalls.WM_KEYUP, WindowsAPICalls.VK_CONTROL, 0); //&& CtrlPressed == true
                 if (keyToSendFirst[0] == 'A' ) WindowsAPICalls.PostMessage(_wowWindowHandle, WindowsAPICalls.WM_KEYUP, WindowsAPICalls.VK_MENU, 0); //&& AltPressed == true
-                //     await Task.Delay((int)sliderCaptureRateMS.Value); // Give some time for hekili to refresh
-
+      
 
                 // I want to wait up to 500 MS to wait for the next command to atleast start no delay just yield to other threads.
                 DateTime currentTime = DateTime.Now;
@@ -675,30 +540,20 @@ namespace HekiliHelper
                     {
            
                         await Task.Delay(1);
-                 
+
+                        #region 2nd Key Options
                         // Lets explore some second options while this is on cooldown
-                        if (Properties.Settings.Default.Use2ndImageDetection == true )
+                        if (Settings.Default.Use2ndImageDetection == true )
                         {
                 
                             if (keyToSendSecond == "")
                                 continue;  // We didn't have a value for the second key so skip
 
 
-                            // This is to avoid duplicate keypresses.  not sure if blocking it is helpful or not, in theory it should just pop to the primary,
-                            // but allowing it to press early should make it fire a little faster.   unsure...  skipping it avoids the question.  
-                            //if (keyToSendSecond == keyToSendFirst)
-                            //    continue;  // if its the same key let for first image handle it.
-
-
-
-
-
-                            #region 2nd Key Options
-                            DoSecondKeyAgain:
-                            await Task.Delay(1);
+             
+                            DoSecondKeyAgain:  // Yep doing a goto here.   Think I did this just because of the fear of using it in modern languages. Yeah I know its not best practices.
+                            await Task.Delay(1); // we may be in a goto loop here. make sure it doesn't lock any threads.  This could just be a Yield.
                             keyProcessingSecond = true;
-
-
 
 
                             if (CurrentImageRegions.FirstImageRegions.BottomLeft == false)
@@ -707,52 +562,26 @@ namespace HekiliHelper
                                 continue;
                             }
                             ImageCapBorder.BorderBrush = System.Windows.Media.Brushes.Black;
-                            //   if (CurrentImageRegions.SecondImageRegions.TopLeft == false)
-                            //{
-                            //    keyProcessing2 = false;
-                            //    _currentKeyToSend[1] = "";
-                            //    continue;
-                            //}
 
-                            if ((!VirtualKeyCodeMapper.HasKey(keyToSendSecond)) || (VirtualKeyCodeMapper.HasExcludeKey(keyToSendSecond))
-                            )
+                            if ((!VirtualKeyCodeMapper.HasKey(keyToSendSecond)) || VirtualKeyCodeMapper.HasExcludeKey(keyToSendSecond))
                             {
                                 keyProcessingSecond = false;
                                 continue;
                             }
+
                             ImageCap2Border.BorderBrush = System.Windows.Media.Brushes.Red;
-                            //CurrentImageRegions.SecondImageRegions.TopLeft = false;
-                            //CurrentImageRegions.SecondImageRegions.TopRight = false;
-                            //CurrentImageRegions.SecondImageRegions.BottomLeft = false;
-                            //CurrentImageRegions.SecondImageRegions.BottomCenter = false;
-                            //_currentKeyToSend[1] = "";
 
                             int vkCode2 = 0;
                             if (_wowWindowHandle != nint.Zero)
                             {
-
-             
-
-
-
                                 // I keep poking at this trying to figure out how to only send the key press again if a new key is to me pressed.
                                 // It fails if the next key to press is the same.
                                 // There would have to some logic in the capture to say its a new detection
 
-
                                 await Task.Delay(1);
-
-
 
                                 if (_keyPressMode)
                                 {
-                                    //while (CurrentImageRegions.SecondImageRegions.TopRight == true && button_Start.IsEnabled == false) // delay our press till we make sure hekili has chosen a new cast
-                                    //{
-                                    //    await Task.Yield();
-                                    //}
-
-                             
-                           
 
                                     while (CurrentImageRegions.FirstImageRegions.TopLeft == false && button_Start.IsEnabled == false ) // delay our press till we make sure hekili has chosen a new cast
                                     {
@@ -761,9 +590,6 @@ namespace HekiliHelper
 
                            
                                     keyToSendFirst = "";
-
-
-                                    //await Task.Delay(30); // Give a little time for the keyup to be registered by the server.
 
                                     // Handle the if command is tied to CTRL or ALT
                                     if (keyToSendSecond[1] == 'C') //&& CtrlPressed == false
@@ -791,6 +617,7 @@ namespace HekiliHelper
 
                                     if (keyToSendSecond[1] == 'A') // && AltPressed == true
                                         WindowsAPICalls.PostMessage(_wowWindowHandle, WindowsAPICalls.WM_KEYUP, WindowsAPICalls.VK_MENU, 0);
+                            
                                     // Now we pause until top is filled then we release the key that should queue the command.
                                     while (CurrentImageRegions.FirstImageRegions.TopLeft == false && button_Start.IsEnabled == false)
                                     {
@@ -813,15 +640,11 @@ namespace HekiliHelper
                                 ImageCap2Border.BorderBrush = System.Windows.Media.Brushes.Black;
                                 keyProcessingSecond = false;
 
-
-                                #endregion
-
-
                             }
 
                         }
+                        #endregion
                     }
-
 
                 }
          
@@ -834,22 +657,11 @@ namespace HekiliHelper
                 if (!_keyPressMode)
                 {
                     await Task.Delay(Random.Shared.Next() % 5 + CurrentKeyDownDelayMS);
-
                 }
 
                 // Let up on the command key
-
-             
                 keyProcessingFirst = false;
-           
-
-                // this stops the sending of the key till the timer is almost up.  
-                // it takes advantage of the cooldown visual cue in the game that darkens the font (changes the color)
-                // the OCR doesn't see a new char until it is almost times out, at that point it can be pressed and would be added to the action queue
-                //_DetectedValueFirst = "";
-                }
-
-            
+            }
 
             ImageCapBorder.BorderBrush = System.Windows.Media.Brushes.Black;
 
@@ -861,7 +673,6 @@ namespace HekiliHelper
 
 
 
-        //        Bitmap _holderBitmap;
         public MainWindow()
         {
             InitializeComponent();
@@ -869,72 +680,52 @@ namespace HekiliHelper
 
 
             magnifier = new MagnifierWindow();
-            magnifier.Left = Properties.Settings.Default.CapX > SystemParameters.PrimaryScreenWidth ? 100 : Properties.Settings.Default.CapX;
-            magnifier.Top = Properties.Settings.Default.CapY > SystemParameters.PrimaryScreenHeight ? 100 : Properties.Settings.Default.CapY;
-            magnifier.Width = Properties.Settings.Default.CapWidth;
-            magnifier.Height = Properties.Settings.Default.CapHeight;
+            magnifier.Left = Settings.Default.CapX > SystemParameters.PrimaryScreenWidth ? 100 : Settings.Default.CapX;
+            magnifier.Top = Settings.Default.CapY > SystemParameters.PrimaryScreenHeight ? 100 : Settings.Default.CapY;
+            magnifier.Width = Settings.Default.CapWidth;
+            magnifier.Height = Settings.Default.CapHeight;
             magnifier.ShowInTaskbar = false;
             magnifier.SizeChanged += Magnifier_SizeChanged;
             magnifier.LocationChanged += Magnifier_LocationChanged;
-       
-
-
-
 
             magnifier2 = new MagnifierWindow();
             magnifier2.border.BorderBrush = BorderBrush = System.Windows.Media.Brushes.Blue;
-            magnifier2.Left = Properties.Settings.Default.CapX > SystemParameters.PrimaryScreenWidth ? 100 : Properties.Settings.Default.Cap2X;
-            magnifier2.Top = Properties.Settings.Default.CapY > SystemParameters.PrimaryScreenHeight ? 100 : Properties.Settings.Default.Cap2Y;
-            magnifier2.Width = Properties.Settings.Default.Cap2Width;
-            magnifier2.Height = Properties.Settings.Default.Cap2Height;
+            magnifier2.Left = Settings.Default.CapX > SystemParameters.PrimaryScreenWidth ? 100 : Settings.Default.Cap2X;
+            magnifier2.Top = Settings.Default.CapY > SystemParameters.PrimaryScreenHeight ? 100 : Settings.Default.Cap2Y;
+            magnifier2.Width = Settings.Default.Cap2Width;
+            magnifier2.Height = Settings.Default.Cap2Height;
             magnifier2.ShowInTaskbar = false;
             magnifier2.SizeChanged += Magnifier2_SizeChanged;
             magnifier2.LocationChanged += Magnifier2_LocationChanged;
 
 
-
-
-            //CurrentR = Properties.Settings.Default.TargetR;
-            //CurrentG = Properties.Settings.Default.TargetG;
-            //CurrentB = Properties.Settings.Default.TargetB;
-            //CurrentA = Properties.Settings.Default.TargetA;
-
             ColorPicker.PortableColorPicker cp;
             cp = (ColorPicker.PortableColorPicker)cbColorDruid.Content;
-            cp.SelectedColor = System.Windows.Media.Color.FromArgb((byte)Properties.Settings.Default.DruidTargetA, (byte)Properties.Settings.Default.DruidTargetR, (byte)Properties.Settings.Default.DruidTargetG, (byte)Properties.Settings.Default.DruidTargetB);
-
+            cp.SelectedColor = System.Windows.Media.Color.FromArgb((byte)Settings.Default.DruidTargetA, (byte)Settings.Default.DruidTargetR, (byte)Settings.Default.DruidTargetG, (byte)Settings.Default.DruidTargetB);
             cp = (ColorPicker.PortableColorPicker)cbColorPaladin.Content;
-            cp.SelectedColor = System.Windows.Media.Color.FromArgb((byte)Properties.Settings.Default.PaladinTargetA, (byte)Properties.Settings.Default.PaladinTargetR, (byte)Properties.Settings.Default.PaladinTargetG, (byte)Properties.Settings.Default.PaladinTargetB);
-
+            cp.SelectedColor = System.Windows.Media.Color.FromArgb((byte)Settings.Default.PaladinTargetA, (byte)Settings.Default.PaladinTargetR, (byte)Settings.Default.PaladinTargetG, (byte)Settings.Default.PaladinTargetB);
             cp = (ColorPicker.PortableColorPicker)cbColorWarlock.Content;
-            cp.SelectedColor = System.Windows.Media.Color.FromArgb((byte)Properties.Settings.Default.WarlockTargetA, (byte)Properties.Settings.Default.WarlockTargetR, (byte)Properties.Settings.Default.WarlockTargetG, (byte)Properties.Settings.Default.WarlockTargetB);
-
+            cp.SelectedColor = System.Windows.Media.Color.FromArgb((byte)Settings.Default.WarlockTargetA, (byte)Settings.Default.WarlockTargetR, (byte)Settings.Default.WarlockTargetG, (byte)Settings.Default.WarlockTargetB);
             cp = (ColorPicker.PortableColorPicker)cbColorShaman.Content;
-            cp.SelectedColor = System.Windows.Media.Color.FromArgb((byte)Properties.Settings.Default.ShamanTargetA, (byte)Properties.Settings.Default.ShamanTargetR, (byte)Properties.Settings.Default.ShamanTargetG, (byte)Properties.Settings.Default.ShamanTargetB);
-
+            cp.SelectedColor = System.Windows.Media.Color.FromArgb((byte)Settings.Default.ShamanTargetA, (byte)Settings.Default.ShamanTargetR, (byte)Settings.Default.ShamanTargetG, (byte)Settings.Default.ShamanTargetB);
             cp = (ColorPicker.PortableColorPicker)cbColorRogue.Content;
-            cp.SelectedColor = System.Windows.Media.Color.FromArgb((byte)Properties.Settings.Default.RogueTargetA, (byte)Properties.Settings.Default.RogueTargetR, (byte)Properties.Settings.Default.RogueTargetG, (byte)Properties.Settings.Default.RogueTargetB);
-
+            cp.SelectedColor = System.Windows.Media.Color.FromArgb((byte)Settings.Default.RogueTargetA, (byte)Settings.Default.RogueTargetR, (byte)Settings.Default.RogueTargetG, (byte)Settings.Default.RogueTargetB);
             cp = (ColorPicker.PortableColorPicker)cbColorWarrior.Content;
-            cp.SelectedColor = System.Windows.Media.Color.FromArgb((byte)Properties.Settings.Default.WarriorTargetA, (byte)Properties.Settings.Default.WarriorTargetR, (byte)Properties.Settings.Default.WarriorTargetG, (byte)Properties.Settings.Default.WarriorTargetB);
-
+            cp.SelectedColor = System.Windows.Media.Color.FromArgb((byte)Settings.Default.WarriorTargetA, (byte)Settings.Default.WarriorTargetR, (byte)Settings.Default.WarriorTargetG, (byte)Settings.Default.WarriorTargetB);
             cp = (ColorPicker.PortableColorPicker)cbColorEvoker.Content;
-            cp.SelectedColor = System.Windows.Media.Color.FromArgb((byte)Properties.Settings.Default.EvokerTargetA, (byte)Properties.Settings.Default.EvokerTargetR, (byte)Properties.Settings.Default.EvokerTargetG, (byte)Properties.Settings.Default.EvokerTargetB);
-
+            cp.SelectedColor = System.Windows.Media.Color.FromArgb((byte)Settings.Default.EvokerTargetA, (byte)Settings.Default.EvokerTargetR, (byte)Settings.Default.EvokerTargetG, (byte)Settings.Default.EvokerTargetB);
             cp = (ColorPicker.PortableColorPicker)cbColorHunter.Content;
-            cp.SelectedColor = System.Windows.Media.Color.FromArgb((byte)Properties.Settings.Default.HunterTargetA, (byte)Properties.Settings.Default.HunterTargetR, (byte)Properties.Settings.Default.HunterTargetG, (byte)Properties.Settings.Default.HunterTargetB);
-
+            cp.SelectedColor = System.Windows.Media.Color.FromArgb((byte)Settings.Default.HunterTargetA, (byte)Settings.Default.HunterTargetR, (byte)Settings.Default.HunterTargetG, (byte)Settings.Default.HunterTargetB);
             cp = (ColorPicker.PortableColorPicker)cbColorMage.Content;
-            cp.SelectedColor = System.Windows.Media.Color.FromArgb((byte)Properties.Settings.Default.MageTargetA, (byte)Properties.Settings.Default.MageTargetR, (byte)Properties.Settings.Default.MageTargetG, (byte)Properties.Settings.Default.MageTargetB);
+            cp.SelectedColor = System.Windows.Media.Color.FromArgb((byte)Settings.Default.MageTargetA, (byte)Settings.Default.MageTargetR, (byte)Settings.Default.MageTargetG, (byte)Settings.Default.MageTargetB);
             cp = (ColorPicker.PortableColorPicker)cbColorPriest.Content;
-            cp.SelectedColor = System.Windows.Media.Color.FromArgb((byte)Properties.Settings.Default.PriestTargetA, (byte)Properties.Settings.Default.PriestTargetR, (byte)Properties.Settings.Default.PriestTargetG, (byte)Properties.Settings.Default.PriestTargetB);
+            cp.SelectedColor = System.Windows.Media.Color.FromArgb((byte)Settings.Default.PriestTargetA, (byte)Settings.Default.PriestTargetR, (byte)Settings.Default.PriestTargetG, (byte)Settings.Default.PriestTargetB);
             cp = (ColorPicker.PortableColorPicker)cbColorMonk.Content;
-            cp.SelectedColor = System.Windows.Media.Color.FromArgb((byte)Properties.Settings.Default.MonkTargetA, (byte)Properties.Settings.Default.MonkTargetR, (byte)Properties.Settings.Default.MonkTargetG, (byte)Properties.Settings.Default.MonkTargetB);
+            cp.SelectedColor = System.Windows.Media.Color.FromArgb((byte)Settings.Default.MonkTargetA, (byte)Settings.Default.MonkTargetR, (byte)Settings.Default.MonkTargetG, (byte)Settings.Default.MonkTargetB);
             cp = (ColorPicker.PortableColorPicker)cbColorDemonHunter.Content;
-            cp.SelectedColor = System.Windows.Media.Color.FromArgb((byte)Properties.Settings.Default.DemonHunterTargetA, (byte)Properties.Settings.Default.DemonHunterTargetR, (byte)Properties.Settings.Default.DemonHunterTargetG, (byte)Properties.Settings.Default.DemonHunterTargetB);
-            
+            cp.SelectedColor = System.Windows.Media.Color.FromArgb((byte)Settings.Default.DemonHunterTargetA, (byte)Settings.Default.DemonHunterTargetR, (byte)Settings.Default.DemonHunterTargetG, (byte)Settings.Default.DemonHunterTargetB);
             cp = (ColorPicker.PortableColorPicker)cbColorDefault.Content;
-            cp.SelectedColor = System.Windows.Media.Color.FromArgb((byte)Properties.Settings.Default.TargetA, (byte)Properties.Settings.Default.TargetR, (byte)Properties.Settings.Default.TargetG, (byte)Properties.Settings.Default.TargetB);
+            cp.SelectedColor = System.Windows.Media.Color.FromArgb((byte)Settings.Default.TargetA, (byte)Settings.Default.TargetR, (byte)Settings.Default.TargetG, (byte)Settings.Default.TargetB);
 
 
 
@@ -945,116 +736,99 @@ namespace HekiliHelper
             CurrentB = cp.SelectedColor.B;
             CurrentA = cp.SelectedColor.A;
 
-
-
-            //TargetColorPicker.ColorState =  new ColorPicker.Models.ColorState();
-            //TargetColorPicker.SelectedColor = System.Windows.Media.Color.FromArgb((byte)Properties.Settings.Default.TargetA, (byte)Properties.Settings.Default.TargetR, (byte)Properties.Settings.Default.TargetG, (byte)Properties.Settings.Default.TargetB);
-            //CurrentR = Properties.Settings.Default.TargetR;
-            //CurrentG = Properties.Settings.Default.TargetG;
-            //CurrentB = Properties.Settings.Default.TargetB;
-            //CurrentA = Properties.Settings.Default.TargetA;
-
             RadioButton rb = GetSelectedCheckBox();
 
 
             if ((string)rb.Tag == "default")
             {
-                tbVariance.Text = Properties.Settings.Default.VariancePercent.ToString();
-                sliderColorVariancePercent.Value = Properties.Settings.Default.VariancePercent;
+                tbVariance.Text = Settings.Default.VariancePercent.ToString();
+                sliderColorVariancePercent.Value = Settings.Default.VariancePercent;
             }
             if ((string)rb.Tag == "druid")
             {
-                tbVariance.Text = Properties.Settings.Default.DruidVariancePercent.ToString();
-                sliderColorVariancePercent.Value = Properties.Settings.Default.DruidVariancePercent;
+                tbVariance.Text = Settings.Default.DruidVariancePercent.ToString();
+                sliderColorVariancePercent.Value = Settings.Default.DruidVariancePercent;
             }
             if ((string)rb.Tag == "paladin")
             {
-                tbVariance.Text = Properties.Settings.Default.PaladinVariancePercent.ToString();
-                sliderColorVariancePercent.Value = Properties.Settings.Default.PaladinVariancePercent;
+                tbVariance.Text = Settings.Default.PaladinVariancePercent.ToString();
+                sliderColorVariancePercent.Value = Settings.Default.PaladinVariancePercent;
             }
             if ((string)rb.Tag == "warlock")
             {
-                tbVariance.Text = Properties.Settings.Default.WarlockVariancePercent.ToString();
-                sliderColorVariancePercent.Value = Properties.Settings.Default.WarlockVariancePercent;
+                tbVariance.Text = Settings.Default.WarlockVariancePercent.ToString();
+                sliderColorVariancePercent.Value = Settings.Default.WarlockVariancePercent;
             }
             if ((string)rb.Tag == "shaman")
             {
-                tbVariance.Text = Properties.Settings.Default.ShamanVariancePercent.ToString();
-                sliderColorVariancePercent.Value = Properties.Settings.Default.ShamanVariancePercent;
+                tbVariance.Text = Settings.Default.ShamanVariancePercent.ToString();
+                sliderColorVariancePercent.Value = Settings.Default.ShamanVariancePercent;
             }
             if ((string)rb.Tag == "rogue")
             {
-                tbVariance.Text = Properties.Settings.Default.RogueVariancePercent.ToString();
-                sliderColorVariancePercent.Value = Properties.Settings.Default.RogueVariancePercent;
+                tbVariance.Text = Settings.Default.RogueVariancePercent.ToString();
+                sliderColorVariancePercent.Value = Settings.Default.RogueVariancePercent;
             }
             if ((string)rb.Tag == "warrior")
             {
-                tbVariance.Text = Properties.Settings.Default.WarriorVariancePercent.ToString();
-                sliderColorVariancePercent.Value = Properties.Settings.Default.WarriorVariancePercent;
+                tbVariance.Text = Settings.Default.WarriorVariancePercent.ToString();
+                sliderColorVariancePercent.Value = Settings.Default.WarriorVariancePercent;
             }
             if ((string)rb.Tag == "evoker")
             {
-                tbVariance.Text = Properties.Settings.Default.EvokerVariancePercent.ToString();
-                sliderColorVariancePercent.Value = Properties.Settings.Default.EvokerVariancePercent;
+                tbVariance.Text = Settings.Default.EvokerVariancePercent.ToString();
+                sliderColorVariancePercent.Value = Settings.Default.EvokerVariancePercent;
             }
             if ((string)rb.Tag == "hunter")
             {
-                tbVariance.Text = Properties.Settings.Default.HunterVariancePercent.ToString();
-                sliderColorVariancePercent.Value = Properties.Settings.Default.HunterVariancePercent;
+                tbVariance.Text = Settings.Default.HunterVariancePercent.ToString();
+                sliderColorVariancePercent.Value = Settings.Default.HunterVariancePercent;
             }
             if ((string)rb.Tag == "mage")
             {
-                tbVariance.Text = Properties.Settings.Default.MageVariancePercent.ToString();
-                sliderColorVariancePercent.Value = Properties.Settings.Default.MageVariancePercent;
+                tbVariance.Text = Settings.Default.MageVariancePercent.ToString();
+                sliderColorVariancePercent.Value = Settings.Default.MageVariancePercent;
             }
             if ((string)rb.Tag == "priest")
             {
-                tbVariance.Text = Properties.Settings.Default.PriestVariancePercent.ToString();
-                sliderColorVariancePercent.Value = Properties.Settings.Default.PriestVariancePercent;
+                tbVariance.Text = Settings.Default.PriestVariancePercent.ToString();
+                sliderColorVariancePercent.Value = Settings.Default.PriestVariancePercent;
             }
             if ((string)rb.Tag == "monk")
             {
-                tbVariance.Text = Properties.Settings.Default.MonkVariancePercent.ToString();
-                sliderColorVariancePercent.Value = Properties.Settings.Default.MonkVariancePercent;
+                tbVariance.Text = Settings.Default.MonkVariancePercent.ToString();
+                sliderColorVariancePercent.Value = Settings.Default.MonkVariancePercent;
             }
             if ((string)rb.Tag == "demonhunter")
             {
-                tbVariance.Text = Properties.Settings.Default.DemonHunterVariancePercent.ToString();
-                sliderColorVariancePercent.Value = Properties.Settings.Default.DemonHunterVariancePercent;
+                tbVariance.Text = Settings.Default.DemonHunterVariancePercent.ToString();
+                sliderColorVariancePercent.Value = Settings.Default.DemonHunterVariancePercent;
             }
 
 
 
+            tbCaptureRateMS.Text = Settings.Default.CaptureRateMS.ToString();
+            sliderCaptureRateMS.Value = Settings.Default.CaptureRateMS;
 
+            tbKeyRateMS.Text = Settings.Default.KeyPressSpeedMS.ToString();
+            sliderKeyRateMS.Value = Settings.Default.KeyPressSpeedMS;
 
+            cbPushRelease.IsChecked = Settings.Default.PushAndRelease;
+            cbQuickDecode.IsChecked = Settings.Default.QuickDecode;
+            cbStayOnTop.IsChecked = Settings.Default.KeepOnTop;
 
-
-
-
-            tbCaptureRateMS.Text = Properties.Settings.Default.CaptureRateMS.ToString();
-            sliderCaptureRateMS.Value = Properties.Settings.Default.CaptureRateMS;
-
-            tbKeyRateMS.Text = Properties.Settings.Default.KeyPressSpeedMS.ToString();
-            sliderKeyRateMS.Value = Properties.Settings.Default.KeyPressSpeedMS;
-
-            cbPushRelease.IsChecked = Properties.Settings.Default.PushAndRelease;
-            cbQuickDecode.IsChecked = Properties.Settings.Default.QuickDecode;
-            cbStayOnTop.IsChecked = Properties.Settings.Default.KeepOnTop;
-
-            cbUse2ndImage.IsChecked = Properties.Settings.Default.Use2ndImageDetection;
+            cbUse2ndImage.IsChecked = Settings.Default.Use2ndImageDetection;
             
             ImageCap2Border.Visibility = cbUse2ndImage.IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
             lDetectedValue2.Visibility = ImageCap2Border.Visibility; // no need to reeval the vars, we already know.  (yeah this can be done in xaml bindings..  but right now I don't know how and don't feel like looking it up.)
 
-            //Properties.Settings.Default.ActivationKey
-
-            this.Topmost = Properties.Settings.Default.KeepOnTop;
+            this.Topmost = Settings.Default.KeepOnTop;
 
 
             foreach (var x in cbActivationKey.Items)
             {
 
-               if ( ((ComboBoxItem)x).Content.ToString() == Properties.Settings.Default.ActivationKey)
+               if ( ((ComboBoxItem)x).Content.ToString() == Settings.Default.ActivationKey)
                     {
                     cbActivationKey.SelectedItem = x;
                 }
@@ -1062,8 +836,8 @@ namespace HekiliHelper
 
             OpenMagnifierWindow();
 
-            this.Left = Properties.Settings.Default.AppStartX;
-            this.Top = Properties.Settings.Default.AppStartY;
+            this.Left = Settings.Default.AppStartX;
+            this.Top = Settings.Default.AppStartY;
 
           
             
@@ -1084,11 +858,6 @@ namespace HekiliHelper
             _timer.Interval = TimeSpan.FromMilliseconds(25);
             _timer.Tick += mainTimerTick;
 
-
-
-
-
-
         }
 
   
@@ -1098,12 +867,12 @@ namespace HekiliHelper
             if (cbStayOnTop.IsChecked == true)
             {
                 this.Topmost = true;
-                Properties.Settings.Default.KeepOnTop = true;
+                Settings.Default.KeepOnTop = true;
             }
             else
             {
                 this.Topmost = false;
-                Properties.Settings.Default.KeepOnTop = false;
+                Settings.Default.KeepOnTop = false;
 
             }
         }
@@ -1253,8 +1022,6 @@ namespace HekiliHelper
 
         private void Magnifier2_LocationChanged(object? sender, EventArgs e)
         {
-            //            if (screenCapture == null) return;
-            //            screenCapture.CaptureRegion = magnifier.CurrrentLocationValue;
             if (screenCapture == null) return;
             var source = PresentationSource.FromVisual(this);
             if (source?.CompositionTarget != null)
@@ -1327,22 +1094,19 @@ namespace HekiliHelper
 
 
 
-            Properties.Settings.Default.CapX = magnifier.Left;
-            Properties.Settings.Default.CapY = magnifier.Top;
-            Properties.Settings.Default.CapWidth = magnifier.Width;
-            Properties.Settings.Default.CapHeight = magnifier.Height;
-            Properties.Settings.Default.Cap2X = magnifier2.Left;
-            Properties.Settings.Default.Cap2Y = magnifier2.Top;
-            Properties.Settings.Default.Cap2Width = magnifier2.Width;
-            Properties.Settings.Default.Cap2Height = magnifier2.Height;
-            Properties.Settings.Default.AppStartX = this.Left;
-            Properties.Settings.Default.AppStartY = this.Top;
-            //Properties.Settings.Default.TargetR = CurrentR;
-            //Properties.Settings.Default.TargetG = CurrentG;
-            //Properties.Settings.Default.TargetB = CurrentB;
-            //Properties.Settings.Default.TargetA = 255;
+            Settings.Default.CapX = magnifier.Left;
+            Settings.Default.CapY = magnifier.Top;
+            Settings.Default.CapWidth = magnifier.Width;
+            Settings.Default.CapHeight = magnifier.Height;
+            Settings.Default.Cap2X = magnifier2.Left;
+            Settings.Default.Cap2Y = magnifier2.Top;
+            Settings.Default.Cap2Width = magnifier2.Width;
+            Settings.Default.Cap2Height = magnifier2.Height;
+            Settings.Default.AppStartX = this.Left;
+            Settings.Default.AppStartY = this.Top;
 
-            Properties.Settings.Default.Save();
+
+            Settings.Default.Save();
 
             magnifier.Close();
             magnifier2.Close();
@@ -1352,6 +1116,7 @@ namespace HekiliHelper
                 screenCapture.StopCapture();
             }
             if (_hookID != 0) {
+                // Make sure we stop trapping the keyboard
                 WindowsAPICalls.UnhookWindowsHookEx(_hookID);
             _hookID = 0;
             }
@@ -1361,13 +1126,13 @@ namespace HekiliHelper
             if (_MouseHookID != IntPtr.Zero)
             {
 
+                // Make sure we stop trapping the mouse if its active
                 WindowsAPICalls.UnhookWindowsHookEx(_MouseHookID);
                 _MouseHookID = IntPtr.Zero;
             }
-            // Make sure we stop trapping the keyboard
-            // UnhookWindowsHookEx(_hookID);
+
         }
-        #endregion
+
 
  
 
@@ -1544,10 +1309,6 @@ namespace HekiliHelper
             RadioButton item = GetSelectedCheckBox();
             ColorPicker.PortableColorPicker cp = (ColorPicker.PortableColorPicker)item.Content;
             cp.SelectedColor = System.Windows.Media.Color.FromArgb(0, 0, 0, 0);
-            // ((ColorPicker.PortableColorPicker)item.Content) = System.Windows.Media.Color.FromArgb(255, 0, 0, 0);
-            //this.TargetColorPicker.SelectedColor = System.Windows.Media.Color.FromArgb(255, 0, 0, 0);
-
-            // Other application logic
         }
 
 
@@ -1624,7 +1385,6 @@ namespace HekiliHelper
 
         private void sliderColorVariance_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
         {
-//            Properties.Settings.Default.VariancePercent = (int)sliderColorVariancePercent.Value;
             CurrentThreshold = (int)sliderColorVariancePercent.Value;
             if (tbVariance != null)
                 tbVariance.Text = ((int)sliderColorVariancePercent.Value).ToString();
@@ -1634,56 +1394,56 @@ namespace HekiliHelper
 
             if ((string)rb.Tag == "default")
             {
-                Properties.Settings.Default.VariancePercent = (int)sliderColorVariancePercent.Value;
+                Settings.Default.VariancePercent = (int)sliderColorVariancePercent.Value;
             }
             if ((string)rb.Tag == "druid")
             {
-                Properties.Settings.Default.DruidVariancePercent = (int)sliderColorVariancePercent.Value;
+                Settings.Default.DruidVariancePercent = (int)sliderColorVariancePercent.Value;
 
             }
             if ((string)rb.Tag == "paladin")
             {
-                Properties.Settings.Default.PaladinVariancePercent = (int)sliderColorVariancePercent.Value;
+                Settings.Default.PaladinVariancePercent = (int)sliderColorVariancePercent.Value;
             }
             if ((string)rb.Tag == "warlock")
             {
-                Properties.Settings.Default.WarlockVariancePercent = (int)sliderColorVariancePercent.Value;
+                Settings.Default.WarlockVariancePercent = (int)sliderColorVariancePercent.Value;
             }
             if ((string)rb.Tag == "shaman")
             {
-                Properties.Settings.Default.ShamanVariancePercent = (int)sliderColorVariancePercent.Value;
+                Settings.Default.ShamanVariancePercent = (int)sliderColorVariancePercent.Value;
             }
             if ((string)rb.Tag == "rogue")
             {
-                Properties.Settings.Default.RogueVariancePercent = (int)sliderColorVariancePercent.Value;
+                Settings.Default.RogueVariancePercent = (int)sliderColorVariancePercent.Value;
             }
             if ((string)rb.Tag == "warrior")
             {
-                Properties.Settings.Default.WarriorVariancePercent = (int)sliderColorVariancePercent.Value;
+                Settings.Default.WarriorVariancePercent = (int)sliderColorVariancePercent.Value;
             }
             if ((string)rb.Tag == "evoker")
             {
-                Properties.Settings.Default.EvokerVariancePercent = (int)sliderColorVariancePercent.Value;
+                Settings.Default.EvokerVariancePercent = (int)sliderColorVariancePercent.Value;
             }
             if ((string)rb.Tag == "hunter")
             {
-                Properties.Settings.Default.HunterVariancePercent = (int)sliderColorVariancePercent.Value;
+                Settings.Default.HunterVariancePercent = (int)sliderColorVariancePercent.Value;
             }
             if ((string)rb.Tag == "mage")
             {
-                Properties.Settings.Default.MageVariancePercent = (int)sliderColorVariancePercent.Value;
+                Settings.Default.MageVariancePercent = (int)sliderColorVariancePercent.Value;
             }
             if ((string)rb.Tag == "priest")
             {
-                Properties.Settings.Default.PriestVariancePercent = (int)sliderColorVariancePercent.Value;
+                Settings.Default.PriestVariancePercent = (int)sliderColorVariancePercent.Value;
             }
             if ((string)rb.Tag == "monk")
             {
-                Properties.Settings.Default.MonkVariancePercent = (int)sliderColorVariancePercent.Value;
+                Settings.Default.MonkVariancePercent = (int)sliderColorVariancePercent.Value;
             }
             if ((string)rb.Tag == "demonhunter")
             {
-                Properties.Settings.Default.DemonHunterVariancePercent = (int)sliderColorVariancePercent.Value;
+                Settings.Default.DemonHunterVariancePercent = (int)sliderColorVariancePercent.Value;
             }
 
 
@@ -1692,7 +1452,7 @@ namespace HekiliHelper
 
         private void sliderCaptureRateMS_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
         {
-            Properties.Settings.Default.CaptureRateMS = (int)sliderCaptureRateMS.Value;
+            Settings.Default.CaptureRateMS = (int)sliderCaptureRateMS.Value;
             CurrentCaptureRateMS = (int)sliderCaptureRateMS.Value;
             if (tbCaptureRateMS != null)
             tbCaptureRateMS.Text = ((int)sliderCaptureRateMS.Value).ToString();
@@ -1703,7 +1463,7 @@ namespace HekiliHelper
 
         private void sliderKeyRateMS_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
         {
-            Properties.Settings.Default.KeyPressSpeedMS = (int)sliderKeyRateMS.Value;
+            Settings.Default.KeyPressSpeedMS = (int)sliderKeyRateMS.Value;
             CurrentKeyDownDelayMS = (int)sliderKeyRateMS.Value;
             if (tbKeyRateMS != null)
             tbKeyRateMS.Text = ((int)sliderKeyRateMS.Value).ToString();
@@ -1749,25 +1509,25 @@ namespace HekiliHelper
 
         private void cbActivationKey_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
         {
-            Properties.Settings.Default.ActivationKey = ((ComboBoxItem)cbActivationKey.SelectedItem).Content.ToString();
+            Settings.Default.ActivationKey = ((ComboBoxItem)cbActivationKey.SelectedItem).Content.ToString();
         }
 
         private void bResetMagPosition_Click(object sender, RoutedEventArgs e)
         {
-            Properties.Settings.Default.CapX = 50;
-            Properties.Settings.Default.CapY = 50;
-            Properties.Settings.Default.CapWidth = 100;
-            Properties.Settings.Default.CapHeight = 100 ;
+            Settings.Default.CapX = 50;
+            Settings.Default.CapY = 50;
+            Settings.Default.CapWidth = 100;
+            Settings.Default.CapHeight = 100 ;
 
-            magnifier.Left = Properties.Settings.Default.CapX > SystemParameters.PrimaryScreenWidth ? 100 : Properties.Settings.Default.CapX;
-            magnifier.Top = Properties.Settings.Default.CapY > SystemParameters.PrimaryScreenHeight ? 100 : Properties.Settings.Default.CapY;
-            magnifier.Width = Properties.Settings.Default.CapWidth;
-            magnifier.Height = Properties.Settings.Default.CapHeight;
+            magnifier.Left = Settings.Default.CapX > SystemParameters.PrimaryScreenWidth ? 100 : Settings.Default.CapX;
+            magnifier.Top = Settings.Default.CapY > SystemParameters.PrimaryScreenHeight ? 100 : Settings.Default.CapY;
+            magnifier.Width = Settings.Default.CapWidth;
+            magnifier.Height = Settings.Default.CapHeight;
 
-            magnifier2.Left = Properties.Settings.Default.Cap2X > SystemParameters.PrimaryScreenWidth ? 100 : Properties.Settings.Default.CapX;
-            magnifier2.Top = Properties.Settings.Default.Cap2Y > SystemParameters.PrimaryScreenHeight ? 100 : Properties.Settings.Default.CapY;
-            magnifier2.Width = Properties.Settings.Default.Cap2Width;
-            magnifier2.Height = Properties.Settings.Default.Cap2Height;
+            magnifier2.Left = Settings.Default.Cap2X > SystemParameters.PrimaryScreenWidth ? 100 : Settings.Default.CapX;
+            magnifier2.Top = Settings.Default.Cap2Y > SystemParameters.PrimaryScreenHeight ? 100 : Settings.Default.CapY;
+            magnifier2.Width = Settings.Default.Cap2Width;
+            magnifier2.Height = Settings.Default.Cap2Height;
 
         }
 
@@ -1775,34 +1535,34 @@ namespace HekiliHelper
         {
 
             _keyPressMode = true;
-            Properties.Settings.Default.PushAndRelease = _keyPressMode;
+            Settings.Default.PushAndRelease = _keyPressMode;
 
         }
 
         private void cbPushRelease_Unchecked(object sender, RoutedEventArgs e)
         {
             _keyPressMode = false;
-            Properties.Settings.Default.PushAndRelease = _keyPressMode;
+            Settings.Default.PushAndRelease = _keyPressMode;
 
         }
 
         private void cbQuickDecode_Checked(object sender, RoutedEventArgs e)
         {
-            Properties.Settings.Default.QuickDecode = true;
+            Settings.Default.QuickDecode = true;
         }
 
         private void cbQuickDecode_Unchecked(object sender, RoutedEventArgs e)
         {
-            Properties.Settings.Default.QuickDecode = false;
+            Settings.Default.QuickDecode = false;
         }
 
         private void TargetColorPicker_ColorChanged(object sender, RoutedEventArgs e)
         {
-          
-            Properties.Settings.Default.TargetR = TargetColorPicker.SelectedColor.R;
-            Properties.Settings.Default.TargetG = TargetColorPicker.SelectedColor.G; 
-            Properties.Settings.Default.TargetB = TargetColorPicker.SelectedColor.B;
-            Properties.Settings.Default.TargetA = TargetColorPicker.SelectedColor.A;
+           // todo: make stil worl with the new multi color storage
+            Settings.Default.TargetR = TargetColorPicker.SelectedColor.R;
+            Settings.Default.TargetG = TargetColorPicker.SelectedColor.G; 
+            Settings.Default.TargetB = TargetColorPicker.SelectedColor.B;
+            Settings.Default.TargetA = TargetColorPicker.SelectedColor.A;
             CurrentR = TargetColorPicker.SelectedColor.R;
             CurrentG = TargetColorPicker.SelectedColor.G;
             CurrentB = TargetColorPicker.SelectedColor.B;
@@ -1810,7 +1570,7 @@ namespace HekiliHelper
 
         private void cbUse2ndImage_Checked(object sender, RoutedEventArgs e)
         {
-            Properties.Settings.Default.Use2ndImageDetection = true;
+            Settings.Default.Use2ndImageDetection = true;
             ImageCap2Border.Visibility = Visibility.Visible;
             lDetectedValue2.Visibility = Visibility.Visible;
 
@@ -1818,13 +1578,12 @@ namespace HekiliHelper
 
         private void cbUse2ndImage_Unchecked(object sender, RoutedEventArgs e)
         {
-            Properties.Settings.Default.Use2ndImageDetection = false;
+            Settings.Default.Use2ndImageDetection = false;
             ImageCap2Border.Visibility = Visibility.Collapsed;
             lDetectedValue2.Visibility = Visibility.Collapsed;
 
         }
 
-        private CheckBox currentCheckbox;
         private void cbColorDruid_Checked(object sender, RoutedEventArgs e)
         {
             RadioButton cb = (RadioButton)sender;
@@ -1839,63 +1598,63 @@ namespace HekiliHelper
 
             if ((string)cb.Tag == "default")
             {
-                sliderColorVariancePercent.Value = (int)Properties.Settings.Default.VariancePercent;
+                sliderColorVariancePercent.Value = (int)Settings.Default.VariancePercent;
             }
             if ((string)cb.Tag == "druid")
             {
-                sliderColorVariancePercent.Value = (int)Properties.Settings.Default.DruidVariancePercent;
+                sliderColorVariancePercent.Value = (int)Settings.Default.DruidVariancePercent;
 
             }
             if ((string)cb.Tag == "paladin")
             {
-                sliderColorVariancePercent.Value = (int)Properties.Settings.Default.PaladinVariancePercent;
+                sliderColorVariancePercent.Value = (int)Settings.Default.PaladinVariancePercent;
             }
             if ((string)cb.Tag == "warlock")
             {
-                sliderColorVariancePercent.Value = (int)Properties.Settings.Default.WarlockVariancePercent;
+                sliderColorVariancePercent.Value = (int)Settings.Default.WarlockVariancePercent;
             }
             if ((string)cb.Tag == "shaman")
             {
-                sliderColorVariancePercent.Value = (int)Properties.Settings.Default.ShamanVariancePercent;
+                sliderColorVariancePercent.Value = (int)Settings.Default.ShamanVariancePercent;
             }
             if ((string)cb.Tag == "rogue")
             {
-                sliderColorVariancePercent.Value = (int)Properties.Settings.Default.RogueVariancePercent;
+                sliderColorVariancePercent.Value = (int)Settings.Default.RogueVariancePercent;
             }
             if ((string)cb.Tag == "warrior")
             {
-                sliderColorVariancePercent.Value = (int)Properties.Settings.Default.WarriorVariancePercent;
+                sliderColorVariancePercent.Value = (int)Settings.Default.WarriorVariancePercent;
             }
             if ((string)cb.Tag == "evoker")
             {
-                sliderColorVariancePercent.Value = (int)Properties.Settings.Default.EvokerVariancePercent;
+                sliderColorVariancePercent.Value = (int)Settings.Default.EvokerVariancePercent;
             }
             if ((string)cb.Tag == "hunter")
             {
-                sliderColorVariancePercent.Value= (int)Properties.Settings.Default.HunterVariancePercent;
+                sliderColorVariancePercent.Value= (int)Settings.Default.HunterVariancePercent;
             }
             if ((string)cb.Tag == "mage")
             {
-                sliderColorVariancePercent.Value= (int)Properties.Settings.Default.MageVariancePercent;
+                sliderColorVariancePercent.Value= (int)Settings.Default.MageVariancePercent;
             }
             if ((string)cb.Tag == "priest")
             {
-                sliderColorVariancePercent.Value= (int)Properties.Settings.Default.PriestVariancePercent;
+                sliderColorVariancePercent.Value= (int)Settings.Default.PriestVariancePercent;
             }
             if ((string)cb.Tag == "monk")
             {
-                sliderColorVariancePercent.Value= (int)Properties.Settings.Default.MonkVariancePercent;
+                sliderColorVariancePercent.Value= (int)Settings.Default.MonkVariancePercent;
             }
             if ((string)cb.Tag == "demonhunter")
             {
-                sliderColorVariancePercent.Value= (int)Properties.Settings.Default.DemonHunterVariancePercent;
+                sliderColorVariancePercent.Value= (int)Settings.Default.DemonHunterVariancePercent;
             }
 
 
 
 
         }
-
+        #endregion
 
     }
 }
