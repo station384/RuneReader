@@ -80,7 +80,8 @@ namespace HekiliHelper
             isCapturing = true;
             captureThread = new Thread(CaptureLoop)
             {
-                IsBackground = true // Set the thread as a background thread
+                IsBackground = false // Set the thread as a background thread
+
             };
             captureThread.Start();
             }
@@ -115,7 +116,7 @@ namespace HekiliHelper
                         UpdateFirstImage?.Invoke(capturedImage);
                         UpdateSecondImage?.Invoke(capturedImage2);
                     });
-                        
+                   
 
                 }
                 catch (Exception ex)

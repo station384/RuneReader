@@ -201,9 +201,10 @@ Height="Auto"
                 </StackPanel>
 
                 <!--<colorpicker:StandardColorPicker x:Name="main" Width="200" Height="380" Grid.Column="0" Grid.Row="6" Grid.ColumnSpan="2"/>-->
+
             </StackPanel>
 
-
+            
 
 
         </Expander>
