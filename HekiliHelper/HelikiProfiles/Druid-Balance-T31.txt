@@ -24,6 +24,8 @@ actions+=/natures_vigil
 actions+=/run_action_list,name=aoe,strict=1,if=variable.is_aoe
 actions+=/run_action_list,name=st,strict=1,if=!variable.is_aoe
 
+
+
 actions.aoe+=/moonfire,cycle_targets=1,if=!boss&refreshable&(target.time_to_die-remains)>6&astral_power.deficit>variable.passive_asp+energize_amount
 actions.aoe+=/variable,name=cd_condition_aoe,value=!druid.no_cds&(cooldown.ca_inc.remains<5&!buff.ca_inc.up&(target.time_to_die>10&buff.primordial_arcanic_pulsar.value<500|fight_remains<25+10*talent.incarnation_chosen_of_elune))
 actions.aoe+=/sunfire,cycle_targets=1,if=refreshable&(target.time_to_die-remains)>6-(spell_targets%2)&astral_power.deficit>variable.passive_asp+energize_amount
