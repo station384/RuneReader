@@ -6,7 +6,7 @@ using System.Windows.Controls;
 using Tesseract;
 
 
-namespace HekiliHelper
+namespace HekiliEcho
 {
     public class OcrResult
     {

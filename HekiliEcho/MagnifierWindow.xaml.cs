@@ -12,7 +12,7 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Shapes;
 
-namespace HekiliHelper
+namespace HekiliEcho
 {
     using System;
     using System.Drawing;
@@ -21,7 +21,7 @@ namespace HekiliHelper
     using System.Windows.Interop;
     using System.Windows.Media.Imaging;
     using System.Windows.Threading;
-    using static HekiliHelper.ContinuousScreenCapture;
+    using static HekiliEcho.ContinuousScreenCapture;
 
 
     public partial class MagnifierWindow : Window

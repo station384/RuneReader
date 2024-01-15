@@ -8,7 +8,7 @@
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
 	<GenerateAssemblyInfo>false</GenerateAssemblyInfo>
     <GenerateTargetFrameworkAttribute>false</GenerateTargetFrameworkAttribute>
-    <StartupObject>HekiliHelper.App</StartupObject>
+    <StartupObject>HekiliEcho.App</StartupObject>
     <ApplicationIcon>Derp.ico</ApplicationIcon>
     <PlatformTarget>AnyCPU</PlatformTarget>  
   </PropertyGroup>
@@ -200,6 +200,10 @@
 
   <ItemGroup>
     <None Remove="C:\Users\stati\.nuget\packages\tesseract\5.2.0\build\\..\x64\tesseract50.dll" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Properties\PublishProfiles\" />
   </ItemGroup>
 
 </Project>

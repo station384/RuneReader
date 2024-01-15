@@ -5,7 +5,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
-namespace HekiliHelper
+namespace HekiliEcho
 {
     public static class StringExtensions
     {

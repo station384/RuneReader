@@ -4,9 +4,9 @@ using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
-using static HekiliHelper.DetectHDR;
+using static HekiliEcho.DetectHDR;
 
-namespace HekiliHelper
+namespace HekiliEcho
 {
     internal class WindowsAPICalls
     {

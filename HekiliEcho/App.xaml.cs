@@ -11,7 +11,7 @@ using System.Threading.Tasks;
 using System.Windows;
 
 
-namespace HekiliHelper
+namespace HekiliEcho
 {
     /// <summary>
     /// Interaction logic for App.xaml
@@ -22,7 +22,7 @@ namespace HekiliHelper
 
         protected override void OnStartup(StartupEventArgs e)
         {
-            const string appName = "HekiliHelper";
+            const string appName = "HekiliEcho";
             bool createdNew;
 
             _mutex = new Mutex(true, appName, out createdNew);

@@ -5,7 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace HekiliHelper
+namespace HekiliEcho
 {
     internal class ImageProcessingOpenCV
     {

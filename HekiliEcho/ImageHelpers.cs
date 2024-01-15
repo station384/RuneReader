@@ -10,7 +10,7 @@ using System.Runtime.InteropServices;
 using System.IO;
 using System.Windows.Media.Imaging;
 
-namespace HekiliHelper
+namespace HekiliEcho
 {
     public class ImageHelpers
     {

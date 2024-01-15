@@ -10,7 +10,7 @@ using System.Windows;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 
-namespace HekiliHelper
+namespace HekiliEcho
 {
     public class ContinuousScreenCapture
     {

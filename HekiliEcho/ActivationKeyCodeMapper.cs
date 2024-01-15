@@ -5,7 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Input;
 
-namespace HekiliHelper
+namespace HekiliEcho
 {
     public static class ActivationKeyCodeMapper
     {

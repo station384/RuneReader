@@ -1,7 +1,7 @@
-﻿<Application x:Class="HekiliHelper.App"
+﻿<Application x:Class="HekiliEcho.App"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:local="clr-namespace:HekiliHelper"
+             xmlns:local="clr-namespace:HekiliEcho"
              StartupUri="MainWindow.xaml">
     <Application.Resources>
          
