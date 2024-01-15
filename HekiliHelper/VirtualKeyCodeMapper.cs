@@ -91,7 +91,7 @@ namespace HekiliHelper
                                     {"AF12", (int)VirtualKeyCodes.VirtualKeyStates.VK_F12},
                 // ... add additional key mappings as needed
     };
-
+        
         public static int GetVirtualKeyCode(string key)
         {
             if (KeyMappings.TryGetValue(key, out int vkCode))

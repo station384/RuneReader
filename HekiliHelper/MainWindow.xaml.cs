@@ -21,6 +21,7 @@ using HekiliHelper;
 using System.Reflection.Emit;
 using System.Diagnostics.Eventing.Reader;
 using System.Linq;
+using Vortice.Direct3D11;
 
 namespace HekiliHelper
 {
@@ -216,7 +217,7 @@ namespace HekiliHelper
 
 
 
-        private string ProcessImageOpenCV(Bitmap image, ref System.Windows.Controls.Label label, ref string _DetectedValue, ref int _DetectedSameCount,  ref System.Windows.Controls.Image DisplayControl, double Threshold, ref DetectionRegions regions)
+        private  int ProcessImageOpenCV(Bitmap image, ref System.Windows.Controls.Label label, ref string _DetectedValue, ref int _DetectedSameCount,  ref System.Windows.Controls.Image DisplayControl, ref System.Windows.Controls.Image DisplayControlDelays, double Threshold, ref DetectionRegions regions)
         {
             var origWidth = image.Width;
             var origHeight = image.Height;
@@ -226,7 +227,7 @@ namespace HekiliHelper
             int Bscale = ((int)(CurrentB * ((CurrentB * Threshold) / CurrentB)));
 
 
-            string result = "";
+            int result = -1;
             BitmapSource? OutImageSource;
             var CVMat = BitmapSourceConverter.ToMat(ImageHelpers.Convert(image));
             Mat resizedMat;
@@ -235,7 +236,7 @@ namespace HekiliHelper
             resizedMat = ImageProcessingOpenCV.RescaleImageToNewDpi(CVMat, image.HorizontalResolution, 300);
 
             var IsolatedColorWithDelays = ImageProcessingOpenCV.IsolateColorHSV(resizedMat, Scalar.FromRgb(CurrentR, CurrentG, CurrentB), Threshold);
-            var IsolatedColorWithoutDelays = ImageProcessingOpenCV.IsolateColorHSV(resizedMat, Scalar.FromRgb(CurrentR, CurrentG, CurrentB), Threshold + 1 );
+            var IsolatedColorWithoutDelays = ImageProcessingOpenCV.IsolateColorHSV(resizedMat, Scalar.FromRgb(CurrentR, CurrentG, CurrentB), Threshold +1  );
 
             Mat grayWithDelays = new Mat();
             Mat grayWithoutDelays = new Mat();
@@ -249,11 +250,19 @@ namespace HekiliHelper
             // Find the current bounding boxes, and try and get rid of the useless ones
             System.Windows.Rect[] ocrRegionsWithDelays = ocr.GetRegions(OpenCvSharp.Extensions.BitmapConverter.ToBitmap(grayWithDelays));
             System.Windows.Rect[] ocrRegionsWithoutDelays = ocr.GetRegions(OpenCvSharp.Extensions.BitmapConverter.ToBitmap(grayWithoutDelays));
+
+            if (ocrRegionsWithDelays == null)
+                ocrRegionsWithDelays = new System.Windows.Rect[] {new System.Windows.Rect(0,0,grayWithDelays.Width, grayWithDelays.Height) };
+
+
+            if (ocrRegionsWithoutDelays == null)
+                ocrRegionsWithoutDelays = new System.Windows.Rect[] { new System.Windows.Rect(0, 0, grayWithoutDelays.Width, grayWithoutDelays.Height) };
+
             List<System.Windows.Rect> usefulRegionsWithDelays = new List<System.Windows.Rect>();
             List<System.Windows.Rect> usefulRegionsWithoutDelays = new List<System.Windows.Rect>();
-            if (ocrRegionsWithDelays.Length > 1)
+            if (ocrRegionsWithDelays.Length >= 1 )
             {
-                for (int i = 0; i < ocrRegionsWithDelays.Length; i++)
+                for (int i = 0; i < ocrRegionsWithDelays.Length && i  <= 20; i++)
                 {
                     if (ocrRegionsWithDelays[i].Height * ocrRegionsWithDelays[i].Width < 1000)
                     {
@@ -263,25 +272,34 @@ namespace HekiliHelper
                         usefulRegionsWithDelays.Add(ocrRegionsWithDelays[i]);
                     }
                 }
-                Task.Yield();  // Not sure if we need to yield to other threads here. Put this here just incase the for loop is huge.  
-            } else
+                   // Not sure if we need to yield to other threads here. Put this here just incase the for loop is huge.  
+            } 
+            else
             {
                 usefulRegionsWithDelays.Add(ocrRegionsWithDelays[0]);
             }
 
 
+
             // Find the total region size of all the regions that were detected
-            var xMin = usefulRegionsWithDelays.Min(s => s.X);
-            var yMin = usefulRegionsWithDelays.Min(s => s.Y);
-            var xMax = usefulRegionsWithDelays.Max(s => s.X + s.Width);
-            var yMax = usefulRegionsWithDelays.Max(s => s.Y + s.Height);
+            double xMin = 0;
+            double yMin = 0;
+            double xMax = 0;
+            double yMax = 0;
+
+
+            xMin = usefulRegionsWithDelays.Min(s => s.X);
+            yMin = usefulRegionsWithDelays.Min(s => s.Y);
+            xMax = usefulRegionsWithDelays.Max(s => s.X + s.Width);
+            yMax = usefulRegionsWithDelays.Max(s => s.Y + s.Height);
+
             var int32Rect = new Int32Rect((int)xMin, (int)yMin, (int)xMax - (int)xMin, (int)yMax - (int)yMin);
             System.Windows.Rect finalRegionWithDelays = new System.Windows.Rect(int32Rect.X, int32Rect.Y, int32Rect.Width, int32Rect.Height);
 
 
-            if (ocrRegionsWithoutDelays.Length > 1)
+            if (ocrRegionsWithoutDelays.Length > 1 )
             {
-                for (int i = 0; i < ocrRegionsWithoutDelays.Length; i++)
+                for (int i = 0; i < ocrRegionsWithoutDelays.Length &&  i <= 20; i++)
                 {
                     if (ocrRegionsWithoutDelays[i].Height * ocrRegionsWithoutDelays[i].Width < 1000)
                     {
@@ -298,7 +316,8 @@ namespace HekiliHelper
                 usefulRegionsWithoutDelays.Add(ocrRegionsWithoutDelays[0]);
             }
 
-
+            //if (usefulRegionsWithoutDelays == null)
+            //    return -1;
             // Find the total region size of all the regions that were detected
             xMin = usefulRegionsWithoutDelays.Min(s => s.X);
             yMin = usefulRegionsWithoutDelays.Min(s => s.Y);
@@ -328,36 +347,7 @@ namespace HekiliHelper
             regions.BottomCenter = ImageProcessingOpenCV.IsThereAnImageInBottomCenter(grayWithDelays);
     
 
-            //if (regions.TopRight)
-            //{
-            //    if (!regions.TopLeft && Settings.Default.QuickDecode == false)
-            //    {
-            //        Cv2.CvtColor(resizedMat, resizedMat, ColorConversionCodes.BayerBG2RGB);
-            //        ImageProcessingOpenCV.DrawMarkers(ref resizedMat);
 
-            //        OutImageSource = BitmapSourceConverter.ToBitmapSource(resizedMat);
-            //        DisplayControl.Source = OutImageSource;
-            //        label.Content = "";
-            //        _DetectedValue = "";
-            //        result = "";
-            //        return result;
-            //    }
-   
-            //    if (!regions.BottomLeft && Settings.Default.QuickDecode == true)
-            //    {
-            //        Cv2.CvtColor(resizedMat, resizedMat, ColorConversionCodes.BayerBG2RGB);
-            //        ImageProcessingOpenCV.DrawMarkers(ref resizedMat);
-
-            //        OutImageSource = BitmapSourceConverter.ToBitmapSource(resizedMat);
-            //        DisplayControl.Source = OutImageSource;
-            //        label.Content = "";
-            //        _DetectedValue = "";
-            //        result = "";
-            //        return result;
-            //    }
-
-
-            //}
 
             string s = OCRProcess(OpenCvSharp.Extensions.BitmapConverter.ToBitmap(grayWithoutDelays), finalRegionWithoutDelays);
 
@@ -369,26 +359,15 @@ namespace HekiliHelper
             OutImageSource = BitmapSourceConverter.ToBitmapSource(resizedMat);
             DisplayControl.Source = OutImageSource;
 
-            //if (_DetectedSameCount >= 2)
-            //{
-            //    label.Content = s;
-            //    _DetectedValue = s;
-            //    _DetectedSameCount = 0;
-            //}
-            //else
-            //{
-            //    //if (label.Content.ToString() != s)
-            //    //{
-            //    //   // lDetectedValue.Content = "";
-            //    //    _DetectedValue = "";
-            //    //}
-            //    _DetectedSameCount++;
-            //}
-            
+            OutImageSource = BitmapSourceConverter.ToBitmapSource(grayWithoutDelays);
+            DisplayControlDelays.Source = OutImageSource;
+
+
+
+
             label.Content = s;
             _DetectedValue = s;
 
-            result = _DetectedValue;
             return result;
         }
 
@@ -443,11 +422,11 @@ namespace HekiliHelper
             //};
 
             // Assign a handler to the UpdateUIImage event
-            screenCapture.UpdateFirstImage += (Bitmap image) =>
+            screenCapture.UpdateFirstImage +=  (Bitmap image) =>
             {
                 double trasThreshold = CurrentThreshold == 0 ? 0.0 : CurrentThreshold / 100;
-                ProcessImageOpenCV(image, ref lDetectedValue, ref _currentKeyToSend[0], ref _DetectedSameCount[0], ref imageCap, trasThreshold, ref CurrentImageRegions.FirstImageRegions);
-        
+                 ProcessImageOpenCV(image, ref lDetectedValue, ref _currentKeyToSend[0], ref _DetectedSameCount[0], ref imageCap, ref imageCap2, trasThreshold, ref CurrentImageRegions.FirstImageRegions);
+       
 
             };
 
@@ -461,69 +440,81 @@ namespace HekiliHelper
         {
  
           //  _timer.Stop();
+      
             // If key is already processing skip this tick
             if (keyProcessingFirst || keyProcessingSecond)
             {
                 return;
             }
+            var keyToSendFirst = string.Empty;
+            var keyToSendSecond = string.Empty;
+            int vkCode = 0;
+            DateTime currentD = DateTime.Now;
+
+        repeatWithoutDelay:
+            keyToSendFirst = string.Empty;
+            keyToSendSecond = string.Empty;
+            vkCode = 0;
+
+            if (CurrentImageRegions.FirstImageRegions.BottomLeft == false && keyProcessingFirst == true)  // First Image is almost done processing
+            {
+                keyProcessingFirst = false;
+                keyProcessingSecond = false;
+                ImageCapBorder.BorderBrush = System.Windows.Media.Brushes.Black;
+                return;
+            }
 
             // lets just hang out here till we have a key
-            while (_currentKeyToSend[0] == "" && button_Start.IsEnabled == false && activationKeyPressed == true)
-            {
-                await Task.Delay(1);
-            }
-
-
-
-            if (CurrentImageRegions.FirstImageRegions.TopLeft == false && keyProcessingFirst == true)  // First Image is almost done processing
-            {
-                keyProcessingFirst = false;
-                keyProcessingSecond = false;
-                ImageCapBorder.BorderBrush = System.Windows.Media.Brushes.Black;
-                return;
-            }
-
-
-
-            var keyToSendFirst = string.Empty;  
-            var keyToSendSecond = string.Empty;
-
-            JumpToStart:
-            if (_currentKeyToSend[0] == "")  // check again if the OCR is done if it isn't try again
-            {
-                keyProcessingFirst = false;
-                keyProcessingSecond = false;
-                return;
-            }
-            await Task.Delay(1);
+            currentD = DateTime.Now;
 
             keyToSendFirst = _currentKeyToSend[0];
-            keyToSendSecond = _currentKeyToSend[1];
-
-
-
-            // THis is a brute force way of trying to keep a key from being rapidly pressed
-            if (VirtualKeyCodeMapper.HasExcludeKey(keyToSendFirst))
+            while (keyToSendFirst == "" && button_Start.IsEnabled == false && activationKeyPressed == true)
             {
-                keyProcessingFirst = false;
-                keyProcessingSecond = false;
-                ImageCapBorder.BorderBrush = System.Windows.Media.Brushes.Black;
-                return;
+                await Task.Delay(1) ;
+                keyToSendFirst = _currentKeyToSend[0];
+                if ( currentD.AddMilliseconds(1000) < DateTime.Now)
+                { keyProcessingFirst = false;
+                 keyProcessingSecond = false ;
+                    return;
+                }
             }
 
-            // Check the key dictionary if the key is one we should handle
-            if (!VirtualKeyCodeMapper.HasKey(keyToSendFirst))
+
+
+
+
+
+
+
+
+
+
+
+
+            currentD = DateTime.Now;
+            while (keyToSendFirst == "" && button_Start.IsEnabled == false && activationKeyPressed == true && !VirtualKeyCodeMapper.HasExcludeKey(keyToSendFirst) && VirtualKeyCodeMapper.HasKey(keyToSendFirst))
+            {
+                await Task.Delay(1);
+                keyToSendFirst = _currentKeyToSend[0];
+                if (currentD.AddMilliseconds(1000) < DateTime.Now)
+                {
+                    keyProcessingFirst = false;
+                    keyProcessingSecond = false;
+                    return;
+                }
+            }
+
+            if (keyToSendFirst == "")
             {
                 keyProcessingFirst = false;
                 keyProcessingSecond = false;
-                ImageCapBorder.BorderBrush = System.Windows.Media.Brushes.Black;
                 return;
             }
 
             keyProcessingFirst = true;
 
 
-            int vkCode = 0;
+       
 
 
             if (_wowWindowHandle != nint.Zero)
@@ -531,7 +522,9 @@ namespace HekiliHelper
       
                 ImageCapBorder.BorderBrush = System.Windows.Media.Brushes.Red;
 
-
+                CurrentImageRegions.FirstImageRegions.TopLeft = false;
+                CurrentImageRegions.FirstImageRegions.BottomLeft = false;
+                CurrentImageRegions.FirstImageRegions.BottomCenter = false;
                 // I keep poking at this trying to figure out how to only send the key press again if a new key is to me pressed.
                 // It fails if the next key to press is the same.
                 // There would have to some logic in the capture to say its a new detection
@@ -563,172 +556,30 @@ namespace HekiliHelper
                 // CTRL and ALT do not need to be held down just only pressed initally for the command to be interpeted correctly
                 if (keyToSendFirst[0] == 'C' ) WindowsAPICalls.PostMessage(_wowWindowHandle, WindowsAPICalls.WM_KEYUP, WindowsAPICalls.VK_CONTROL, 0); //&& CtrlPressed == true
                 if (keyToSendFirst[0] == 'A' ) WindowsAPICalls.PostMessage(_wowWindowHandle, WindowsAPICalls.WM_KEYUP, WindowsAPICalls.VK_MENU, 0); //&& AltPressed == true
-                await Task.Delay(50);  // we want atleast a 50ms delays when pressing and releasing the key
+                _currentKeyToSend[0] = "";
+                await Task.Delay(500) ;  // we want atleast a 150ms delay when pressing and releasing the key. Wow cooldown can be no less that 500 accept for instant not GCD.  we will just have to suffer with those.
 
-                // I want to wait up to 500 MS to wait for the next command to atleast start no delay just yield to other threads.
-                //DateTime currentTime = DateTime.Now;
-                //while (_currentKeyToSend[0] == "" && button_Start.IsEnabled == false && activationKeyPressed == true)
-                //{
-                //    await Task.Delay(50);
-                //    if (DateTime.Now > currentTime.AddMilliseconds(250)) // Its been 1 second.  lets break out and try again. 
-                //    {
-                //        keyProcessingFirst = false;
-                //        keyProcessingSecond = false;
-                //        WindowsAPICalls.PostMessage(_wowWindowHandle, WindowsAPICalls.WM_KEYUP, vkCode, 0);
-                //        ImageCapBorder.BorderBrush = System.Windows.Media.Brushes.Black;
-                //        ImageCap2Border.BorderBrush = System.Windows.Media.Brushes.Black;
-                //        return;
-                //    }
-                //}
+
 
 
 
                 if (_keyPressMode)
                 {
-                    //while (CurrentImageRegions.FirstImageRegions.BottomLeft == false && button_Start.IsEnabled == false && activationKeyPressed == true)  // Do this loop till we have see we have a value starting to appear
-                    //{
-                    //    await Task.Delay(1);
-                    //}
 
-            
-
+                    currentD = DateTime.Now;
                     while (CurrentImageRegions.FirstImageRegions.TopLeft == false && button_Start.IsEnabled == false && activationKeyPressed == true)  // Do this loop till we have see we have a value starting to appear
                     {
            
                         await Task.Delay(1);
-
-                        #region 2nd Key Options
-                        // Lets explore some second options while this is on cooldown
-                        if (Settings.Default.Use2ndImageDetection == true )
+                        if (currentD.AddMilliseconds(1000) < DateTime.Now)
                         {
-
+                            keyProcessingFirst = false;
                             keyProcessingSecond = false;
-
-                            if (keyToSendSecond == "")
-                                continue;  // We didn't have a value for the second key so skip
-                                           //if (keyToSendSecond == keyToSendFirst)
-                                           //    continue;
-
-
-                        DoSecondKeyAgain:  // Yep doing a goto here.   Think I did this just because of the fear of using it in modern languages. Yeah I know its not best practices. 
-                            
-                            await Task.Delay(10); // we may be in a goto loop here. make sure it doesn't lock any threads.  This could just be a Yield.
-                            keyProcessingSecond = true;
-                            if (CurrentImageRegions.FirstImageRegions.TopLeft == false)
-                            {
-                                keyProcessingSecond = false;
-                                continue;
-                            }
-
-
-
-
-                            if ((!VirtualKeyCodeMapper.HasKey(keyToSendSecond)) || VirtualKeyCodeMapper.HasExcludeKey(keyToSendSecond))
-                            {
-                                keyProcessingSecond = false;
-                                continue;
-                            }
-
-                            ImageCapBorder.BorderBrush = System.Windows.Media.Brushes.Black;
-                            ImageCap2Border.BorderBrush = System.Windows.Media.Brushes.Red;
-
-                            int vkCode2 = 0;
-                            if (_wowWindowHandle != nint.Zero)
-                            {
-                                // I keep poking at this trying to figure out how to only send the key press again if a new key is to me pressed.
-                                // It fails if the next key to press is the same.
-                                // There would have to some logic in the capture to say its a new detection
-
-                                await Task.Delay(1);
-
-                                if (_keyPressMode)
-                                {
-
-                                    while (CurrentImageRegions.FirstImageRegions.TopLeft == false && button_Start.IsEnabled == false && activationKeyPressed == true) // delay our press till we make sure hekili has chosen a new cast
-                                    {
-                                        await Task.Delay(10);
-                                    }
-
-                                 
-
-
-
-                                    // Handle the if command is tied to CTRL or ALT
-                                    if (keyToSendSecond[1] == 'C') //&& CtrlPressed == false
-                                        WindowsAPICalls.PostMessage(_wowWindowHandle, WindowsAPICalls.WM_KEYDOWN, WindowsAPICalls.VK_CONTROL, 0);
-                                    else
-                                        WindowsAPICalls.PostMessage(_wowWindowHandle, WindowsAPICalls.WM_KEYUP, WindowsAPICalls.VK_CONTROL, 0);
-
-                                    if (keyToSendSecond[1] == 'A') //&& AltPressed == false
-                                        WindowsAPICalls.PostMessage(_wowWindowHandle, WindowsAPICalls.WM_KEYDOWN, WindowsAPICalls.VK_MENU, 0);
-                                    else
-                                        WindowsAPICalls.PostMessage(_wowWindowHandle, WindowsAPICalls.WM_KEYUP, WindowsAPICalls.VK_MENU, 0);
-
-
-                                    // Tranlate the char to the virtual Key Code
-                                    vkCode2 = VirtualKeyCodeMapper.GetVirtualKeyCode(keyToSendSecond);
-                                
-                                    if (activationKeyPressed == true)
-                                        WindowsAPICalls.PostMessage(_wowWindowHandle, WindowsAPICalls.WM_KEYDOWN, vkCode2, 0);
-                                   // tbCommandLog.Text = tbCommandLog.Text + "I2-" + keyToSendSecond + "\r";
-                                   
-
-                                    // CTRL and ALT do not need to be held down just only pressed initally for the command to be interpeted correctly
-                                    if (keyToSendSecond[1] == 'C') // && CtrlPressed == true
-                                        WindowsAPICalls.PostMessage(_wowWindowHandle, WindowsAPICalls.WM_KEYUP, WindowsAPICalls.VK_CONTROL, 0);
-
-                                    if (keyToSendSecond[1] == 'A') // && AltPressed == true
-                                        WindowsAPICalls.PostMessage(_wowWindowHandle, WindowsAPICalls.WM_KEYUP, WindowsAPICalls.VK_MENU, 0);
-                                    // await Task.Delay(50);
-
-                                    DateTime currentTime2 = DateTime.Now;
-                                    while (_currentKeyToSend[0] != "" && button_Start.IsEnabled == false && activationKeyPressed == true)
-                                    {
-                                        await Task.Delay(10);
-                                        if (DateTime.Now > currentTime2.AddMilliseconds(500)) // Its been 1 second.  lets break out and try again. 
-                                        {
-                                            keyProcessingSecond = false;
-                                            keyProcessingFirst = false;
-                                            WindowsAPICalls.PostMessage(_wowWindowHandle, WindowsAPICalls.WM_KEYUP, vkCode2, 0);
-                                            if (activationKeyPressed) _timer.Start();
-                                            ImageCapBorder.BorderBrush = System.Windows.Media.Brushes.Black;
-                                            ImageCap2Border.BorderBrush = System.Windows.Media.Brushes.Black;
-                                            return;
-                                        }
-                                    }
-                                    keyToSendSecond = _currentKeyToSend[1];
-
-                                    // Now we pause until top is filled then we release the key that should queue the command.
-                                    while (CurrentImageRegions.FirstImageRegions.TopLeft == false && button_Start.IsEnabled == false && activationKeyPressed == true)
-                                    {
-                                        await Task.Delay(10);
-                                    }
-
-                                    WindowsAPICalls.PostMessage(_wowWindowHandle, WindowsAPICalls.WM_KEYUP, vkCode2, 0);
-
-                                    if (_currentKeyToSend[1] != "" && _currentKeyToSend[0] == "")
-                                    {
-                                     
-
-                                        goto DoSecondKeyAgain;
-                                    }
-                                    keyToSendSecond = "";
-
-
-                                }
-                                // this stops the sending of the key till the timer is almost up.  
-                                // it takes advantage of the cooldown visual cue in the game that darkens the font (changes the color)
-                                // the OCR doesn't see a new char until it is almost times out, at that point it can be pressed and would be added to the action queue
-
-                                ImageCap2Border.BorderBrush = System.Windows.Media.Brushes.Black;
-                                keyProcessingSecond = false;
-
-                            }
-
+                            break;
                         }
-                        #endregion
+
                     }
-                    if (Settings.Default.Use2ndImageDetection == false)
+
                     WindowsAPICalls.PostMessage(_wowWindowHandle, WindowsAPICalls.WM_KEYUP, vkCode, 0);
                 }
          
@@ -744,11 +595,13 @@ namespace HekiliHelper
                     WindowsAPICalls.PostMessage(_wowWindowHandle, WindowsAPICalls.WM_KEYUP, vkCode, 0);
                 }
 
+
                 if (_currentKeyToSend[0] != "" && button_Start.IsEnabled == false && activationKeyPressed == true)
                 {
-                    await Task.Delay(1);
-                    goto JumpToStart;
+                    goto repeatWithoutDelay;
                 }
+
+
 
                 // Let up on the command key
                 keyProcessingFirst = false;
@@ -794,6 +647,8 @@ namespace HekiliHelper
             magnifier2.ShowInTaskbar = false;
             magnifier2.SizeChanged += Magnifier2_SizeChanged;
             magnifier2.LocationChanged += Magnifier2_LocationChanged;
+
+            magnifier2.Visibility = Visibility.Hidden;
 
 
             ColorPicker.PortableColorPicker cp;
@@ -919,6 +774,7 @@ namespace HekiliHelper
             
             ImageCap2Border.Visibility = cbUse2ndImage.IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
             lDetectedValue2.Visibility = ImageCap2Border.Visibility; // no need to reeval the vars, we already know.  (yeah this can be done in xaml bindings..  but right now I don't know how and don't feel like looking it up.)
+            ImageCap2Border.Visibility = Visibility.Visible;
 
             this.Topmost = Settings.Default.KeepOnTop;
 
@@ -1034,14 +890,14 @@ namespace HekiliHelper
                 magnifier.Visibility = Visibility.Visible;
             }
 
-            if (magnifier2.Visibility == Visibility.Visible)
-            {
-                magnifier2.Visibility = Visibility.Hidden;
-            }
-            else
-            {
-                magnifier2.Visibility = Visibility.Visible;
-            }
+            //if (magnifier2.Visibility == Visibility.Visible)
+            //{
+            //    magnifier2.Visibility = Visibility.Hidden;
+            //}
+            //else
+            //{
+            //    magnifier2.Visibility = Visibility.Visible;
+            //}
 
 
 

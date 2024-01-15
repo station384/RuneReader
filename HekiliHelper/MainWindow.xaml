@@ -186,8 +186,8 @@ Height="Auto"
                     </ComboBox>
                 </StackPanel>
                 <CheckBox Name="cbPushRelease" Content="Push And Release mode" IsChecked="False" Checked="cbPushRelease_Checked" Unchecked="cbPushRelease_Unchecked" ToolTip="Commands will be pressed until next command is detected, or fixed time"></CheckBox>
-                <CheckBox Name="cbQuickDecode" Content="Quick Decode" IsChecked="False" Checked="cbQuickDecode_Checked" Unchecked="cbQuickDecode_Unchecked" ToolTip="Wait for detection in upper left region"></CheckBox>
-                <CheckBox Name="cbUse2ndImage" Content="2nd Image Detection" IsChecked="False" Checked="cbUse2ndImage_Checked"  Unchecked="cbUse2ndImage_Unchecked"  ToolTip="Utilize 2nd Region Detection"></CheckBox>
+                <CheckBox Name="cbQuickDecode" Visibility="Collapsed" Content="Quick Decode" IsChecked="False" Checked="cbQuickDecode_Checked" Unchecked="cbQuickDecode_Unchecked" ToolTip="Wait for detection in upper left region"></CheckBox>
+                <CheckBox Name="cbUse2ndImage" Visibility="Collapsed" Content="2nd Image Detection" IsChecked="False" Checked="cbUse2ndImage_Checked"  Unchecked="cbUse2ndImage_Unchecked"  ToolTip="Utilize 2nd Region Detection"></CheckBox>
 
                 <StackPanel Orientation="Horizontal">
                     <Label >Screen Cap MS</Label>
