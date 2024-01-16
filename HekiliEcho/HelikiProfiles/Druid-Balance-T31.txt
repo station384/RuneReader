@@ -20,6 +20,7 @@ actions+=/use_items,slots=trinket1,if=variable.on_use_trinket!=1&!trinket.2.read
 actions+=/use_items,slots=trinket2,if=variable.on_use_trinket!=2&!trinket.1.ready_cooldown|variable.on_use_trinket=2&buff.ca_inc.up|variable.no_cd_talent|boss&fight_remains<20|variable.on_use_trinket=0
 actions+=/use_items
 actions+=/natures_vigil
+actions+=/renewel,if=(health.pct<=30&target.health.pct>10)&talent.renewal
 ## actions+=/invoke_external_buff,name=power_infusion
 actions+=/run_action_list,name=aoe,strict=1,if=variable.is_aoe
 actions+=/run_action_list,name=st,strict=1,if=!variable.is_aoe
