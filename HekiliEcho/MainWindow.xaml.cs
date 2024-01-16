@@ -571,7 +571,8 @@ namespace HekiliEcho
                     {
            
                         await Task.Delay(1);
-                        if (currentD.AddMilliseconds(1000) < DateTime.Now)
+                        if (currentD.AddMilliseconds(3000) < DateTime.Now)  // Max of a 3 second channel  or wait
+
                         {
                             keyProcessingFirst = false;
                             keyProcessingSecond = false;
