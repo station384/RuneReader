@@ -1,4 +1,4 @@
-﻿#Hekili Echo
+﻿#Rune Reader
 --Possible Names for project
 Hekili Helper
 Action Ally
