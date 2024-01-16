@@ -1,4 +1,5 @@
-﻿using System.Threading;
+﻿using ControlzEx.Theming;
+using System.Threading;
 using System.Windows;
 
 
@@ -25,7 +26,13 @@ namespace RuneReader
                 Application.Current.Shutdown();
             }
 
+//            ThemeManager.Current.ChangeTheme(this, "Dark.Blue");
+
+            ThemeManager.Current.ThemeSyncMode = ThemeSyncMode.SyncWithAppMode;
+            ThemeManager.Current.SyncTheme();
+
             base.OnStartup(e);
+
         }
 
         protected override void OnExit(ExitEventArgs e)

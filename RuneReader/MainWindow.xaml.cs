@@ -22,11 +22,12 @@ using System.Reflection.Emit;
 using System.Diagnostics.Eventing.Reader;
 using System.Linq;
 using Vortice.Direct3D11;
+using MahApps.Metro.Controls;
 
 namespace RuneReader
 {
 
-    public partial class MainWindow : System.Windows.Window
+    public partial class MainWindow : MetroWindow
     {
 
 
