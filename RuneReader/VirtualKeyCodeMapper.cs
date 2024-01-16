@@ -1,10 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
-namespace HekiliEcho
+namespace RuneReader
 {
     // This is the list of acceptable keys we can send to the game and the associated Windows virtual key to send.
     // We can use this for comparison or use it for looking up the matching key

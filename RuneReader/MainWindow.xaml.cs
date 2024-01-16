@@ -15,15 +15,15 @@ using System.Text.RegularExpressions;
 using static System.Net.Mime.MediaTypeNames;
 using System.Windows.Controls;
 using Tesseract;
-using HekiliEcho.Properties;
+using RuneReader.Properties;
 using System.Windows.Threading;
-using HekiliEcho;
+using RuneReader;
 using System.Reflection.Emit;
 using System.Diagnostics.Eventing.Reader;
 using System.Linq;
 using Vortice.Direct3D11;
 
-namespace HekiliEcho
+namespace RuneReader
 {
 
     public partial class MainWindow : System.Windows.Window

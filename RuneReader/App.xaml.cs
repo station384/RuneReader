@@ -1,28 +1,19 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Configuration;
-using System.Data;
-using System.Diagnostics;
-using System.Linq;
-using System.Runtime.InteropServices;
-using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
+﻿using System.Threading;
 using System.Windows;
 
 
-namespace HekiliEcho
+namespace RuneReader
 {
     /// <summary>
     /// Interaction logic for App.xaml
     /// </summary>
     public partial class App : Application
     {
-        private static Mutex _mutex = null;
+        private static Mutex? _mutex ;
 
         protected override void OnStartup(StartupEventArgs e)
         {
-            const string appName = "HekiliEcho";
+            const string appName = "RuneReader";
             bool createdNew;
 
             _mutex = new Mutex(true, appName, out createdNew);

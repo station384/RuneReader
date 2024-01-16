@@ -1,12 +1,9 @@
 ﻿using System;
-using System.Diagnostics.Tracing;
 using System.Drawing; // Include reference to System.Drawing
-using System.Windows;
-using System.Windows.Controls;
 using Tesseract;
 
 
-namespace HekiliEcho
+namespace RuneReader
 {
     public class OcrResult
     {

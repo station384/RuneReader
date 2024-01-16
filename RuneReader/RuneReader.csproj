@@ -8,7 +8,7 @@
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
 	<GenerateAssemblyInfo>false</GenerateAssemblyInfo>
     <GenerateTargetFrameworkAttribute>false</GenerateTargetFrameworkAttribute>
-    <StartupObject>HekiliEcho.App</StartupObject>
+    <StartupObject>RuneReader.App</StartupObject>
     <ApplicationIcon>Derp.ico</ApplicationIcon>
     <PlatformTarget>AnyCPU</PlatformTarget>  
   </PropertyGroup>
