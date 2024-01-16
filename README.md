@@ -1,15 +1,15 @@
-# Hekili Echo
-Hekili Echo is an accessibility aid for World of Warcraft (WoW). 
+# Rune Reader for Hekili Priority Helper
+Rune Reader is an accessibility aid for World of Warcraft (WoW). 
 Its primary goal is to provide assistance to gamers who may face challenges in gameplay due to various accessibility issues.
-Echo utilizes the [Hekili Priority helper](https://github.com/Hekili/hekili) addon to assist players in executing the suggested command.
+Rune Reader utilizes the [Hekili Priority helper](https://github.com/Hekili/hekili) addon to assist players in executing the suggested command.
 > [!NOTE]
 > This is the code repository for a personal project.  Compiled releases will not be made available here at this time.
 
 Project Notes
 -------------
-Tooling used to develop Hekili Echo
+Tooling used to develop Rune Reader
 * [Visual Studio 2022](https://visualstudio.microsoft.com/vs/community/)
-* [.Net 8](https://dotnet.microsoft.com/en-us/download/dotnet/8.0) 
+* [.Net 7](https://dotnet.microsoft.com/en-us/download/dotnet/7.0) 
 * [WPF](https://github.com/dotnet/wpf)
 * C#
 * [Tessaract](https://github.com/tesseract-ocr/tesseract)
