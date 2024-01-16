@@ -1,5 +1,5 @@
 ﻿
-namespace HekiliEcho
+namespace RuneReader
 {
 
     using System;

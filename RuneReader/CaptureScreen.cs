@@ -4,17 +4,11 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.Drawing.Imaging;
 using System.Linq;
-using System.Net;
-using System.Runtime.InteropServices;
-using System.Text.Encodings.Web;
-using System.Threading;
 using System.Windows;
-using System.Windows.Media.Imaging;
-using System.Windows.Threading;
 
 
 
-namespace HekiliEcho
+namespace RuneReader
 {
 
 
