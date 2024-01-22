@@ -263,12 +263,13 @@ namespace RuneReader
             List<System.Windows.Rect> usefulRegionsWithoutDelays = new List<System.Windows.Rect>();
             if (ocrRegionsWithDelays.Length >= 1 )
             {
-                for (int i = 0; i < ocrRegionsWithDelays.Length && i  <= 20; i++)
+                for (int i = 0; i < ocrRegionsWithDelays.Length && i  <= 50; i++)
                 {
-                    if (ocrRegionsWithDelays[i].Height * ocrRegionsWithDelays[i].Width < 1000)
+                    if (ocrRegionsWithDelays[i].Height * ocrRegionsWithDelays[i].Width < 1500)
                     {
                             ImageProcessingOpenCV.FillRectangle(ref grayWithDelays, new OpenCvSharp.Rect((int)ocrRegionsWithDelays[i].X, (int)ocrRegionsWithDelays[i].Y, (int)ocrRegionsWithDelays[i].Width, (int)ocrRegionsWithDelays[i].Width), Scalar.FromRgb(255, 255, 255) );
-                    } else
+                    }
+                    else
                     {
                         usefulRegionsWithDelays.Add(ocrRegionsWithDelays[i]);
                     }
@@ -300,9 +301,9 @@ namespace RuneReader
 
             if (ocrRegionsWithoutDelays.Length > 1 )
             {
-                for (int i = 0; i < ocrRegionsWithoutDelays.Length &&  i <= 20; i++)
+                for (int i = 0; i < ocrRegionsWithoutDelays.Length &&  i <= 50; i++)
                 {
-                    if (ocrRegionsWithoutDelays[i].Height * ocrRegionsWithoutDelays[i].Width < 1000)
+                    if (ocrRegionsWithoutDelays[i].Height * ocrRegionsWithoutDelays[i].Width < 1500)
                     {
                         ImageProcessingOpenCV.FillRectangle(ref grayWithoutDelays, new OpenCvSharp.Rect((int)ocrRegionsWithoutDelays[i].X, (int)ocrRegionsWithoutDelays[i].Y, (int)ocrRegionsWithoutDelays[i].Width, (int)ocrRegionsWithoutDelays[i].Width), Scalar.FromRgb(255, 255, 255));
                     }
@@ -440,12 +441,13 @@ namespace RuneReader
         private async void mainTimerTick(object? sender, EventArgs args)
         {
  
-          //  _timer.Stop();
+            _timer.Stop();
       
             // If key is already processing skip this tick
             if (keyProcessingFirst || keyProcessingSecond)
             {
                 return;
+               
             }
             var keyToSendFirst = string.Empty;
             var keyToSendSecond = string.Empty;
@@ -457,12 +459,13 @@ namespace RuneReader
             keyToSendSecond = string.Empty;
             vkCode = 0;
 
-            if (CurrentImageRegions.FirstImageRegions.BottomLeft == false && keyProcessingFirst == true)  // First Image is almost done processing
+            if (CurrentImageRegions.FirstImageRegions.TopRight == false && keyProcessingFirst == true)  // First Image is almost done processing
             {
                 keyProcessingFirst = false;
                 keyProcessingSecond = false;
                 ImageCapBorder.BorderBrush = System.Windows.Media.Brushes.Black;
-                return;
+                goto allDone;
+                //return;
             }
 
             // lets just hang out here till we have a key
@@ -473,35 +476,27 @@ namespace RuneReader
             {
                 await Task.Delay(1) ;
                 keyToSendFirst = _currentKeyToSend[0];
-                if ( currentD.AddMilliseconds(1000) < DateTime.Now)
-                { keyProcessingFirst = false;
-                 keyProcessingSecond = false ;
-                    return;
+                if ( currentD.AddMilliseconds(5000) < DateTime.Now)
+                { 
+                    keyProcessingFirst = false;
+                    keyProcessingSecond = false ;
+                    goto allDone;
+                    //return;
                 }
             }
 
 
-
-
-
-
-
-
-
-
-
-
-
             currentD = DateTime.Now;
-            while (keyToSendFirst == "" && button_Start.IsEnabled == false && activationKeyPressed == true && !VirtualKeyCodeMapper.HasExcludeKey(keyToSendFirst) && VirtualKeyCodeMapper.HasKey(keyToSendFirst))
+            while (keyToSendFirst == "" && button_Start.IsEnabled == false && activationKeyPressed == true && (!VirtualKeyCodeMapper.HasExcludeKey(keyToSendFirst) && VirtualKeyCodeMapper.HasKey(keyToSendFirst) ))
             {
                 await Task.Delay(1);
                 keyToSendFirst = _currentKeyToSend[0];
-                if (currentD.AddMilliseconds(1000) < DateTime.Now)
+                if (currentD.AddMilliseconds(5000) < DateTime.Now)
                 {
                     keyProcessingFirst = false;
                     keyProcessingSecond = false;
-                    return;
+                    //return;
+                    goto allDone;
                 }
             }
 
@@ -509,8 +504,23 @@ namespace RuneReader
             {
                 keyProcessingFirst = false;
                 keyProcessingSecond = false;
-                return;
+                // return;
+                goto allDone;
             }
+
+            while (CurrentImageRegions.FirstImageRegions.TopLeft == false && button_Start.IsEnabled == false && activationKeyPressed == true && (!VirtualKeyCodeMapper.HasExcludeKey(keyToSendFirst) && VirtualKeyCodeMapper.HasKey(keyToSendFirst)))
+            {
+                await Task.Delay(1);
+               // keyToSendFirst = _currentKeyToSend[0];
+                if (currentD.AddMilliseconds(5000) < DateTime.Now)
+                {
+                    keyProcessingFirst = false;
+                    keyProcessingSecond = false;
+                    //return;
+                    goto allDone;
+                }
+            }
+
 
             keyProcessingFirst = true;
 
@@ -523,9 +533,9 @@ namespace RuneReader
       
                 ImageCapBorder.BorderBrush = System.Windows.Media.Brushes.Red;
 
-                CurrentImageRegions.FirstImageRegions.TopLeft = false;
-                CurrentImageRegions.FirstImageRegions.BottomLeft = false;
-                CurrentImageRegions.FirstImageRegions.BottomCenter = false;
+                //CurrentImageRegions.FirstImageRegions.TopLeft = false;
+                //CurrentImageRegions.FirstImageRegions.BottomLeft = false;
+                //CurrentImageRegions.FirstImageRegions.BottomCenter = false;
                 // I keep poking at this trying to figure out how to only send the key press again if a new key is to me pressed.
                 // It fails if the next key to press is the same.
                 // There would have to some logic in the capture to say its a new detection
@@ -557,7 +567,7 @@ namespace RuneReader
                 // CTRL and ALT do not need to be held down just only pressed initally for the command to be interpeted correctly
                 if (keyToSendFirst[0] == 'C' ) WindowsAPICalls.PostMessage(_wowWindowHandle, WindowsAPICalls.WM_KEYUP, WindowsAPICalls.VK_CONTROL, 0); //&& CtrlPressed == true
                 if (keyToSendFirst[0] == 'A' ) WindowsAPICalls.PostMessage(_wowWindowHandle, WindowsAPICalls.WM_KEYUP, WindowsAPICalls.VK_MENU, 0); //&& AltPressed == true
-                _currentKeyToSend[0] = "";
+                //_currentKeyToSend[0] = "";
                 await Task.Delay(500) ;  // we want atleast a 150ms delay when pressing and releasing the key. Wow cooldown can be no less that 500 accept for instant not GCD.  we will just have to suffer with those.
 
 
@@ -568,11 +578,11 @@ namespace RuneReader
                 {
 
                     currentD = DateTime.Now;
-                    while (CurrentImageRegions.FirstImageRegions.TopLeft == false && button_Start.IsEnabled == false && activationKeyPressed == true)  // Do this loop till we have see we have a value starting to appear
+                    while (CurrentImageRegions.FirstImageRegions.BottomLeft == false && button_Start.IsEnabled == false && activationKeyPressed == true)  // Do this loop till we have see we have a value starting to appear
                     {
            
                         await Task.Delay(1);
-                        if (currentD.AddMilliseconds(3000) < DateTime.Now)  // Max of a 3 second channel  or wait
+                        if (currentD.AddMilliseconds(5000) < DateTime.Now)  // Max of a 3 second channel  or wait
 
                         {
                             keyProcessingFirst = false;
@@ -610,10 +620,16 @@ namespace RuneReader
                 keyProcessingSecond = false;
             }
 
+           
+            allDone:
             keyProcessingFirst = false;
             keyProcessingSecond = false;
             //   if (activationKeyPressed) _timer.Start();
             ImageCapBorder.BorderBrush = System.Windows.Media.Brushes.Black;
+            if (activationKeyPressed == true)
+                _timer.Start();
+
+
 
         }
 
