@@ -4,24 +4,16 @@ using System.Diagnostics;
 using System.Drawing;
 using System.IO;
 using System.Runtime.InteropServices;
-using System.Text;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media.Imaging;
 using OpenCvSharp;
 using OpenCvSharp.WpfExtensions;
-using System.Text.RegularExpressions;
-using static System.Net.Mime.MediaTypeNames;
 using System.Windows.Controls;
-using Tesseract;
 using RuneReader.Properties;
 using System.Windows.Threading;
-using RuneReader;
-using System.Reflection.Emit;
-using System.Diagnostics.Eventing.Reader;
 using System.Linq;
-using Vortice.Direct3D11;
 using MahApps.Metro.Controls;
 
 namespace RuneReader
@@ -128,7 +120,8 @@ namespace RuneReader
 
 
                                 _timer.Start();
-                              //  mainTimerTick(this, new EventArgs());
+                                // we want the timer to react NOW.   
+                                mainTimerTick(this, new EventArgs());
 
                                 // Don't let the message go thru.  this blocks the game from seeing the key press
                                 handled = true;
@@ -195,34 +188,30 @@ namespace RuneReader
         }
 
 
-        private string OCRProcess(Bitmap b)
-        {
-
-            string Result = "";
-            OcrResult ocrResult;
-            ocrResult = ocr.PerformFullOcr(b);
-
-            string s = ocrResult.DetectedText.Replace("\n", "");
-            if (VirtualKeyCodeMapper.HasKey(s) && (!VirtualKeyCodeMapper.HasExcludeKey(s)))
-            {
-                var CurrentKeyToPress = StringExtensions.Extract(s, 4);
-                if (!string.IsNullOrEmpty(CurrentKeyToPress.Trim()))
-                {
-                    Result = CurrentKeyToPress;
-                }
-
-            }
-            return Result;
-
-        }
 
 
-
+        /// <summary>
+        /// Used to find the delays and text in the image 
+        /// </summary>
+        /// <param name="image">Bitmap we are going to process</param>
+        /// <param name="label">Label control we will update the text of</param>
+        /// <param name="_DetectedValue">Updates to value detected</param>
+        /// <param name="_DetectedSameCount">Times the same value was detected</param>
+        /// <param name="DisplayControl">Image used for OCR refence to USER no delays</param>
+        /// <param name="DisplayControlDelays">image used for showing the delays</param>
+        /// <param name="Threshold">0.0 -> 1.0 How much variance of color are we going to call the same</param>
+        /// <param name="regions">Updates this refrence with the current detected reguions </param>
+        /// <returns>always returns -1 for now.</returns>
         private  int ProcessImageOpenCV(Bitmap image, ref System.Windows.Controls.Label label, ref string _DetectedValue, ref int _DetectedSameCount,  ref System.Windows.Controls.Image DisplayControl, ref System.Windows.Controls.Image DisplayControlDelays, double Threshold, ref DetectionRegions regions)
         {
+
             var origWidth = image.Width;
             var origHeight = image.Height;
             var CurrentKeyToSend = string.Empty;
+            double xMin = 0;
+            double yMin = 0;
+            double xMax = 0;
+            double yMax = 0;
             int Rscale = ((int)(CurrentR * ((CurrentR * Threshold) / CurrentR)));
             int Gscale = ((int)(CurrentG * ((CurrentG * Threshold) / CurrentG)));
             int Bscale = ((int)(CurrentB * ((CurrentB * Threshold) / CurrentB)));
@@ -252,15 +241,17 @@ namespace RuneReader
             System.Windows.Rect[] ocrRegionsWithDelays = ocr.GetRegions(OpenCvSharp.Extensions.BitmapConverter.ToBitmap(grayWithDelays));
             System.Windows.Rect[] ocrRegionsWithoutDelays = ocr.GetRegions(OpenCvSharp.Extensions.BitmapConverter.ToBitmap(grayWithoutDelays));
 
+            // If no bounding boxes were found create one that encompasess the entire image
             if (ocrRegionsWithDelays == null)
                 ocrRegionsWithDelays = new System.Windows.Rect[] {new System.Windows.Rect(0,0,grayWithDelays.Width, grayWithDelays.Height) };
-
-
             if (ocrRegionsWithoutDelays == null)
                 ocrRegionsWithoutDelays = new System.Windows.Rect[] { new System.Windows.Rect(0, 0, grayWithoutDelays.Width, grayWithoutDelays.Height) };
 
+            // Used to keep a list of the rational bounding boxes
             List<System.Windows.Rect> usefulRegionsWithDelays = new List<System.Windows.Rect>();
             List<System.Windows.Rect> usefulRegionsWithoutDelays = new List<System.Windows.Rect>();
+
+            //Sort thru a max of 50 and find all the ones that are a reasonable size and add those to the list with Delays
             if (ocrRegionsWithDelays.Length >= 1 )
             {
                 for (int i = 0; i < ocrRegionsWithDelays.Length && i  <= 50; i++)
@@ -274,7 +265,6 @@ namespace RuneReader
                         usefulRegionsWithDelays.Add(ocrRegionsWithDelays[i]);
                     }
                 }
-                   // Not sure if we need to yield to other threads here. Put this here just incase the for loop is huge.  
             } 
             else
             {
@@ -283,13 +273,8 @@ namespace RuneReader
 
 
 
-            // Find the total region size of all the regions that were detected
-            double xMin = 0;
-            double yMin = 0;
-            double xMax = 0;
-            double yMax = 0;
 
-
+            // Find the total region size of all the regions that were detected for the image used with delays
             xMin = usefulRegionsWithDelays.Min(s => s.X);
             yMin = usefulRegionsWithDelays.Min(s => s.Y);
             xMax = usefulRegionsWithDelays.Max(s => s.X + s.Width);
@@ -299,6 +284,8 @@ namespace RuneReader
             System.Windows.Rect finalRegionWithDelays = new System.Windows.Rect(int32Rect.X, int32Rect.Y, int32Rect.Width, int32Rect.Height);
 
 
+
+            //Sort thru a max of 50 and find all the ones that are a reasonable size and add those to the list (Without delays in the image)
             if (ocrRegionsWithoutDelays.Length > 1 )
             {
                 for (int i = 0; i < ocrRegionsWithoutDelays.Length &&  i <= 50; i++)
@@ -318,9 +305,7 @@ namespace RuneReader
                 usefulRegionsWithoutDelays.Add(ocrRegionsWithoutDelays[0]);
             }
 
-            //if (usefulRegionsWithoutDelays == null)
-            //    return -1;
-            // Find the total region size of all the regions that were detected
+            // Find the total region size of all the regions that were detected for the image with out delays
             xMin = usefulRegionsWithoutDelays.Min(s => s.X);
             yMin = usefulRegionsWithoutDelays.Min(s => s.Y);
             xMax = usefulRegionsWithoutDelays.Max(s => s.X + s.Width);
@@ -329,20 +314,12 @@ namespace RuneReader
             System.Windows.Rect finalRegionWithoutDelays = new System.Windows.Rect(int32Rect.X, int32Rect.Y, int32Rect.Width, int32Rect.Height);
 
 
-
-
-
-
-
-
-
-
-
-
-
+            // grab a copy of the image with delays, and resize it to 96 dpi (standard size), this will be used to display to the user
             resizedMat = grayWithDelays.Clone();
             resizedMat = ImageProcessingOpenCV.RescaleImageToNewDpi(resizedMat, image.HorizontalResolution, 96);
 
+
+            // This is where we detect if there are pixels in a certain region of the image.   This is used to detect command delays
             regions.TopLeft = ImageProcessingOpenCV.IsThereAnImageInTopLeftQuarter(grayWithDelays);
             regions.TopRight = ImageProcessingOpenCV.IsThereAnImageInTopRightQuarter(grayWithDelays);
             regions.BottomLeft = ImageProcessingOpenCV.IsThereAnImageInBottomLeftQuarter(grayWithDelays);
@@ -350,25 +327,33 @@ namespace RuneReader
     
 
 
-
+            // The heart of the detection  OCR
             string s = OCRProcess(OpenCvSharp.Extensions.BitmapConverter.ToBitmap(grayWithoutDelays), finalRegionWithoutDelays);
 
+            // Unnecessary assignment to a new var.  but have it split for possible logic if nothing is detected, and debuging.
             CurrentKeyToSend = s;
+
+            // Convert the Image for binay to RGB so we can draw some colored markers on the image
             Cv2.CvtColor(resizedMat, resizedMat, ColorConversionCodes.BayerBG2RGB);
 
+            // Draw the colored markers
             ImageProcessingOpenCV.DrawMarkers(ref resizedMat);
 
+            // Push the new image out the the first image,  this has the markers and delays
             OutImageSource = BitmapSourceConverter.ToBitmapSource(resizedMat);
             DisplayControl.Source = OutImageSource;
 
+            // Push the image that doesn't have delays out to the second display.   This image is what is OCRed on.
             OutImageSource = BitmapSourceConverter.ToBitmapSource(grayWithoutDelays);
             DisplayControlDelays.Source = OutImageSource;
 
 
 
-
-            label.Content = s;
-            _DetectedValue = s;
+            // Update the label
+            label.Content = CurrentKeyToSend;
+            
+            // Update the detected value object that was passed in.
+            _DetectedValue = CurrentKeyToSend;
 
             return result;
         }
@@ -393,7 +378,6 @@ namespace RuneReader
             regions[0] = new System.Windows.Rect { X = (double)x, Y = (double)y, Width = width, Height = height };
             regions[1] = new System.Windows.Rect { X = (double)x2, Y = (double)y2, Width = width2, Height = height2 };
             captureScreen = new CaptureScreen(regions, 0);
-            //  image.Source = Convert(captureScreen.CapturedImage); //debuging
 
             // Create an instance of ContinuousScreenCapture with the CaptureScreen object
             screenCapture = new ContinuousScreenCapture(
@@ -401,27 +385,6 @@ namespace RuneReader
                 Dispatcher,
                 captureScreen
             );
-
-
-            // Only process the 2nd image if it is active.  The image will still be captured behind the scenes,  but no OCR will be done on it.
-
-            //screenCapture.UpdateSecondImage += (Bitmap image) =>
-            //{
-            //    if (Settings.Default.Use2ndImageDetection)
-            //    {
-            //        double trasThreshold = (CurrentThreshold == 0 ? 0.0 : CurrentThreshold / 100) ;
-            //        ProcessImageOpenCV(image, ref lDetectedValue2, ref  _currentKeyToSend[1], ref _DetectedSameCount[1], ref imageCap2, trasThreshold , ref CurrentImageRegions.SecondImageRegions);
-            //       Task.Yield();
-
-            //    }
-            //    else
-            //    {
-            //        // Not capturing so set values back to 0-state
-            //        lDetectedValue2.Content = "";
-            //        _DetectedSameCount[1] = 0;
-            //        _currentKeyToSend[1] = "";
-            //    }
-            //};
 
             // Assign a handler to the UpdateUIImage event
             screenCapture.UpdateFirstImage +=  (Bitmap image) =>
