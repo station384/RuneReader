@@ -43,7 +43,7 @@
 
                     <StackPanel Orientation="Vertical" Width="300">
                         <Button x:Name="button_Capture" Content="Capture" HorizontalAlignment="Center"  VerticalAlignment="Top" Click="Capture_Click" Visibility="Collapsed" ToolTip="Enable/Disable capture frame" Width="150"/>
-                        <Button x:Name="bToggleMagBorder" Content="Scan Selection Toggle" HorizontalAlignment="Center" VerticalAlignment="Top" Click="bToggleMagBorder_Click" Width="150"/>
+                        <Button x:Name="bToggleMagBorder" Content="Toggle Capture Selector" HorizontalAlignment="Center" VerticalAlignment="Top" Click="bToggleMagBorder_Click" Width="150"/>
                         <Button x:Name="bResetMagPosition" Content="Reset Selection" HorizontalAlignment="Center" VerticalAlignment="Top" Click="bResetMagPosition_Click" Margin="0,5,0,5" ToolTip="Emergecy postion reset of capture frame" Width="150"/>
                         <Button Click="buPicker_Click" ToolTip="Click on the screen to get the color of the pixel under the cursor" Margin="0,5,0,5" Width="150">Pick Text Color</Button>
                     </StackPanel>
