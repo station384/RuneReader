@@ -1,7 +1,7 @@
 ﻿actions.precombat+=/devotion_aura,if=buff.paladin_aura.down
 actions.precombat+=/lights_judgment
 actions.precombat+=/arcane_torrent
-actions.precombat+=/consecration
+actions.precombat+=/consecration,moving=0
 
 # Executed every time the actor is available.
 actions=rebuke
@@ -31,7 +31,7 @@ actions.mitigation+=/sentinel,if=defensive_sentinel&tanking&incoming_damage_5s>g
 actions.mitigation+=/ardent_defender,if=tanking&incoming_damage_5s>goak_damage&!(buff.ardent_defender.up|buff.guardian_of_ancient_kings.up|buff.divine_shield.up|buff.potion.up)
 actions.mitigation+=/lay_on_hands,if=health.pct<15
 
-actions.standard+=/consecration,if=buff.sanctification.stack=buff.sanctification.max_stack
+actions.standard+=/consecration,moveing=0,if=buff.sanctification.stack=buff.sanctification.max_stack
 # Use Shield of the Righteous according to Righteous Protector's ICD, but use it asap if it's a free proc (Bugged interaction, this ignores ICD). Don't use it when on max Sanctification Stacks (Very next GCD will trigger Consecration, so we want the bonus damage)
 actions.standard+=/shield_of_the_righteous,if=(((!talent.righteous_protector.enabled|cooldown.righteous_protector_icd.remains=0)&holy_power>2)|buff.bastion_of_light.up|buff.divine_purpose.up)&(!buff.sanctification.up|buff.sanctification.stack<buff.sanctification.max_stack)
 actions.standard+=/judgment,cycle_targets=1,if=spell_targets.shield_of_the_righteous>3&buff.bulwark_of_righteous_fury.stack>=3&holy_power<3
@@ -45,7 +45,7 @@ actions.standard+=/word_of_glory,holy_power>=3,if=(health.pct<=50&target.health.
 actions.standard+=/avengers_shield
 actions.standard+=/hammer_of_wrath
 actions.standard+=/judgment,cycle_targets=1
-actions.standard+=/consecration,if=!consecration.up&(!buff.sanctification.stack=buff.sanctification.max_stack|!set_bonus.tier31_2pc)
+actions.standard+=/consecration,moving=0,if=!consecration.up&(!buff.sanctification.stack=buff.sanctification.max_stack|!set_bonus.tier31_2pc)
 actions.standard+=/eye_of_tyr,if=talent.inmost_light.enabled&raid_event.adds.in>=45|spell_targets.shield_of_the_righteous>=3
 actions.standard+=/blessed_hammer
 actions.standard+=/hammer_of_the_righteous
@@ -53,7 +53,7 @@ actions.standard+=/crusader_strike
 actions.standard+=/eye_of_tyr,if=!talent.inmost_light.enabled&raid_event.adds.in>=60|spell_targets.shield_of_the_righteous>=3
 actions.standard+=/word_of_glory,if=buff.shining_light_free.up
 actions.standard+=/arcane_torrent,if=holy_power<5
-actions.standard+=/consecration,if=!buff.sanctification_empower.up
+actions.standard+=/consecration,moving=0,if=!buff.sanctification_empower.up
 
 actions.trinkets+=/variable,name=trinket_sync_slot,value=1,if=trinket.1.has_stat.any_dps&(!trinket.2.has_stat.any_dps|trinket.1.cooldown.duration>=trinket.2.cooldown.duration)
 actions.trinkets+=/variable,name=trinket_sync_slot,value=2,if=trinket.2.has_stat.any_dps&(!trinket.1.has_stat.any_dps|trinket.2.cooldown.duration>trinket.1.cooldown.duration)

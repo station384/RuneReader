@@ -234,8 +234,13 @@ namespace RuneReader
             Cv2.CvtColor(IsolatedColorWithoutDelays, grayWithoutDelays, ColorConversionCodes.BGR2GRAY);
 
             // Apply Otsu's thresholding
-            Cv2.Threshold(grayWithDelays, grayWithDelays, 250, 255, ThresholdTypes.Otsu | ThresholdTypes.BinaryInv); //
-            Cv2.Threshold(grayWithoutDelays, grayWithoutDelays, 250, 255, ThresholdTypes.Otsu | ThresholdTypes.BinaryInv); //
+            //Cv2.Threshold(grayWithDelays, grayWithDelays, 250, 255, ThresholdTypes.Otsu | ThresholdTypes.BinaryInv); //
+            //Cv2.Threshold(grayWithoutDelays, grayWithoutDelays, 250, 255, ThresholdTypes.Otsu | ThresholdTypes.BinaryInv); //
+
+            Cv2.Threshold(grayWithDelays, grayWithDelays, 0, 255,  ThresholdTypes.BinaryInv); //
+            Cv2.Threshold(grayWithoutDelays, grayWithoutDelays, 0, 255, ThresholdTypes.BinaryInv); //
+
+
 
             // Find the current bounding boxes, and try and get rid of the useless ones
             System.Windows.Rect[] ocrRegionsWithDelays = ocr.GetRegions(OpenCvSharp.Extensions.BitmapConverter.ToBitmap(grayWithDelays));

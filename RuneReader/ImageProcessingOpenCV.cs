@@ -1,30 +1,81 @@
 ﻿using OpenCvSharp;
+using System;
 
 namespace RuneReader
 {
     internal class ImageProcessingOpenCV
     {
 
+        private static Scalar ConvertRgbToLabRange(Scalar rgbColor, double Threshold, bool? isLowerBound)
+        {
+            Mat rgbMat = new Mat(1, 1, MatType.CV_8UC4, rgbColor);
+            Mat hsvMat = new Mat();
+            Cv2.CvtColor(rgbMat, hsvMat, ColorConversionCodes.BGR2Lab);
+            //Mat test = hsvMat.ExtractChannel(2);
+            //test.At<Vec3b>(0, 0);
+
+            if (Threshold > 1.0) { Threshold = 1.0; }
+            if (Threshold < 0.0) { Threshold = 0.001; }
+            Vec4b hsvColor = hsvMat.Get<Vec4b>(0, 0);
+
+            // Adjust the HSV range based on the tolerance
+            int l = hsvColor[0];
+            int a = hsvColor[1];
+            int b = hsvColor[2];
+            int c = hsvColor[3];
+            int lTol = (int)(l * Threshold);
+
+            //if (h + hTol > 255) { hTol = 0; }
+            //if (s + sTol > 255) { sTol = 255; }
+            //if (v + vTol > 255) { vTol = 255; }
+            //if (h - hTol < 0) { hTol = 0; }
+            //if (s - sTol < 0) { sTol = 0; }
+            //if (v - vTol < 0) { vTol = 0; }
+
+            if (isLowerBound == null)
+            {
+                return new Scalar(
+                    l,
+                    a,
+                    b,
+                    c);
+
+            }
+            else
+                return new Scalar(
+                    //isLowerBound.Value ? h - 10 : h + 10,
+                    //isLowerBound.Value ? s - 20 : s + 20,
+                    //isLowerBound.Value ? v - vTol : v + vTol);
+                    isLowerBound.Value ? l - lTol : l + lTol,
+                    isLowerBound.Value ? a : a ,
+                    isLowerBound.Value ? b : b ,
+                    isLowerBound.Value ? c : c);
+
+        }
+
         private static Scalar ConvertRgbToHsvRange(Scalar rgbColor, double Threshold, bool? isLowerBound)
         {
             Mat rgbMat = new Mat(1, 1, MatType.CV_8UC4, rgbColor);
             Mat hsvMat = new Mat();
-            Cv2.CvtColor(rgbMat, hsvMat, ColorConversionCodes.BGR2HSV_FULL);
-
-
+            Cv2.CvtColor(rgbMat, hsvMat, ColorConversionCodes.BGR2HSV);
+            //Mat test = hsvMat.ExtractChannel(2);
+            //test.At<Vec3b>(0, 0);
+            
+            if (Threshold > 1.0) { Threshold = 0.7; }
+            if (Threshold < 0.0) { Threshold = 0.001; }
             Vec4b hsvColor = hsvMat.Get<Vec4b>(0, 0);
 
             // Adjust the HSV range based on the tolerance
             int h = hsvColor[0];
             int s = hsvColor[1];
             int v = hsvColor[2];
-            int hTol = (int)(h * Threshold);
-            int sTol = (int)(s * Threshold);
-            int vTol = (int)(v * Threshold);
+            double hTol = (double)(h * 0.08);
+            double sTol = (double)(s * 0.10);
+            double vTol = (double)(v * Threshold) ;
 
             //if (h + hTol > 255) { hTol = 0; }
-            //if (s + sTol > 255) { sTol = 0; }
-            //if (v + vTol > 255) { vTol = 0; }
+            //if (s + sTol > 255) { sTol = 255; }
+            //if (v + vTol > 255) { vTol = 255; }
             //if (h - hTol < 0) { hTol = 0; }
             //if (s - sTol < 0) { sTol = 0; }
             //if (v - vTol < 0) { vTol = 0; }
@@ -39,9 +90,14 @@ namespace RuneReader
             }
             else
                 return new Scalar(
-                    isLowerBound.Value ? h - 10 : h + 10,
-                    isLowerBound.Value ? s - 20 : s + 20,
-                    isLowerBound.Value ? v - vTol : v + vTol);
+                    //isLowerBound.Value ? h - 10 : h + 10,
+                    //isLowerBound.Value ? s - 20 : s + 20,
+                    //isLowerBound.Value ? v - vTol : v + vTol);
+                    isLowerBound.Value ? Math.Floor(h - hTol) : Math.Ceiling(h + hTol),
+                    isLowerBound.Value ? Math.Floor(s - sTol) : Math.Ceiling(s + sTol),
+                    isLowerBound.Value ? Math.Floor(v - vTol) : Math.Ceiling(v + vTol)
+                    );
+
         }
 
 
@@ -126,6 +182,35 @@ namespace RuneReader
         }
 
 
+
+        public static Mat IsolateColorLab(Mat src, Scalar rgbColor, double Threshold)
+        {
+            // Convert the RGB color and tolerance to HSV
+            Scalar upperBound = ConvertRgbToLabRange(rgbColor, Threshold, false);
+            Scalar lowerBound = ConvertRgbToLabRange(rgbColor, Threshold, true);
+            //      Scalar centerBound = ConvertRgbToHsvRange(rgbColor, Threshold, null);
+
+            // Convert the image to HSV color space
+            Mat hsv = new Mat();
+            Cv2.CvtColor(src, hsv, ColorConversionCodes.BGR2Lab);
+
+            // Create a mask for the desired color range
+            Mat mask = new Mat();
+            Cv2.InRange(hsv, lowerBound, upperBound, mask);
+
+            // Bitwise-AND mask and original image to isolate the color
+            Mat result = new Mat();
+            Cv2.BitwiseAnd(src, src, result, mask);
+            mask.Dispose();
+            hsv.Dispose();
+   //         Cv2.CvtColor(result, result, ColorConversionCodes.Lab2BGR);
+
+
+            return result;
+        }
+
+
+
         public static Mat IsolateColorHSV(Mat src, Scalar rgbColor, double Threshold)
         {
             // Convert the RGB color and tolerance to HSV
@@ -135,7 +220,7 @@ namespace RuneReader
 
             // Convert the image to HSV color space
             Mat hsv = new Mat();
-            Cv2.CvtColor(src, hsv, ColorConversionCodes.BGR2HSV_FULL);
+            Cv2.CvtColor(src, hsv, ColorConversionCodes.BGR2HSV);
 
             // Create a mask for the desired color range
             Mat mask = new Mat();
@@ -144,9 +229,15 @@ namespace RuneReader
             // Bitwise-AND mask and original image to isolate the color
             Mat result = new Mat();
             Cv2.BitwiseAnd(src, src, result, mask);
+            mask.Dispose();
+            hsv.Dispose();
+            Cv2.CvtColor(result, result, ColorConversionCodes.BGR2HSV);
+
 
             return result;
         }
+
+
 
         public static Mat IsolateColorHLS(Mat src, Scalar rgbColor, double Threshold)
         {
@@ -206,7 +297,7 @@ namespace RuneReader
 
             // Resize the image
             Mat resizedImage = new Mat();
-            Cv2.Resize(src, resizedImage, new OpenCvSharp.Size(newWidth, newHeight), interpolation: InterpolationFlags.Cubic);
+            Cv2.Resize(src, resizedImage, new OpenCvSharp.Size(newWidth, newHeight), interpolation: InterpolationFlags.Lanczos4);
 
             return resizedImage;
         }
