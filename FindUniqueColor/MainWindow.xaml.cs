@@ -123,16 +123,14 @@ namespace FindUniqueColor
             var files = Directory.GetFiles(textBox.Text);
 
             Dictionary<Vec3b, valuePair> colorFrequencies = new Dictionary<Vec3b, valuePair>(new Vec3bComparer());
-            Mat rgbMat;
-            Mat hsvMat;
             Vec3b hsvColor;
-            Mat histMat;
+           Mat histMat;
 
             if (File.Exists(@".\testimg.png"))
             {
                 histMat = Cv2.ImRead(@".\testimg.png", ImreadModes.Color);
-                var Mat3 = new Mat();
-                Cv2.CvtColor(histMat, Mat3, ColorConversionCodes.BGR2HSV);
+                using var Mat3 = new Mat();
+                Cv2.CvtColor(histMat, Mat3, ColorConversionCodes.BGR2HSV_FULL);
                 for (int y = 0; y < histMat.Rows; y++)
                 {
                     for (int x = 0; x < histMat.Cols; x++)
@@ -140,15 +138,12 @@ namespace FindUniqueColor
                         Vec3b color = histMat.At<Vec3b>(y, x);
                         if (colorFrequencies.ContainsKey(color))
                         {
-                            //                                colorFrequencies[color].Count++;
-                            var v = colorFrequencies[color];//= new valuePair() { Count = 1, HSV = Mat3.At<Vec3b>(y, x), BGR = color };
+                            var v = colorFrequencies[color];
                             v.Count++;
                         }
                         else
                         {
-
                             colorFrequencies[color] = new valuePair() { Count = 1, HSV = Mat3.At<Vec3b>(y, x), BGR = color };
-                            //                                colorFrequencies[color] = 1;
                         }
                     }
                 }
@@ -163,12 +158,19 @@ namespace FindUniqueColor
                 colorFrequencies[hsvColor] = new valuePair() { Count = 1, BGR = hsvColor };
                 foreach (var file in files)
                 {
-                    var Mat1 = Cv2.ImRead(file, ImreadModes.Color);
-                    // Cv2.CvtColor(Mat1, Mat1, ColorConversionCodes.BGR2HSV_FULL);
-                    
-                    var Mat2 = Mat1[new OpenCvSharp.Rect(0, 0, Mat1.Width, (int)Math.Ceiling(Mat1.Height / 1.0))];
-                    var Mat3 = new Mat();
-                    Cv2.CvtColor(Mat2, Mat3, ColorConversionCodes.BGR2HSV);
+                    using var Mat1 = Cv2.ImRead(file, ImreadModes.Color);
+                    // Cv2.CvtColor(Mat1, Mat1, ColorConversionCodes.BGR2HSV);
+                    if (Mat1.Height <= 10) continue;
+                    using var Mat2 = Mat1[new OpenCvSharp.Rect(0, 0, Mat1.Width, (int)Math.Floor(Mat1.Height / 2.0))];
+
+
+                    using Mat deNoised = new Mat();
+                    Cv2.MedianBlur(Mat2, deNoised, 5);
+
+
+
+                    using var Mat3 = new Mat();
+                    Cv2.CvtColor(deNoised, Mat3, ColorConversionCodes.BGR2HSV_FULL);
 
                 
 
@@ -181,15 +183,13 @@ namespace FindUniqueColor
                             Vec3b color = Mat2.At<Vec3b>(y, x);
                             if (colorFrequencies.ContainsKey(color))
                             {
-                                //                                colorFrequencies[color].Count++;
-                                var v = colorFrequencies[color] ;//= new valuePair() { Count = 1, HSV = Mat3.At<Vec3b>(y, x), BGR = color };
+                                var v = colorFrequencies[color] ;
                                 v.Count++;
                             }
                             else
                             {
                                 
                                 colorFrequencies[color] = new valuePair() { Count = 1, HSV = Mat3.At<Vec3b>(y, x), BGR = color };
-//                                colorFrequencies[color] = 1;
                             }
                         }
                     }
@@ -197,14 +197,14 @@ namespace FindUniqueColor
                     // Example: Output some colors and their frequencies
 
 
-                    Mat2.Dispose();
-                    Mat1.Dispose();
+                    //Mat2.Dispose();
+                    //Mat1.Dispose();
 
                 }
 
                 histMat = new Mat((int)Math.Ceiling(colorFrequencies.Count / 1024.0), 1024, MatType.CV_8UC3);
                 int x1 = 0;
-                colorFrequencies = colorFrequencies.OrderBy(x => x.Value.HSV.Item0).OrderBy(x => x.Value.HSV.Item1).OrderBy(x => x.Value.HSV.Item2).OrderBy(x => x.Value.Count).ToDictionary();
+                colorFrequencies = colorFrequencies.OrderBy(x => x.Value.Count).ToDictionary().OrderBy(x => x.Value.HSV.Item0).OrderBy(x => x.Value.HSV.Item1).OrderBy(x => x.Value.HSV.Item2).ToDictionary();
 
                 foreach (var color in colorFrequencies.Keys)
                 {
@@ -223,7 +223,7 @@ namespace FindUniqueColor
 
 
 
-            Cv2.CvtColor(histMat, histMat, ColorConversionCodes.BGR2HSV);
+            Cv2.CvtColor(histMat, histMat, ColorConversionCodes.BGR2HSV_FULL);
 
             // Cv2.ImShow("testImg", histMat);
 
@@ -246,7 +246,7 @@ namespace FindUniqueColor
    
 
         
-            double Threshold = 0.7;
+
 
             for (int r = 255; r > 0; r--)
                 {
@@ -261,99 +261,92 @@ namespace FindUniqueColor
                         var lr = r;
                         var lg = g;
 
-                        var x = Parallel.For(0, 255, new ParallelOptions { MaxDegreeOfParallelism = 14 }, (b) => 
+                        var x = Parallel.For(0, 255, new ParallelOptions { MaxDegreeOfParallelism = 15 }, (b) => 
 
                         //for (int b = 0; b < 256; b++)
                        {
                            var lb = b;
                            var lvec = new Vec3b((byte)lb, (byte)lr, (byte)lg);
-                           if ((colorFrequencies.ContainsKey(lvec) 
-                            && colorFrequencies[lvec].Count <= 100) 
+                           if (
+                           (colorFrequencies.ContainsKey(lvec) && colorFrequencies[lvec].Count <= 100) 
                             || !colorFrequencies.ContainsKey(lvec)
 
                            )
                            {
 
-                               var rgbMat1 = new Mat(1, 1, MatType.CV_8UC3, Scalar.FromRgb(lr, lg, lb));
-                               var hsvMat1 = new Mat();
-                               Cv2.CvtColor(rgbMat1, hsvMat1, ColorConversionCodes.BGR2HSV);
+                               using var rgbMat1 = new Mat(1, 1, MatType.CV_8UC3, Scalar.FromRgb(lr, lg, lb));
+                               using var hsvMat1 = new Mat();
+                               Cv2.CvtColor(rgbMat1, hsvMat1, ColorConversionCodes.BGR2HSV_FULL);
 
 
                                var hsvColor1 = hsvMat1.Get<Vec3b>(0, 0);
-                               var hsvColor2 = hsvMat1.Get<Vec4b>(0, 0);
+                               //    var hsvColor2 = hsvMat1.Get<Vec3b>(0, 0);
                                //     var hsvColor1 = new Vec3b((byte)lb, (byte)lg, (byte)lr);// hsvMat1.Get<Vec3b>(0, 0);
                                Vec3b hsvColorLower;
                                Vec3b hsvColorUpper;
 
-                               var hTol = hsvColor1.Item0 * 10.0 / 100;
-                               var sTol = hsvColor1.Item1 * 20.0 / 100;
-                               var vTol = hsvColor1.Item2 * 100.0 / 100;
 
-                               byte hv1 = (byte)Math.Max(Math.Floor(hsvColor1.Item0 - hTol), 0.0);
-                               byte sv2 = (byte)Math.Max(Math.Floor(hsvColor1.Item1 - sTol), 0.0);
-                               byte vv3 = (byte)Math.Max(Math.Floor(hsvColor1.Item2 - vTol), 0.0);
-                               hsvColorLower = new Vec3b(
-                                   ( hv1),
-                                  ( sv2),
-                                  (vv3 )
-                                  //(byte)( 0  )
+                               var constantVarianceHL = 255 * 0.005;
+                               var constantVarianceSL = 255 * 0.04;
+                               var constantVarianceVL = 255 * 0.60;
+                               var constantVarianceHH = 255 * 0.002;
+                               var constantVarianceSH = 255 * 0.01;
+                               var constantVarianceVH = 255 * (60.0 / 100.0);
 
-                                  );
 
-                               hv1 = (byte)Math.Min(Math.Ceiling(hsvColor1.Item0 + hTol), 180.0);
-                               sv2 = (byte)Math.Min(Math.Ceiling(hsvColor1.Item1 + sTol), 255.0);
-                               vv3 = (byte)Math.Min(Math.Ceiling(hsvColor1.Item2 + vTol), 255.0);
-                               hsvColorUpper = new Vec3b(
-                                   hv1,
-                                  sv2,
-                                  vv3
-                                  //(byte)255
 
-                                  );
+                               //var hTol = hsvColor1.Item0 * 10.0 / 100;
+                               //var sTol = hsvColor1.Item1 * 20.0 / 100;
+                               //var vTol = hsvColor1.Item2 * 100.0 / 100;
+
+                               byte hv1 = (byte)Math.Max(Math.Round(hsvColor1.Item0 - constantVarianceHL,0), 0.0);
+                               byte sv2 = (byte)Math.Max(Math.Round(hsvColor1.Item1 - constantVarianceSL,0), 0.0);
+                               byte vv3 = (byte)Math.Max(Math.Round(hsvColor1.Item2 - constantVarianceVL,0), 0.0);
+                               hsvColorLower = new Vec3b(hv1,sv2,vv3);
+
+                               hv1 = (byte)Math.Min(Math.Round(hsvColor1.Item0 + constantVarianceHH, 0), 255.0);
+                               sv2 = (byte)Math.Min(Math.Round(hsvColor1.Item1 + constantVarianceSH, 0), 255.0);
+                               vv3 = (byte)Math.Min(Math.Round(hsvColor1.Item2 + constantVarianceVH, 0), 255.0);
+                               hsvColorUpper = new Vec3b(hv1,sv2,vv3);
 
 
 
                                // Adjust the HSV range based on the tolerance
 
 
-                               Mat outMat = new Mat();
+                                Mat outMat = new Mat();
                                Cv2.InRange(histMat, hsvColorLower, hsvColorUpper, outMat);
 
-                               Mat result = new Mat();
-                               Cv2.BitwiseAnd(histMat, histMat, result, outMat);
+                               //using Mat result = new Mat();
+                               //Cv2.BitwiseAnd(histMat, histMat, result, outMat);
 
-                               Mat grayWithDelays = new Mat();
-                               Cv2.CvtColor(result, grayWithDelays, ColorConversionCodes.BGR2GRAY);
-                               Cv2.Threshold(grayWithDelays, grayWithDelays, 0, 255, ThresholdTypes.Binary); //
+                               //using Mat grayWithDelays = new Mat();
+                               //Cv2.CvtColor(result, grayWithDelays, ColorConversionCodes.BGR2GRAY);
+                               //Cv2.Threshold(grayWithDelays, grayWithDelays, 0, 255, ThresholdTypes.Binary); //
+                               var t1 = outMat.Height;
+                               var t2 = outMat.Width;
+                               var r = new OpenCvSharp.Rect(0, t1 - 1, t2, 1);
+                               Mat lastbit = outMat[r];
                                //Cv2.ImShow("durr", grayWithDelays);
 
+                               var er = Cv2.Sum(lastbit); 
+                              // outMat.Dispose();
+
                                Scalar v1;
-                               v1 = Cv2.Sum(grayWithDelays);
-                               outMat.Dispose();
-                               
-                               result.Dispose();
-                               grayWithDelays.Dispose();    
+                               v1 = Cv2.Sum(outMat);
+                               //result.Dispose();
+                               //grayWithDelays.Dispose();    
 
-                               if (v1.Val0 <= 100
-                               //&& hsvColor1.Item0 - 10 >= 0 
-                               //&& hsvColor1.Item1 - 20 >= 0 
-                               //&& hsvColor1.Item2 - (hsvColor1.Item2 * Threshold) >= 0
-                               //&& hsvColor1.Item0 + 10 <= 255
-                               //&& hsvColor1.Item1 + 20 <= 255
-                               //&& hsvColor1.Item2 + (hsvColor1.Item2 * Threshold) <= 255
-                               )
-
+                               if (v1.Val0 <= 50  && er.Val0 <= 50)
                                {
                                    string s1 = string.Concat(lr.ToString("X2"), lg.ToString("X2"), lb.ToString("X2"));
                                    //      UnusedColorsString.Add(string.Concat("|", r, "|", g, "|", b, "|", "`#", s1, "`", "#", s1, "|"));
                                    //sr.WriteLine(string.Concat("|", r, "|", g, "|", b, "|", "`#", s1, "`", "#", s1, "|"));
                                    resultsBuffer.AddResult(string.Concat("|", lr, "|", lg, "|", lb, "|", "#", s1, "|", v1.Val0, "|", hsvColor1.Item0, "|", hsvColor1.Item1, "|", hsvColor1.Item2, "|"));
                                }
-                               else
-                               {
+                               lastbit.Dispose();
+                               outMat.Dispose();
 
-
-                               }
 
 
                            }
@@ -367,7 +360,7 @@ namespace FindUniqueColor
 
                 };
 
-
+            histMat.Dispose();
 
 
             listBox.ItemsSource = UnusedColorsString;

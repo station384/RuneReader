@@ -23,6 +23,7 @@ namespace RuneReader
             {
                 // App is already running! Exiting the application
                 MessageBox.Show("An instance of the application is already running.");
+                _mutex = null;
                 Application.Current.Shutdown();
             }
 

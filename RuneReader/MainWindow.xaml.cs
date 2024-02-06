@@ -225,20 +225,24 @@ namespace RuneReader
 
             resizedMat = ImageProcessingOpenCV.RescaleImageToNewDpi(CVMat, image.HorizontalResolution, 300);
 
-            var IsolatedColorWithDelays = ImageProcessingOpenCV.IsolateColorHSV(resizedMat, Scalar.FromRgb(CurrentR, CurrentG, CurrentB), Threshold);
-            var IsolatedColorWithoutDelays = ImageProcessingOpenCV.IsolateColorHSV(resizedMat, Scalar.FromRgb(CurrentR, CurrentG, CurrentB), Threshold +1  );
+           using var IsolatedColorWithDelays = ImageProcessingOpenCV.IsolateColorHSV(resizedMat, Scalar.FromRgb(CurrentR, CurrentG, CurrentB), Threshold);
+           using var IsolatedColorWithoutDelays = ImageProcessingOpenCV.IsolateColorHSV(resizedMat, Scalar.FromRgb(CurrentR, CurrentG, CurrentB), Threshold +1  );
 
-            Mat grayWithDelays = new Mat();
-            Mat grayWithoutDelays = new Mat();
-            Cv2.CvtColor(IsolatedColorWithDelays, grayWithDelays, ColorConversionCodes.BGR2GRAY);
-            Cv2.CvtColor(IsolatedColorWithoutDelays, grayWithoutDelays, ColorConversionCodes.BGR2GRAY);
 
-            // Apply Otsu's thresholding
-            //Cv2.Threshold(grayWithDelays, grayWithDelays, 250, 255, ThresholdTypes.Otsu | ThresholdTypes.BinaryInv); //
-            //Cv2.Threshold(grayWithoutDelays, grayWithoutDelays, 250, 255, ThresholdTypes.Otsu | ThresholdTypes.BinaryInv); //
+            Mat grayWithDelays = IsolatedColorWithDelays.Clone();//new Mat();
+            Mat grayWithoutDelays = IsolatedColorWithoutDelays.Clone();//new Mat();
+          //  Cv2.ImShow("WithDelays", grayWithDelays);
+          //  Cv2.ImShow("WithoutDelays", grayWithoutDelays);
 
-            Cv2.Threshold(grayWithDelays, grayWithDelays, 0, 255,  ThresholdTypes.BinaryInv); //
-            Cv2.Threshold(grayWithoutDelays, grayWithoutDelays, 0, 255, ThresholdTypes.BinaryInv); //
+            //     Cv2.CvtColor(IsolatedColorWithDelays, grayWithDelays, ColorConversionCodes.BGR2GRAY);
+            //     Cv2.CvtColor(IsolatedColorWithoutDelays, grayWithoutDelays, ColorConversionCodes.BGR2GRAY);
+
+            //// Apply Otsu's thresholding
+            ////Cv2.Threshold(grayWithDelays, grayWithDelays, 250, 255, ThresholdTypes.Otsu | ThresholdTypes.BinaryInv); //
+            ////Cv2.Threshold(grayWithoutDelays, grayWithoutDelays, 250, 255, ThresholdTypes.Otsu | ThresholdTypes.BinaryInv); //
+
+            //      Cv2.Threshold(grayWithDelays, grayWithDelays, 0, 255,  ThresholdTypes.BinaryInv); //
+            //      Cv2.Threshold(grayWithoutDelays, grayWithoutDelays, 0, 255, ThresholdTypes.BinaryInv); //
 
 
 
@@ -273,7 +277,7 @@ namespace RuneReader
             } 
             else
             {
-                usefulRegionsWithDelays.Add(ocrRegionsWithDelays[0]);
+                usefulRegionsWithDelays.Add(new System.Windows.Rect(0,0, grayWithDelays.Width, grayWithDelays.Height));
             }
 
 
@@ -307,7 +311,7 @@ namespace RuneReader
             }
             else
             {
-                usefulRegionsWithoutDelays.Add(ocrRegionsWithoutDelays[0]);
+                usefulRegionsWithoutDelays.Add(new System.Windows.Rect(0, 0, grayWithoutDelays.Width, grayWithoutDelays.Height));
             }
 
             // Find the total region size of all the regions that were detected for the image with out delays
@@ -359,6 +363,11 @@ namespace RuneReader
             
             // Update the detected value object that was passed in.
             _DetectedValue = CurrentKeyToSend;
+
+            resizedMat.Dispose();
+            grayWithDelays.Dispose();
+            grayWithoutDelays.Dispose();
+
 
             return result;
         }

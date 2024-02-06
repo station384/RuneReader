@@ -1,5 +1,7 @@
 ﻿using OpenCvSharp;
 using System;
+using System.Runtime.Intrinsics;
+using System.Security.Cryptography;
 
 namespace RuneReader
 {
@@ -55,14 +57,12 @@ namespace RuneReader
 
         private static Scalar ConvertRgbToHsvRange(Scalar rgbColor, double Threshold, bool? isLowerBound)
         {
-            Mat rgbMat = new Mat(1, 1, MatType.CV_8UC4, rgbColor);
-            Mat hsvMat = new Mat();
-            Cv2.CvtColor(rgbMat, hsvMat, ColorConversionCodes.BGR2HSV);
-            //Mat test = hsvMat.ExtractChannel(2);
-            //test.At<Vec3b>(0, 0);
+            using Mat rgbMat = new Mat(1, 1, MatType.CV_8UC3, rgbColor);
+            using Mat hsvMat = new Mat();
+            Cv2.CvtColor(rgbMat, hsvMat, ColorConversionCodes.BGR2HSV_FULL);
             
-            if (Threshold > 1.0) { Threshold = 0.7; }
-            if (Threshold < 0.0) { Threshold = 0.001; }
+            if (Threshold > 1.0) { Threshold = 0.6; }
+            if (Threshold < 0.0) { Threshold = 0.0; }
             Vec4b hsvColor = hsvMat.Get<Vec4b>(0, 0);
 
             // Adjust the HSV range based on the tolerance
@@ -73,12 +73,14 @@ namespace RuneReader
             double sTol = (double)(s * 0.10);
             double vTol = (double)(v * Threshold) ;
 
-            //if (h + hTol > 255) { hTol = 0; }
-            //if (s + sTol > 255) { sTol = 255; }
-            //if (v + vTol > 255) { vTol = 255; }
-            //if (h - hTol < 0) { hTol = 0; }
-            //if (s - sTol < 0) { sTol = 0; }
-            //if (v - vTol < 0) { vTol = 0; }
+            double constantVarianceHL = 255 * (0.005);
+            double constantVarianceSL = 255 * (0.04);
+            double constantVarianceVL = 255 * (Threshold);
+
+            double constantVarianceHH = 255 * (0.002);
+            double constantVarianceSH = 255 * (0.01);
+            double constantVarianceVH = 255 * (Threshold);
+
 
             if (isLowerBound == null)
             {
@@ -89,15 +91,36 @@ namespace RuneReader
 
             }
             else
-                return new Scalar(
-                    //isLowerBound.Value ? h - 10 : h + 10,
-                    //isLowerBound.Value ? s - 20 : s + 20,
-                    //isLowerBound.Value ? v - vTol : v + vTol);
-                    isLowerBound.Value ? Math.Floor(h - hTol) : Math.Ceiling(h + hTol),
-                    isLowerBound.Value ? Math.Floor(s - sTol) : Math.Ceiling(s + sTol),
-                    isLowerBound.Value ? Math.Floor(v - vTol) : Math.Ceiling(v + vTol)
-                    );
 
+            {
+                byte h1;
+                byte s1;
+                byte v1;
+
+                if (isLowerBound.Value)
+                {
+                    h1 = (byte)Math.Max(Math.Round(h - constantVarianceHL, 0),0.0);
+                    s1 = (byte)Math.Max(Math.Round(s - constantVarianceSL, 0),0.0);
+                    v1 = (byte)Math.Max(Math.Round(v - constantVarianceVL, 0),0.0);
+                    return new Scalar(h1, s1, v1);
+                }
+                else
+                {
+                    h1 = (byte)Math.Min(Math.Round(h + constantVarianceHH, 0), 255);
+                    s1 = (byte)Math.Min(Math.Round(s + constantVarianceSH, 0), 255);
+                    v1 = (byte)Math.Min(Math.Round(v + constantVarianceVH, 0), 255);
+                    return new Scalar(h1,s1,v1);
+                }
+
+                //return new Scalar(
+                //    //isLowerBound.Value ? h - 10 : h + 10,
+                //    //isLowerBound.Value ? s - 20 : s + 20,
+                //    //isLowerBound.Value ? v - vTol : v + vTol);
+                //    isLowerBound.Value ? Math.Floor(h - hTol) : Math.Ceiling(h + hTol),
+                //    isLowerBound.Value ? Math.Floor(s - sTol) : Math.Ceiling(s + sTol),
+                //    isLowerBound.Value ? Math.Floor(v - vTol) : Math.Ceiling(v + vTol)
+                //    );
+            }
         }
 
 
@@ -217,21 +240,38 @@ namespace RuneReader
             Scalar upperBound = ConvertRgbToHsvRange(rgbColor, Threshold, false);
             Scalar lowerBound = ConvertRgbToHsvRange(rgbColor, Threshold, true);
             //      Scalar centerBound = ConvertRgbToHsvRange(rgbColor, Threshold, null);
+            
+            // Works  Uses WAY to much CPU
+            using Mat deNoised = new Mat();
+            //Cv2.FastNlMeansDenoisingColored(src, deNoised, 2, 3, 7, 21);
+     //       Cv2.Blur(src,deNoised,new Size(3,3));
+            //Cv2.GaussianBlur(src, deNoised, new Size(3, 3), 0,0);
+            Cv2.MedianBlur(src, deNoised, 5);
+
+            using Mat kernel = Cv2.GetStructuringElement(MorphShapes.Rect, new Size(1, 1));
+
+            // Dilate the image
+            Mat dilated = new Mat();
+            Cv2.Dilate(deNoised, dilated, kernel, iterations:5);
+
+            
 
             // Convert the image to HSV color space
-            Mat hsv = new Mat();
-            Cv2.CvtColor(src, hsv, ColorConversionCodes.BGR2HSV);
+           using Mat hsv = new Mat();
+            Cv2.CvtColor(dilated, hsv, ColorConversionCodes.BGR2HSV_FULL);
 
             // Create a mask for the desired color range
-            Mat mask = new Mat();
+            using Mat mask = new Mat();
             Cv2.InRange(hsv, lowerBound, upperBound, mask);
 
             // Bitwise-AND mask and original image to isolate the color
             Mat result = new Mat();
-            Cv2.BitwiseAnd(src, src, result, mask);
-            mask.Dispose();
-            hsv.Dispose();
-            Cv2.CvtColor(result, result, ColorConversionCodes.BGR2HSV);
+           Cv2.BitwiseNot(mask, result);
+
+      //      Cv2.BitwiseAnd(src, src, result, mask);
+            //mask.Dispose();
+            //hsv.Dispose();
+            //Cv2.CvtColor(result, result, ColorConversionCodes.BGR2HSV);
 
 
             return result;
@@ -305,32 +345,16 @@ namespace RuneReader
 
         public static bool IsThereAnImageInTopLeftQuarter(Mat src)
         {
-            // Define the region of interest (ROI) as the first quarter of the image
-            //OpenCvSharp.Rect roi = new OpenCvSharp.Rect(0, 0, (src.Width / 3), (src.Height / 3));
-            //OpenCvSharp.Rect roi = new OpenCvSharp.Rect( (int)((src.Width / 2) / 2.5), 0, (int)((src.Width / 2) / 1.2), (src.Height / 3) );
-
-
-            //       Cv2.Rectangle(resizedMat,
-            //new OpenCvSharp.Point((resizedMat.Width / 4), 0),
-            //new OpenCvSharp.Point((resizedMat.Width / 8) + (resizedMat.Width / 4), (resizedMat.Height / 3)),
 
             var x = (src.Width / 8) + (src.Width / 16);
             var y = (src.Height / 16);
             var width = (src.Width / 2) - (src.Width / 4);
             var height = (src.Height / 2) / 2;
-            OpenCvSharp.Rect roi = new OpenCvSharp.Rect(
-                x, y, width, height
-    );
+            OpenCvSharp.Rect roi = new OpenCvSharp.Rect(x, y, width, height);
 
-            Mat firstQuarter = src.Clone(roi);// new Mat(src, roi);
+            using Mat firstQuarter = src.Clone(roi);// new Mat(src, roi);
 
-            // Convert to grayscale
-            //Mat gray = new Mat();
-            //Cv2.CvtColor(firstQuarter, gray, ColorConversionCodes.BGR2GRAY);
-
-            // Apply edge detection (e.g., using Canny)
-            Mat edges = new Mat();
-            //        Cv2.BitwiseNot(firstQuarter, edges);
+            using Mat edges = new Mat();
             var x1 = Cv2.Mean(firstQuarter);
             if (x1.Val0 <= 250)
                 return true;
@@ -341,19 +365,6 @@ namespace RuneReader
 
         public static bool IsThereAnImageInTopRightQuarter(Mat src)
         {
-            // Define the region of interest (ROI) as the first quarter of the image
-            //OpenCvSharp.Rect roi = new OpenCvSharp.Rect((src.Width / 3), (src.Height / 3), src.Width - (src.Width / 3), src.Height - (src.Height / 3));
-
-            //OpenCvSharp.Rect roi = new OpenCvSharp.Rect(
-
-            //    (int)(src.Width / 2.3), 
-            //    0,
-
-            //    (int)(src.Width / 1.3), 
-            //    src.Height / 3 
-
-            //    );
-
             var x1 = (src.Width / 2) + (src.Width / 16);
             var y1 = (src.Height / 16);
             var width1 = (src.Width / 2) - (src.Width / 4);
@@ -363,12 +374,7 @@ namespace RuneReader
 
             Mat firstQuarter = new Mat(src, roi1);
 
-            // Convert to grayscale
-            //Mat gray = new Mat();
-            //Cv2.CvtColor(firstQuarter, gray, ColorConversionCodes.BGR2GRAY);
-
-            // Apply edge detection (e.g., using Canny)
-            Mat edges = new Mat();
+           using Mat edges = new Mat();
 
             var x2 = Cv2.Mean(firstQuarter);
             if (x2.Val0 <= 250)
@@ -380,30 +386,15 @@ namespace RuneReader
 
         public static bool IsThereAnImageInBottomLeftQuarter(Mat src)
         {
-            // Define the region of interest (ROI) as the first quarter of the image
-            //OpenCvSharp.Rect roi = new OpenCvSharp.Rect(0, 0, (src.Width / 3), (src.Height / 3));
-            //OpenCvSharp.Rect roi = new OpenCvSharp.Rect( (int)((src.Width / 2) / 2.5), 0, (int)((src.Width / 2) / 1.2), (src.Height / 3) );
-
-
-            //       Cv2.Rectangle(resizedMat,
-            //new OpenCvSharp.Point((resizedMat.Width / 4), 0),
-            //new OpenCvSharp.Point((resizedMat.Width / 8) + (resizedMat.Width / 4), (resizedMat.Height / 3)),
-
             var x = (src.Width / 8) + (src.Width / 16);
             var y = (src.Height / 2) + (src.Height / 8);
             var width = (src.Width / 2) - (src.Width / 4);
             var height = (src.Height / 2) / 2;
             OpenCvSharp.Rect roi = new OpenCvSharp.Rect(x, y, width, height);
 
-            Mat firstQuarter = src.Clone(roi);// new Mat(src, roi);
+            using Mat firstQuarter = src.Clone(roi);// new Mat(src, roi);
 
-            // Convert to grayscale
-            //Mat gray = new Mat();
-            //Cv2.CvtColor(firstQuarter, gray, ColorConversionCodes.BGR2GRAY);
-
-            // Apply edge detection (e.g., using Canny)
-            Mat edges = new Mat();
-            //        Cv2.BitwiseNot(firstQuarter, edges);
+            using Mat edges = new Mat();
             var x1 = Cv2.Mean(firstQuarter);
             if (x1.Val0 <= 250)
                 return true;
@@ -414,30 +405,14 @@ namespace RuneReader
 
         public static bool IsThereAnImageInBottomCenter(Mat src)
         {
-            // Define the region of interest (ROI) as the first quarter of the image
-            //OpenCvSharp.Rect roi = new OpenCvSharp.Rect(0, 0, (src.Width / 3), (src.Height / 3));
-            //OpenCvSharp.Rect roi = new OpenCvSharp.Rect( (int)((src.Width / 2) / 2.5), 0, (int)((src.Width / 2) / 1.2), (src.Height / 3) );
-
-
-            //       Cv2.Rectangle(resizedMat,
-            //new OpenCvSharp.Point((resizedMat.Width / 4), 0),
-            //new OpenCvSharp.Point((resizedMat.Width / 8) + (resizedMat.Width / 4), (resizedMat.Height / 3)),
             var width = (src.Width / 2) - (src.Width / 4);
             var height = (src.Height / 2) / 2;
             var x = (src.Width / 2) - (width / 2);
             var y = (src.Height / 2) + (src.Height / 8);
 
             OpenCvSharp.Rect roi = new OpenCvSharp.Rect(x, y, width, height);
-
-            Mat firstQuarter = src.Clone(roi);// new Mat(src, roi);
-
-            // Convert to grayscale
-            //Mat gray = new Mat();
-            //Cv2.CvtColor(firstQuarter, gray, ColorConversionCodes.BGR2GRAY);
-
-            // Apply edge detection (e.g., using Canny)
-            Mat edges = new Mat();
-            //        Cv2.BitwiseNot(firstQuarter, edges);
+            using Mat firstQuarter = src.Clone(roi);// new Mat(src, roi);
+            using Mat edges = new Mat();
             var x1 = Cv2.Mean(firstQuarter);
             if (x1.Val0 <= 250)
                 return true;
