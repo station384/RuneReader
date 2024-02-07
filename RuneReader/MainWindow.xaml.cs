@@ -15,6 +15,10 @@ using RuneReader.Properties;
 using System.Windows.Threading;
 using System.Linq;
 using MahApps.Metro.Controls;
+using Tesseract;
+using ControlzEx.Standard;
+using System.ComponentModel.Design;
+using System.Windows.Media.Converters;
 
 namespace RuneReader
 {
@@ -62,6 +66,9 @@ namespace RuneReader
 
 
         private volatile bool _keyPressMode = false;
+        private volatile float WowGamma = 1.0f;
+
+        private bool Initalizing = true;  // To prevent events from firing as the xaml defaults are applied
 
 
 
@@ -225,7 +232,20 @@ namespace RuneReader
 
             resizedMat = ImageProcessingOpenCV.RescaleImageToNewDpi(CVMat, image.HorizontalResolution, 300);
 
-           using var IsolatedColorWithDelays = ImageProcessingOpenCV.IsolateColorHSV(resizedMat, Scalar.FromRgb(CurrentR, CurrentG, CurrentB), Threshold);
+            float gammaAdjust;
+            float wowGammaSetting = WowGamma;
+            if (cbColorCustom.IsChecked.Value == true)
+            {
+                gammaAdjust = 1.0f;
+            }
+            else
+            { 
+                gammaAdjust = ( 1.0f-(WowGamma - 1.0f)  );
+            }
+
+            ImageProcessingOpenCV.gammaCorrection(resizedMat, resizedMat, gammaAdjust);
+
+            using var IsolatedColorWithDelays = ImageProcessingOpenCV.IsolateColorHSV(resizedMat, Scalar.FromRgb(CurrentR, CurrentG, CurrentB), Threshold);
            using var IsolatedColorWithoutDelays = ImageProcessingOpenCV.IsolateColorHSV(resizedMat, Scalar.FromRgb(CurrentR, CurrentG, CurrentB), Threshold +1  );
 
 
@@ -274,12 +294,12 @@ namespace RuneReader
                         usefulRegionsWithDelays.Add(ocrRegionsWithDelays[i]);
                     }
                 }
+
             } 
-            else
-            {
+
+if (usefulRegionsWithDelays.Count == 0) { 
                 usefulRegionsWithDelays.Add(new System.Windows.Rect(0,0, grayWithDelays.Width, grayWithDelays.Height));
             }
-
 
 
 
@@ -309,11 +329,11 @@ namespace RuneReader
                     }
                 }
             }
-            else
+
+            if (usefulRegionsWithoutDelays.Count == 0)
             {
                 usefulRegionsWithoutDelays.Add(new System.Windows.Rect(0, 0, grayWithoutDelays.Width, grayWithoutDelays.Height));
             }
-
             // Find the total region size of all the regions that were detected for the image with out delays
             xMin = usefulRegionsWithoutDelays.Min(s => s.X);
             yMin = usefulRegionsWithoutDelays.Min(s => s.Y);
@@ -621,6 +641,7 @@ namespace RuneReader
         public MainWindow()
         {
             InitializeComponent();
+            Initalizing = false;
             mainWindowDispatcher = this.Dispatcher;
 
 
@@ -647,31 +668,31 @@ namespace RuneReader
 
 
             ColorPicker.PortableColorPicker cp;
-            cp = (ColorPicker.PortableColorPicker)cbColorDruid.Content;
-            cp.SelectedColor = System.Windows.Media.Color.FromArgb((byte)Settings.Default.DruidTargetA, (byte)Settings.Default.DruidTargetR, (byte)Settings.Default.DruidTargetG, (byte)Settings.Default.DruidTargetB);
-            cp = (ColorPicker.PortableColorPicker)cbColorPaladin.Content;
-            cp.SelectedColor = System.Windows.Media.Color.FromArgb((byte)Settings.Default.PaladinTargetA, (byte)Settings.Default.PaladinTargetR, (byte)Settings.Default.PaladinTargetG, (byte)Settings.Default.PaladinTargetB);
-            cp = (ColorPicker.PortableColorPicker)cbColorWarlock.Content;
-            cp.SelectedColor = System.Windows.Media.Color.FromArgb((byte)Settings.Default.WarlockTargetA, (byte)Settings.Default.WarlockTargetR, (byte)Settings.Default.WarlockTargetG, (byte)Settings.Default.WarlockTargetB);
-            cp = (ColorPicker.PortableColorPicker)cbColorShaman.Content;
-            cp.SelectedColor = System.Windows.Media.Color.FromArgb((byte)Settings.Default.ShamanTargetA, (byte)Settings.Default.ShamanTargetR, (byte)Settings.Default.ShamanTargetG, (byte)Settings.Default.ShamanTargetB);
-            cp = (ColorPicker.PortableColorPicker)cbColorRogue.Content;
-            cp.SelectedColor = System.Windows.Media.Color.FromArgb((byte)Settings.Default.RogueTargetA, (byte)Settings.Default.RogueTargetR, (byte)Settings.Default.RogueTargetG, (byte)Settings.Default.RogueTargetB);
-            cp = (ColorPicker.PortableColorPicker)cbColorWarrior.Content;
-            cp.SelectedColor = System.Windows.Media.Color.FromArgb((byte)Settings.Default.WarriorTargetA, (byte)Settings.Default.WarriorTargetR, (byte)Settings.Default.WarriorTargetG, (byte)Settings.Default.WarriorTargetB);
-            cp = (ColorPicker.PortableColorPicker)cbColorEvoker.Content;
-            cp.SelectedColor = System.Windows.Media.Color.FromArgb((byte)Settings.Default.EvokerTargetA, (byte)Settings.Default.EvokerTargetR, (byte)Settings.Default.EvokerTargetG, (byte)Settings.Default.EvokerTargetB);
-            cp = (ColorPicker.PortableColorPicker)cbColorHunter.Content;
-            cp.SelectedColor = System.Windows.Media.Color.FromArgb((byte)Settings.Default.HunterTargetA, (byte)Settings.Default.HunterTargetR, (byte)Settings.Default.HunterTargetG, (byte)Settings.Default.HunterTargetB);
-            cp = (ColorPicker.PortableColorPicker)cbColorMage.Content;
-            cp.SelectedColor = System.Windows.Media.Color.FromArgb((byte)Settings.Default.MageTargetA, (byte)Settings.Default.MageTargetR, (byte)Settings.Default.MageTargetG, (byte)Settings.Default.MageTargetB);
-            cp = (ColorPicker.PortableColorPicker)cbColorPriest.Content;
-            cp.SelectedColor = System.Windows.Media.Color.FromArgb((byte)Settings.Default.PriestTargetA, (byte)Settings.Default.PriestTargetR, (byte)Settings.Default.PriestTargetG, (byte)Settings.Default.PriestTargetB);
-            cp = (ColorPicker.PortableColorPicker)cbColorMonk.Content;
-            cp.SelectedColor = System.Windows.Media.Color.FromArgb((byte)Settings.Default.MonkTargetA, (byte)Settings.Default.MonkTargetR, (byte)Settings.Default.MonkTargetG, (byte)Settings.Default.MonkTargetB);
-            cp = (ColorPicker.PortableColorPicker)cbColorDemonHunter.Content;
-            cp.SelectedColor = System.Windows.Media.Color.FromArgb((byte)Settings.Default.DemonHunterTargetA, (byte)Settings.Default.DemonHunterTargetR, (byte)Settings.Default.DemonHunterTargetG, (byte)Settings.Default.DemonHunterTargetB);
-            cp = (ColorPicker.PortableColorPicker)cbColorDefault.Content;
+            //cp = (ColorPicker.PortableColorPicker)cbColorDruid.Content;
+            //cp.SelectedColor = System.Windows.Media.Color.FromArgb((byte)Settings.Default.DruidTargetA, (byte)Settings.Default.DruidTargetR, (byte)Settings.Default.DruidTargetG, (byte)Settings.Default.DruidTargetB);
+            //cp = (ColorPicker.PortableColorPicker)cbColorPaladin.Content;
+            //cp.SelectedColor = System.Windows.Media.Color.FromArgb((byte)Settings.Default.PaladinTargetA, (byte)Settings.Default.PaladinTargetR, (byte)Settings.Default.PaladinTargetG, (byte)Settings.Default.PaladinTargetB);
+            //cp = (ColorPicker.PortableColorPicker)cbColorWarlock.Content;
+            //cp.SelectedColor = System.Windows.Media.Color.FromArgb((byte)Settings.Default.WarlockTargetA, (byte)Settings.Default.WarlockTargetR, (byte)Settings.Default.WarlockTargetG, (byte)Settings.Default.WarlockTargetB);
+            //cp = (ColorPicker.PortableColorPicker)cbColorShaman.Content;
+            //cp.SelectedColor = System.Windows.Media.Color.FromArgb((byte)Settings.Default.ShamanTargetA, (byte)Settings.Default.ShamanTargetR, (byte)Settings.Default.ShamanTargetG, (byte)Settings.Default.ShamanTargetB);
+            //cp = (ColorPicker.PortableColorPicker)cbColorRogue.Content;
+            //cp.SelectedColor = System.Windows.Media.Color.FromArgb((byte)Settings.Default.RogueTargetA, (byte)Settings.Default.RogueTargetR, (byte)Settings.Default.RogueTargetG, (byte)Settings.Default.RogueTargetB);
+            //cp = (ColorPicker.PortableColorPicker)cbColorWarrior.Content;
+            //cp.SelectedColor = System.Windows.Media.Color.FromArgb((byte)Settings.Default.WarriorTargetA, (byte)Settings.Default.WarriorTargetR, (byte)Settings.Default.WarriorTargetG, (byte)Settings.Default.WarriorTargetB);
+            //cp = (ColorPicker.PortableColorPicker)cbColorEvoker.Content;
+            //cp.SelectedColor = System.Windows.Media.Color.FromArgb((byte)Settings.Default.EvokerTargetA, (byte)Settings.Default.EvokerTargetR, (byte)Settings.Default.EvokerTargetG, (byte)Settings.Default.EvokerTargetB);
+            //cp = (ColorPicker.PortableColorPicker)cbColorHunter.Content;
+            //cp.SelectedColor = System.Windows.Media.Color.FromArgb((byte)Settings.Default.HunterTargetA, (byte)Settings.Default.HunterTargetR, (byte)Settings.Default.HunterTargetG, (byte)Settings.Default.HunterTargetB);
+            //cp = (ColorPicker.PortableColorPicker)cbColorMage.Content;
+            //cp.SelectedColor = System.Windows.Media.Color.FromArgb((byte)Settings.Default.MageTargetA, (byte)Settings.Default.MageTargetR, (byte)Settings.Default.MageTargetG, (byte)Settings.Default.MageTargetB);
+            //cp = (ColorPicker.PortableColorPicker)cbColorPriest.Content;
+            //cp.SelectedColor = System.Windows.Media.Color.FromArgb((byte)Settings.Default.PriestTargetA, (byte)Settings.Default.PriestTargetR, (byte)Settings.Default.PriestTargetG, (byte)Settings.Default.PriestTargetB);
+            //cp = (ColorPicker.PortableColorPicker)cbColorMonk.Content;
+            //cp.SelectedColor = System.Windows.Media.Color.FromArgb((byte)Settings.Default.MonkTargetA, (byte)Settings.Default.MonkTargetR, (byte)Settings.Default.MonkTargetG, (byte)Settings.Default.MonkTargetB);
+            //cp = (ColorPicker.PortableColorPicker)cbColorDemonHunter.Content;
+            //cp.SelectedColor = System.Windows.Media.Color.FromArgb((byte)Settings.Default.DemonHunterTargetA, (byte)Settings.Default.DemonHunterTargetR, (byte)Settings.Default.DemonHunterTargetG, (byte)Settings.Default.DemonHunterTargetB);
+            cp = (ColorPicker.PortableColorPicker)cbColorCustom.Content;
             cp.SelectedColor = System.Windows.Media.Color.FromArgb((byte)Settings.Default.TargetA, (byte)Settings.Default.TargetR, (byte)Settings.Default.TargetG, (byte)Settings.Default.TargetB);
 
 
@@ -684,6 +705,12 @@ namespace RuneReader
             CurrentA = cp.SelectedColor.A;
 
             RadioButton rb = GetSelectedCheckBox();
+
+            if ((string)rb.Tag == "custom")
+            {
+                tbVariance.Text = Settings.Default.CustomVariancePercent.ToString();
+                sliderColorVariancePercent.Value = Settings.Default.CustomVariancePercent;
+            }
 
 
             if ((string)rb.Tag == "default")
@@ -752,7 +779,9 @@ namespace RuneReader
                 sliderColorVariancePercent.Value = Settings.Default.DemonHunterVariancePercent;
             }
 
-
+            sliderWowGamma.Value = Settings.Default.WowGamma;
+            tbWowGamma.Text = Settings.Default.WowGamma.ToString("0.0");
+          
 
             tbCaptureRateMS.Text = Settings.Default.CaptureRateMS.ToString();
             sliderCaptureRateMS.Value = Settings.Default.CaptureRateMS;
@@ -807,6 +836,7 @@ namespace RuneReader
             _timer.Interval = TimeSpan.FromMilliseconds(25);
             _timer.Tick += mainTimerTick;
 
+          
         }
 
   
@@ -900,6 +930,7 @@ namespace RuneReader
 
         private void Magnifier_LocationChanged(object? sender, EventArgs e)
         {
+            if (Initalizing ) return;
             //            if (screenCapture == null) return;
             //            screenCapture.CaptureRegion = magnifier.CurrrentLocationValue;
             if (screenCapture == null) return;
@@ -935,6 +966,7 @@ namespace RuneReader
 
         private void Magnifier_SizeChanged(object sender, SizeChangedEventArgs e)
         {
+            if (Initalizing) return;
             if (screenCapture == null) return;
             var source = PresentationSource.FromVisual(this);
             if (source?.CompositionTarget != null)
@@ -971,6 +1003,7 @@ namespace RuneReader
 
         private void Magnifier2_LocationChanged(object? sender, EventArgs e)
         {
+            if (Initalizing) return;
             if (screenCapture == null) return;
             var source = PresentationSource.FromVisual(this);
             if (source?.CompositionTarget != null)
@@ -1003,6 +1036,7 @@ namespace RuneReader
 
         private void Magnifier2_SizeChanged(object sender, SizeChangedEventArgs e)
         {
+            if (Initalizing) return;
             if (screenCapture == null) return;
             var source = PresentationSource.FromVisual(this);
             if (source?.CompositionTarget != null)
@@ -1088,6 +1122,11 @@ namespace RuneReader
         private RadioButton GetSelectedCheckBox ()
         {
             // Im tired so I'm just bruteforcing all of this.  Its not flexable and I know I will regert it later when a new one is added.
+
+            if (cbColorCustom.IsChecked == true)
+            {
+                return cbColorCustom;
+            }
             if (cbColorDruid.IsChecked == true)
             {
                 return cbColorDruid;
@@ -1149,98 +1188,104 @@ namespace RuneReader
             cp.SelectedColor = System.Windows.Media.Color.FromArgb(A, R, G, B);
 
 
+            if ((string)item.Tag == "custom")
+            {
+                Settings.Default.CustomTargetR = R;
+                Settings.Default.CustomTargetG = G;
+                Settings.Default.CustomTargetB = B;
+                Settings.Default.CustomTargetA = A;
+            }
+            //if ((string)item.Tag == "default")
+            //{
+            //    Settings.Default.TargetR = R;
+            //    Settings.Default.TargetG = G;
+            //    Settings.Default.TargetB = B;
+            //    Settings.Default.TargetA = A;
+            //}
+            //if ((string)item.Tag == "druid")
+            //{
+            //    Settings.Default.DruidTargetR = R;
+            //    Settings.Default.DruidTargetG = G;
+            //    Settings.Default.DruidTargetB = B;
+            //    Settings.Default.DruidTargetA = A;
+            //}
+            //if ((string)item.Tag == "paladin") {
+            //    Settings.Default.PaladinTargetR = R;
+            //    Settings.Default.PaladinTargetG = G;
+            //    Settings.Default.PaladinTargetB = B;
+            //    Settings.Default.PaladinTargetA = A;
+            //}
+            //if ((string)item.Tag == "warlock")
+            //{
+            //    Settings.Default.WarlockTargetR = R;
+            //    Settings.Default.WarlockTargetG = G;
+            //    Settings.Default.WarlockTargetB = B;
+            //    Settings.Default.WarlockTargetA = A;
+            //}
+            //if ((string)item.Tag == "shaman")
+            //{
+            //    Settings.Default.ShamanTargetR = R;
+            //    Settings.Default.ShamanTargetG = G;
+            //    Settings.Default.ShamanTargetB = B;
+            //    Settings.Default.ShamanTargetA = A;
+            //}
+            //if ((string)item.Tag == "rogue")
+            //{
+            //    Settings.Default.RogueTargetR = R;
+            //    Settings.Default.RogueTargetG = G;
+            //    Settings.Default.RogueTargetB = B;
+            //    Settings.Default.RogueTargetA = A;
+            //}
+            //if ((string)item.Tag == "warrior")
+            //{
+            //    Settings.Default.WarriorTargetR = R;
+            //    Settings.Default.WarriorTargetG = G;
+            //    Settings.Default.WarriorTargetB = B;
+            //    Settings.Default.WarriorTargetA = A;
+            //}
+            //if ((string)item.Tag == "evoker")
+            //{
+            //    Settings.Default.EvokerTargetR = R;
+            //    Settings.Default.EvokerTargetG = G;
+            //    Settings.Default.EvokerTargetB = B;
+            //    Settings.Default.EvokerTargetA = A;
+            //}
+            //if ((string)item.Tag == "hunter")
+            //{
+            //    Settings.Default.HunterTargetR = R;
+            //    Settings.Default.HunterTargetG = G;
+            //    Settings.Default.HunterTargetB = B;
+            //    Settings.Default.HunterTargetA = A;
+            //}
+            //if ((string)item.Tag == "mage")
+            //{
+            //    Settings.Default.MageTargetR = R;
+            //    Settings.Default.MageTargetG = G;
+            //    Settings.Default.MageTargetB = B;
+            //    Settings.Default.MageTargetA = A;
+            //}
+            //if ((string)item.Tag == "priest")
+            //{
+            //    Settings.Default.PriestTargetR = R;
+            //    Settings.Default.PriestTargetG = G;
+            //    Settings.Default.PriestTargetB = B;
+            //    Settings.Default.PriestTargetA = A;
+            //}
+            //if ((string)item.Tag == "monk")
+            //{
+            //    Settings.Default.MonkTargetR = R;
+            //    Settings.Default.MonkTargetG = G;
+            //    Settings.Default.MonkTargetB = B;
+            //    Settings.Default.MonkTargetA = A;
+            //}
+            //if ((string)item.Tag == "demonhunter")
+            //{
+            //    Settings.Default.DemonHunterTargetR = R;
+            //    Settings.Default.DemonHunterTargetG = G;
+            //    Settings.Default.DemonHunterTargetB = B;
+            //    Settings.Default.DemonHunterTargetA = A;
 
-            if ((string)item.Tag == "default")
-            {
-                Settings.Default.TargetR = R;
-                Settings.Default.TargetG = G;
-                Settings.Default.TargetB = B;
-                Settings.Default.TargetA = A;
-            }
-            if ((string)item.Tag == "druid")
-            {
-                Settings.Default.DruidTargetR = R;
-                Settings.Default.DruidTargetG = G;
-                Settings.Default.DruidTargetB = B;
-                Settings.Default.DruidTargetA = A;
-            }
-            if ((string)item.Tag == "paladin") {
-                Settings.Default.PaladinTargetR = R;
-                Settings.Default.PaladinTargetG = G;
-                Settings.Default.PaladinTargetB = B;
-                Settings.Default.PaladinTargetA = A;
-            }
-            if ((string)item.Tag == "warlock")
-            {
-                Settings.Default.WarlockTargetR = R;
-                Settings.Default.WarlockTargetG = G;
-                Settings.Default.WarlockTargetB = B;
-                Settings.Default.WarlockTargetA = A;
-            }
-            if ((string)item.Tag == "shaman")
-            {
-                Settings.Default.ShamanTargetR = R;
-                Settings.Default.ShamanTargetG = G;
-                Settings.Default.ShamanTargetB = B;
-                Settings.Default.ShamanTargetA = A;
-            }
-            if ((string)item.Tag == "rogue")
-            {
-                Settings.Default.RogueTargetR = R;
-                Settings.Default.RogueTargetG = G;
-                Settings.Default.RogueTargetB = B;
-                Settings.Default.RogueTargetA = A;
-            }
-            if ((string)item.Tag == "warrior")
-            {
-                Settings.Default.WarriorTargetR = R;
-                Settings.Default.WarriorTargetG = G;
-                Settings.Default.WarriorTargetB = B;
-                Settings.Default.WarriorTargetA = A;
-            }
-            if ((string)item.Tag == "evoker")
-            {
-                Settings.Default.EvokerTargetR = R;
-                Settings.Default.EvokerTargetG = G;
-                Settings.Default.EvokerTargetB = B;
-                Settings.Default.EvokerTargetA = A;
-            }
-            if ((string)item.Tag == "hunter")
-            {
-                Settings.Default.HunterTargetR = R;
-                Settings.Default.HunterTargetG = G;
-                Settings.Default.HunterTargetB = B;
-                Settings.Default.HunterTargetA = A;
-            }
-            if ((string)item.Tag == "mage")
-            {
-                Settings.Default.MageTargetR = R;
-                Settings.Default.MageTargetG = G;
-                Settings.Default.MageTargetB = B;
-                Settings.Default.MageTargetA = A;
-            }
-            if ((string)item.Tag == "priest")
-            {
-                Settings.Default.PriestTargetR = R;
-                Settings.Default.PriestTargetG = G;
-                Settings.Default.PriestTargetB = B;
-                Settings.Default.PriestTargetA = A;
-            }
-            if ((string)item.Tag == "monk")
-            {
-                Settings.Default.MonkTargetR = R;
-                Settings.Default.MonkTargetG = G;
-                Settings.Default.MonkTargetB = B;
-                Settings.Default.MonkTargetA = A;
-            }
-            if ((string)item.Tag == "demonhunter")
-            {
-                Settings.Default.DemonHunterTargetR = R;
-                Settings.Default.DemonHunterTargetG = G;
-                Settings.Default.DemonHunterTargetB = B;
-                Settings.Default.DemonHunterTargetA = A;
-
-            }
+            //}
             CurrentR = R;
             CurrentG = G;
             CurrentB = B;
@@ -1310,13 +1355,15 @@ namespace RuneReader
                     System.Drawing.Color pixelColor = bmp.GetPixel(0, 0);
 
                     RadioButton item = GetSelectedCheckBox();
-                    ColorPicker.PortableColorPicker cp = (ColorPicker.PortableColorPicker)item.Content;
-                
+                    if ((string)item.Tag == "custom")
+                    {
+                        ColorPicker.PortableColorPicker cp = (ColorPicker.PortableColorPicker)item.Content;
 
 
-                    // Convert System.Drawing.Color to System.Windows.Media.Color
-                    SetAssociatedSetting(item, pixelColor.R, pixelColor.G, pixelColor.B, pixelColor.A);
-
+  
+                        // Convert System.Drawing.Color to System.Windows.Media.Color
+                        SetAssociatedSetting(item, pixelColor.R, pixelColor.G, pixelColor.B, pixelColor.A);
+                    }
 
 
                 }
@@ -1334,12 +1381,18 @@ namespace RuneReader
 
         private void sliderColorVariance_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
         {
+            if (Initalizing) return;
             CurrentThreshold = (int)sliderColorVariancePercent.Value;
             if (tbVariance != null)
                 tbVariance.Text = ((int)sliderColorVariancePercent.Value).ToString();
 
             RadioButton rb = GetSelectedCheckBox();
 
+
+            if ((string)rb.Tag == "custom")
+            {
+                Settings.Default.CustomVariancePercent = (int)sliderColorVariancePercent.Value;
+            }
 
             if ((string)rb.Tag == "default")
             {
@@ -1401,6 +1454,7 @@ namespace RuneReader
 
         private void sliderCaptureRateMS_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
         {
+            if (Initalizing) return;
             Settings.Default.CaptureRateMS = (int)sliderCaptureRateMS.Value;
             CurrentCaptureRateMS = (int)sliderCaptureRateMS.Value;
             if (tbCaptureRateMS != null)
@@ -1410,8 +1464,20 @@ namespace RuneReader
        
         }
 
+
+        private void sliderWowGamma_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+        {
+            if (Initalizing) return;
+            Settings.Default.WowGamma = (float)sliderWowGamma.Value;
+            WowGamma = (float)Settings.Default.WowGamma;
+            if (tbWowGamma != null)
+                tbWowGamma.Text = ((float)Settings.Default.WowGamma).ToString("0.0");
+
+        }
+
         private void sliderKeyRateMS_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
         {
+            if (Initalizing) return;
             Settings.Default.KeyPressSpeedMS = (int)sliderKeyRateMS.Value;
             CurrentKeyDownDelayMS = (int)sliderKeyRateMS.Value;
             if (tbKeyRateMS != null)
@@ -1443,21 +1509,31 @@ namespace RuneReader
 
         private void tbKeyRateMS_TextChanged(object sender, System.Windows.Controls.TextChangedEventArgs e)
         {
+            if (Initalizing) return;
             sliderKeyRateMS.Value = int.Parse(((System.Windows.Controls.TextBox)e.Source).Text.ToString());
         }
 
         private void tbCaptureRateMS_TextChanged(object sender, System.Windows.Controls.TextChangedEventArgs e)
         {
+            if (Initalizing) return;
             sliderCaptureRateMS.Value = int.Parse(((System.Windows.Controls.TextBox)e.Source).Text.ToString());
+        }
+
+        private void tbWowGamme_TextChanged(object sender, System.Windows.Controls.TextChangedEventArgs e)
+        {
+            if (Initalizing) return;
+            //  sliderWowGamma.Value = int.Parse(((System.Windows.Controls.TextBox)e.Source).Text.ToString());
         }
 
         private void tbVariance_TextChanged(object sender, System.Windows.Controls.TextChangedEventArgs e)
         {
+            if (Initalizing) return;
             sliderColorVariancePercent.Value = int.Parse(((System.Windows.Controls.TextBox)e.Source).Text.ToString());
         }
 
         private void cbActivationKey_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
         {
+            if (Initalizing) return;
             Settings.Default.ActivationKey = ((ComboBoxItem)cbActivationKey.SelectedItem).Content.ToString();
         }
 
@@ -1482,7 +1558,7 @@ namespace RuneReader
 
         private void cbPushRelease_Checked(object sender, RoutedEventArgs e)
         {
-
+            if (Initalizing) return;
             _keyPressMode = true;
             Settings.Default.PushAndRelease = _keyPressMode;
 
@@ -1490,6 +1566,7 @@ namespace RuneReader
 
         private void cbPushRelease_Unchecked(object sender, RoutedEventArgs e)
         {
+            if (Initalizing) return;
             _keyPressMode = false;
             Settings.Default.PushAndRelease = _keyPressMode;
 
@@ -1497,17 +1574,20 @@ namespace RuneReader
 
         private void cbQuickDecode_Checked(object sender, RoutedEventArgs e)
         {
+            if (Initalizing) return;
             Settings.Default.QuickDecode = true;
         }
 
         private void cbQuickDecode_Unchecked(object sender, RoutedEventArgs e)
         {
+            if (Initalizing) return;
             Settings.Default.QuickDecode = false;
         }
 
         private void TargetColorPicker_ColorChanged(object sender, RoutedEventArgs e)
         {
-           // todo: make stil worl with the new multi color storage
+            if (Initalizing) return;
+            // todo: make stil worl with the new multi color storage
             Settings.Default.TargetR = TargetColorPicker.SelectedColor.R;
             Settings.Default.TargetG = TargetColorPicker.SelectedColor.G; 
             Settings.Default.TargetB = TargetColorPicker.SelectedColor.B;
@@ -1519,6 +1599,7 @@ namespace RuneReader
 
         private void cbUse2ndImage_Checked(object sender, RoutedEventArgs e)
         {
+            if (Initalizing) return;
             Settings.Default.Use2ndImageDetection = true;
             ImageCap2Border.Visibility = Visibility.Visible;
             lDetectedValue2.Visibility = Visibility.Visible;
@@ -1527,6 +1608,7 @@ namespace RuneReader
 
         private void cbUse2ndImage_Unchecked(object sender, RoutedEventArgs e)
         {
+            if (Initalizing) return;
             Settings.Default.Use2ndImageDetection = false;
             ImageCap2Border.Visibility = Visibility.Collapsed;
             lDetectedValue2.Visibility = Visibility.Collapsed;
@@ -1535,6 +1617,7 @@ namespace RuneReader
 
         private void cbColorDruid_Checked(object sender, RoutedEventArgs e)
         {
+            if (Initalizing) return;
             RadioButton cb = (RadioButton)sender;
             if (cb.IsChecked is null) return;
             if (cb.Tag is null) return;
@@ -1545,58 +1628,144 @@ namespace RuneReader
             CurrentG = cp.SelectedColor.G;
             CurrentB = cp.SelectedColor.B;
 
+            if ((string)cb.Tag == "custom")
+            {
+                sliderColorVariancePercent.Value = (int)Settings.Default.CustomVariancePercent;
+                tbHexColors.Text = string.Concat(Settings.Default.CustomTargetR.ToString("X2"), Settings.Default.CustomTargetG.ToString("X2"), Settings.Default.CustomTargetB.ToString("X2"));
+            }
             if ((string)cb.Tag == "default")
             {
                 sliderColorVariancePercent.Value = (int)Settings.Default.VariancePercent;
+
+                Settings.Default.TargetR = TargetColorPicker.SelectedColor.R;
+                Settings.Default.TargetG = TargetColorPicker.SelectedColor.G;
+                Settings.Default.TargetB = TargetColorPicker.SelectedColor.B;
+
+                tbHexColors.Text = string.Concat(Settings.Default.TargetR.ToString("X2"), Settings.Default.TargetG.ToString("X2"), Settings.Default.TargetB.ToString("X2"));
+
             }
             if ((string)cb.Tag == "druid")
             {
-                sliderColorVariancePercent.Value = (int)Settings.Default.DruidVariancePercent;
+                Settings.Default.DruidTargetR = cpDruid.SelectedColor.R;
+                Settings.Default.DruidTargetG = cpDruid.SelectedColor.G;
+                Settings.Default.DruidTargetB = cpDruid.SelectedColor.B;
 
+                sliderColorVariancePercent.Value = (int)Settings.Default.DruidVariancePercent;
+                tbHexColors.Text = string.Concat(Settings.Default.DruidTargetR.ToString("X2"), Settings.Default.DruidTargetG.ToString("X2"), Settings.Default.DruidTargetB.ToString("X2"));
             }
             if ((string)cb.Tag == "paladin")
             {
+                Settings.Default.PaladinTargetR = cpColorPaladin.SelectedColor.R;
+                Settings.Default.PaladinTargetG = cpColorPaladin.SelectedColor.G;
+                Settings.Default.PaladinTargetB = cpColorPaladin.SelectedColor.B;
+
                 sliderColorVariancePercent.Value = (int)Settings.Default.PaladinVariancePercent;
+                tbHexColors.Text = string.Concat(Settings.Default.PaladinTargetR.ToString("X2"), Settings.Default.PaladinTargetG.ToString("X2"), Settings.Default.PaladinTargetB.ToString("X2"));
             }
             if ((string)cb.Tag == "warlock")
             {
+                Settings.Default.WarlockTargetR = cpWarlock.SelectedColor.R;
+                Settings.Default.WarlockTargetG = cpWarlock.SelectedColor.G;
+                Settings.Default.WarlockTargetB = cpWarlock.SelectedColor.B;
+
                 sliderColorVariancePercent.Value = (int)Settings.Default.WarlockVariancePercent;
+                tbHexColors.Text = string.Concat(Settings.Default.WarlockTargetR.ToString("X2"), Settings.Default.WarlockTargetG.ToString("X2"), Settings.Default.WarlockTargetB.ToString("X2"));
             }
             if ((string)cb.Tag == "shaman")
             {
+
+                Settings.Default.ShamanTargetR = cpShamam.SelectedColor.R;
+                Settings.Default.ShamanTargetG = cpShamam.SelectedColor.G;
+                Settings.Default.ShamanTargetB = cpShamam.SelectedColor.B;
+
                 sliderColorVariancePercent.Value = (int)Settings.Default.ShamanVariancePercent;
+                tbHexColors.Text = string.Concat(Settings.Default.ShamanTargetR.ToString("X2"), Settings.Default.ShamanTargetG.ToString("X2"), Settings.Default.ShamanTargetB.ToString("X2"));
+
             }
             if ((string)cb.Tag == "rogue")
             {
+                Settings.Default.RogueTargetR = cpRogue.SelectedColor.R;
+                Settings.Default.RogueTargetG = cpRogue.SelectedColor.G;
+                Settings.Default.RogueTargetB = cpRogue.SelectedColor.B;
+
                 sliderColorVariancePercent.Value = (int)Settings.Default.RogueVariancePercent;
+                tbHexColors.Text = string.Concat(Settings.Default.RogueTargetR.ToString("X2"), Settings.Default.RogueTargetG.ToString("X2"), Settings.Default.RogueTargetB.ToString("X2"));
+
             }
             if ((string)cb.Tag == "warrior")
             {
+                Settings.Default.WarriorTargetR = cpWarrior.SelectedColor.R;
+                Settings.Default.WarriorTargetG = cpWarrior.SelectedColor.G;
+                Settings.Default.WarriorTargetB = cpWarrior.SelectedColor.B;
+
                 sliderColorVariancePercent.Value = (int)Settings.Default.WarriorVariancePercent;
+                tbHexColors.Text = string.Concat(Settings.Default.WarriorTargetR.ToString("X2"), Settings.Default.WarriorTargetG.ToString("X2"), Settings.Default.WarriorTargetB.ToString("X2"));
+
             }
             if ((string)cb.Tag == "evoker")
             {
+                Settings.Default.EvokerTargetR = cpEvoker.SelectedColor.R;
+                Settings.Default.EvokerTargetG = cpEvoker.SelectedColor.G;
+                Settings.Default.EvokerTargetB = cpEvoker.SelectedColor.B;
+
+
                 sliderColorVariancePercent.Value = (int)Settings.Default.EvokerVariancePercent;
+                tbHexColors.Text = string.Concat(Settings.Default.EvokerTargetR.ToString("X2"), Settings.Default.EvokerTargetG.ToString("X2"), Settings.Default.EvokerTargetB.ToString("X2"));
+
             }
             if ((string)cb.Tag == "hunter")
             {
+
+                Settings.Default.HunterTargetR = cpHunter.SelectedColor.R;
+                Settings.Default.HunterTargetG = cpHunter.SelectedColor.G;
+                Settings.Default.HunterTargetB = cpHunter.SelectedColor.B;
+
                 sliderColorVariancePercent.Value= (int)Settings.Default.HunterVariancePercent;
+                tbHexColors.Text = string.Concat(Settings.Default.HunterTargetR.ToString("X2"), Settings.Default.HunterTargetG.ToString("X2"), Settings.Default.HunterTargetB.ToString("X2"));
+
             }
             if ((string)cb.Tag == "mage")
             {
+
+                Settings.Default.MageTargetR = cpMage.SelectedColor.R;
+                Settings.Default.MageTargetG = cpMage.SelectedColor.G;
+                Settings.Default.MageTargetB = cpMage.SelectedColor.B;
+                
                 sliderColorVariancePercent.Value= (int)Settings.Default.MageVariancePercent;
+                tbHexColors.Text = string.Concat(Settings.Default.MageTargetR.ToString("X2"), Settings.Default.MageTargetG.ToString("X2"), Settings.Default.MageTargetB.ToString("X2"));
+
             }
             if ((string)cb.Tag == "priest")
             {
+
+                Settings.Default.PriestTargetR = cpPriest.SelectedColor.R;
+                Settings.Default.PriestTargetG = cpPriest.SelectedColor.G;
+                Settings.Default.PriestTargetB = cpPriest.SelectedColor.B;
+
                 sliderColorVariancePercent.Value= (int)Settings.Default.PriestVariancePercent;
+                tbHexColors.Text = string.Concat(Settings.Default.PriestTargetR.ToString("X2"), Settings.Default.PriestTargetG.ToString("X2"), Settings.Default.PriestTargetB.ToString("X2"));
+
             }
             if ((string)cb.Tag == "monk")
             {
+                Settings.Default.MonkTargetR = cpMonk.SelectedColor.R;
+                Settings.Default.MonkTargetG = cpMonk.SelectedColor.G;
+                Settings.Default.MonkTargetB = cpMonk.SelectedColor.B;
+
                 sliderColorVariancePercent.Value= (int)Settings.Default.MonkVariancePercent;
+                tbHexColors.Text = string.Concat(Settings.Default.MonkTargetR.ToString("X2"), Settings.Default.MonkTargetG.ToString("X2"), Settings.Default.MonkTargetB.ToString("X2"));
+
             }
             if ((string)cb.Tag == "demonhunter")
             {
+
+                Settings.Default.DemonHunterTargetR = cpDemonHunter.SelectedColor.R;
+                Settings.Default.DemonHunterTargetG = cpDemonHunter.SelectedColor.G;
+                Settings.Default.DemonHunterTargetB = cpDemonHunter.SelectedColor.B;
+
                 sliderColorVariancePercent.Value= (int)Settings.Default.DemonHunterVariancePercent;
+                tbHexColors.Text = string.Concat(Settings.Default.DemonHunterTargetR.ToString("X2"), Settings.Default.DemonHunterTargetG.ToString("X2"), Settings.Default.DemonHunterTargetB.ToString("X2"));
+
             }
 
 
@@ -1604,6 +1773,7 @@ namespace RuneReader
 
         }
         #endregion
+
 
     }
 }

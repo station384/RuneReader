@@ -8,6 +8,21 @@ namespace RuneReader
     internal class ImageProcessingOpenCV
     {
 
+
+        public static void gammaCorrection(Mat src, Mat dst, float gamma)
+        {
+            float invGamma = 1 / gamma;
+
+            Mat table = new Mat(1, 256, MatType.CV_8U);
+            for (int i = 0; i < 256; ++i)
+            {
+                table.Set(0, i, (int)(Math.Pow(i / 255.0f, invGamma) * 255));
+            }
+
+            Cv2.LUT(src, table, dst);
+        }
+
+
         private static Scalar ConvertRgbToLabRange(Scalar rgbColor, double Threshold, bool? isLowerBound)
         {
             Mat rgbMat = new Mat(1, 1, MatType.CV_8UC4, rgbColor);
@@ -61,7 +76,7 @@ namespace RuneReader
             using Mat hsvMat = new Mat();
             Cv2.CvtColor(rgbMat, hsvMat, ColorConversionCodes.BGR2HSV_FULL);
             
-            if (Threshold > 1.0) { Threshold = 0.6; }
+            if (Threshold > 1.0) { Threshold = 0.8; }
             if (Threshold < 0.0) { Threshold = 0.0; }
             Vec4b hsvColor = hsvMat.Get<Vec4b>(0, 0);
 
@@ -240,7 +255,7 @@ namespace RuneReader
             Scalar upperBound = ConvertRgbToHsvRange(rgbColor, Threshold, false);
             Scalar lowerBound = ConvertRgbToHsvRange(rgbColor, Threshold, true);
             //      Scalar centerBound = ConvertRgbToHsvRange(rgbColor, Threshold, null);
-            
+        
             // Works  Uses WAY to much CPU
             using Mat deNoised = new Mat();
             //Cv2.FastNlMeansDenoisingColored(src, deNoised, 2, 3, 7, 21);

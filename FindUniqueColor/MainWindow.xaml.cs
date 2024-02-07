@@ -288,10 +288,10 @@ namespace FindUniqueColor
 
                                var constantVarianceHL = 255 * 0.005;
                                var constantVarianceSL = 255 * 0.04;
-                               var constantVarianceVL = 255 * 0.60;
+                               var constantVarianceVL = 255 * 0.80;
                                var constantVarianceHH = 255 * 0.002;
                                var constantVarianceSH = 255 * 0.01;
-                               var constantVarianceVH = 255 * (60.0 / 100.0);
+                               var constantVarianceVH = 255 * 0.80;
 
 
 
