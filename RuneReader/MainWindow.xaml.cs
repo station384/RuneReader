@@ -231,20 +231,24 @@ namespace RuneReader
 
 
             resizedMat = ImageProcessingOpenCV.RescaleImageToNewDpi(CVMat, image.HorizontalResolution, 300);
-
-            float gammaAdjust;
-            float wowGammaSetting = WowGamma;
+          
+            double gammaAdjust;
+            double wowGammaSetting = WowGamma;
             if (cbColorCustom.IsChecked.Value == true)
             {
-                gammaAdjust = 1.0f;
+                gammaAdjust = 1.0;
             }
             else
             { 
-                gammaAdjust = ( 1.0f-(WowGamma - 1.0f)  );
+                gammaAdjust = ( 1-(WowGamma - 1)  );
             }
 
-            ImageProcessingOpenCV.gammaCorrection(resizedMat, resizedMat, gammaAdjust);
 
+            //         ImageProcessingOpenCV.applyContrastBrightness(resizedMat, resizedMat, 0, -64.0);
+
+       //     ImageProcessingOpenCV.applyContrastBrightness(resizedMat, resizedMat, 1.0,-2.0);
+            ImageProcessingOpenCV.gammaCorrection(resizedMat, resizedMat, WowGamma);
+            Cv2.ImShow("test", resizedMat);
             using var IsolatedColorWithDelays = ImageProcessingOpenCV.IsolateColorHSV(resizedMat, Scalar.FromRgb(CurrentR, CurrentG, CurrentB), Threshold);
            using var IsolatedColorWithoutDelays = ImageProcessingOpenCV.IsolateColorHSV(resizedMat, Scalar.FromRgb(CurrentR, CurrentG, CurrentB), Threshold +1  );
 
@@ -647,6 +651,7 @@ if (usefulRegionsWithDelays.Count == 0) {
 
             magnifier = new MagnifierWindow();
             magnifier.Left = Settings.Default.CapX > SystemParameters.PrimaryScreenWidth ? 100 : Settings.Default.CapX;
+            magnifier.Left = Settings.Default.CapX < 0 ? 0 : Settings.Default.CapX;
             magnifier.Top = Settings.Default.CapY > SystemParameters.PrimaryScreenHeight ? 100 : Settings.Default.CapY;
             magnifier.Width = Settings.Default.CapWidth;
             magnifier.Height = Settings.Default.CapHeight;
@@ -657,6 +662,8 @@ if (usefulRegionsWithDelays.Count == 0) {
             magnifier2 = new MagnifierWindow();
             magnifier2.border.BorderBrush = BorderBrush = System.Windows.Media.Brushes.Blue;
             magnifier2.Left = Settings.Default.CapX > SystemParameters.PrimaryScreenWidth ? 100 : Settings.Default.Cap2X;
+            magnifier2.Left = Settings.Default.CapX < 0 ? 0 : Settings.Default.Cap2X;
+
             magnifier2.Top = Settings.Default.CapY > SystemParameters.PrimaryScreenHeight ? 100 : Settings.Default.Cap2Y;
             magnifier2.Width = Settings.Default.Cap2Width;
             magnifier2.Height = Settings.Default.Cap2Height;
@@ -710,6 +717,11 @@ if (usefulRegionsWithDelays.Count == 0) {
             {
                 tbVariance.Text = Settings.Default.CustomVariancePercent.ToString();
                 sliderColorVariancePercent.Value = Settings.Default.CustomVariancePercent;
+
+                
+
+                tbHexColors.Text = string.Concat(Settings.Default.CustomTargetR.ToString("X2"), Settings.Default.CustomTargetG.ToString("X2"), Settings.Default.CustomTargetB.ToString("X2"));
+
             }
 
 
@@ -717,66 +729,93 @@ if (usefulRegionsWithDelays.Count == 0) {
             {
                 tbVariance.Text = Settings.Default.VariancePercent.ToString();
                 sliderColorVariancePercent.Value = Settings.Default.VariancePercent;
+                tbHexColors.Text = string.Concat(Settings.Default.TargetR.ToString("X2"), Settings.Default.TargetG.ToString("X2"), Settings.Default.TargetB.ToString("X2"));
+
             }
             if ((string)rb.Tag == "druid")
             {
                 tbVariance.Text = Settings.Default.DruidVariancePercent.ToString();
                 sliderColorVariancePercent.Value = Settings.Default.DruidVariancePercent;
+                tbHexColors.Text = string.Concat(Settings.Default.DruidTargetR.ToString("X2"), Settings.Default.DruidTargetG.ToString("X2"), Settings.Default.DruidTargetB.ToString("X2"));
+
             }
             if ((string)rb.Tag == "paladin")
             {
                 tbVariance.Text = Settings.Default.PaladinVariancePercent.ToString();
                 sliderColorVariancePercent.Value = Settings.Default.PaladinVariancePercent;
+                tbHexColors.Text = string.Concat(Settings.Default.PaladinTargetR.ToString("X2"), Settings.Default.PaladinTargetG.ToString("X2"), Settings.Default.PaladinTargetB.ToString("X2"));
+
             }
             if ((string)rb.Tag == "warlock")
             {
                 tbVariance.Text = Settings.Default.WarlockVariancePercent.ToString();
                 sliderColorVariancePercent.Value = Settings.Default.WarlockVariancePercent;
+                tbHexColors.Text = string.Concat(Settings.Default.WarlockTargetR.ToString("X2"), Settings.Default.WarlockTargetG.ToString("X2"), Settings.Default.WarlockTargetB.ToString("X2"));
+
             }
             if ((string)rb.Tag == "shaman")
             {
                 tbVariance.Text = Settings.Default.ShamanVariancePercent.ToString();
                 sliderColorVariancePercent.Value = Settings.Default.ShamanVariancePercent;
+                tbHexColors.Text = string.Concat(Settings.Default.ShamanTargetR.ToString("X2"), Settings.Default.ShamanTargetG.ToString("X2"), Settings.Default.ShamanTargetB.ToString("X2"));
+
             }
             if ((string)rb.Tag == "rogue")
             {
                 tbVariance.Text = Settings.Default.RogueVariancePercent.ToString();
                 sliderColorVariancePercent.Value = Settings.Default.RogueVariancePercent;
+                tbHexColors.Text = string.Concat(Settings.Default.RogueTargetR.ToString("X2"), Settings.Default.RogueTargetG.ToString("X2"), Settings.Default.RogueTargetB.ToString("X2"));
+
             }
             if ((string)rb.Tag == "warrior")
             {
                 tbVariance.Text = Settings.Default.WarriorVariancePercent.ToString();
                 sliderColorVariancePercent.Value = Settings.Default.WarriorVariancePercent;
+                tbHexColors.Text = string.Concat(Settings.Default.WarriorTargetR.ToString("X2"), Settings.Default.WarriorTargetG.ToString("X2"), Settings.Default.WarriorTargetB.ToString("X2"));
+
             }
             if ((string)rb.Tag == "evoker")
             {
                 tbVariance.Text = Settings.Default.EvokerVariancePercent.ToString();
                 sliderColorVariancePercent.Value = Settings.Default.EvokerVariancePercent;
+                tbHexColors.Text = string.Concat(Settings.Default.EvokerTargetR.ToString("X2"), Settings.Default.EvokerTargetG.ToString("X2"), Settings.Default.EvokerTargetB.ToString("X2"));
+
             }
             if ((string)rb.Tag == "hunter")
             {
                 tbVariance.Text = Settings.Default.HunterVariancePercent.ToString();
                 sliderColorVariancePercent.Value = Settings.Default.HunterVariancePercent;
+                tbHexColors.Text = string.Concat(Settings.Default.HunterTargetR.ToString("X2"), Settings.Default.HunterTargetG.ToString("X2"), Settings.Default.HunterTargetB.ToString("X2"));
+
             }
             if ((string)rb.Tag == "mage")
             {
+
                 tbVariance.Text = Settings.Default.MageVariancePercent.ToString();
                 sliderColorVariancePercent.Value = Settings.Default.MageVariancePercent;
+                tbHexColors.Text = string.Concat(Settings.Default.MageTargetR.ToString("X2"), Settings.Default.MageTargetG.ToString("X2"), Settings.Default.MageTargetB.ToString("X2"));
+
             }
             if ((string)rb.Tag == "priest")
             {
                 tbVariance.Text = Settings.Default.PriestVariancePercent.ToString();
                 sliderColorVariancePercent.Value = Settings.Default.PriestVariancePercent;
+                tbHexColors.Text = string.Concat(Settings.Default.PriestTargetR.ToString("X2"), Settings.Default.PriestTargetG.ToString("X2"), Settings.Default.PriestTargetB.ToString("X2"));
+
             }
             if ((string)rb.Tag == "monk")
             {
                 tbVariance.Text = Settings.Default.MonkVariancePercent.ToString();
                 sliderColorVariancePercent.Value = Settings.Default.MonkVariancePercent;
+                tbHexColors.Text = string.Concat(Settings.Default.MonkTargetR.ToString("X2"), Settings.Default.MonkTargetG.ToString("X2"), Settings.Default.MonkTargetB.ToString("X2"));
+
             }
             if ((string)rb.Tag == "demonhunter")
             {
                 tbVariance.Text = Settings.Default.DemonHunterVariancePercent.ToString();
                 sliderColorVariancePercent.Value = Settings.Default.DemonHunterVariancePercent;
+                tbHexColors.Text = string.Concat(Settings.Default.DemonHunterTargetR.ToString("X2"), Settings.Default.DemonHunterTargetG.ToString("X2"), Settings.Default.DemonHunterTargetB.ToString("X2"));
+
             }
 
             sliderWowGamma.Value = Settings.Default.WowGamma;
@@ -1299,10 +1338,21 @@ if (usefulRegionsWithDelays.Count == 0) {
 
         private void buPicker_Click(object sender, RoutedEventArgs e)
         {
-            _MouseHookID = MouseSetHook(_mouseProc);
+      
             RadioButton item = GetSelectedCheckBox();
-            ColorPicker.PortableColorPicker cp = (ColorPicker.PortableColorPicker)item.Content;
-            cp.SelectedColor = System.Windows.Media.Color.FromArgb(0, 0, 0, 0);
+
+            
+            if ((string)item.Tag == "custom")
+            {
+                _MouseHookID = MouseSetHook(_mouseProc);
+                ColorPicker.PortableColorPicker cp = (ColorPicker.PortableColorPicker)item.Content;
+                cp.SelectedColor = System.Windows.Media.Color.FromArgb(0, 0, 0, 0);
+
+            } else
+            {
+                _MouseHookID = IntPtr.Zero;
+
+            }
         }
 
 
@@ -1371,10 +1421,11 @@ if (usefulRegionsWithDelays.Count == 0) {
 
 
 
-
+                if (_MouseHookID != IntPtr.Zero)
+                { 
                 WindowsAPICalls.UnhookWindowsHookEx(_MouseHookID);
                 _MouseHookID = IntPtr.Zero;
-
+                }
             }
             return WindowsAPICalls.CallNextHookEx(_MouseHookID, nCode, wParam, lParam);
         }
@@ -1468,7 +1519,7 @@ if (usefulRegionsWithDelays.Count == 0) {
         private void sliderWowGamma_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
         {
             if (Initalizing) return;
-            Settings.Default.WowGamma = (float)sliderWowGamma.Value;
+            Settings.Default.WowGamma = (float)Math.Round(sliderWowGamma.Value,1);
             WowGamma = (float)Settings.Default.WowGamma;
             if (tbWowGamma != null)
                 tbWowGamma.Text = ((float)Settings.Default.WowGamma).ToString("0.0");

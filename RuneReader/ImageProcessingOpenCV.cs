@@ -1,4 +1,6 @@
-﻿using OpenCvSharp;
+﻿using Microsoft.Windows.Themes;
+using OpenCvSharp;
+using SharpGen.Runtime;
 using System;
 using System.Runtime.Intrinsics;
 using System.Security.Cryptography;
@@ -9,19 +11,61 @@ namespace RuneReader
     {
 
 
-        public static void gammaCorrection(Mat src, Mat dst, float gamma)
+        public static void gammaCorrection(Mat src, Mat dst, double gamma)
         {
-            float invGamma = 1 / gamma;
+            double invGamma = 1.0 / gamma;
 
             Mat table = new Mat(1, 256, MatType.CV_8U);
             for (int i = 0; i < 256; ++i)
             {
-                table.Set(0, i, (int)(Math.Pow(i / 255.0f, invGamma) * 255));
+                table.Set(0, i, (int)(Math.Pow(i / 255.0f, invGamma) * 255.0f));
             }
 
             Cv2.LUT(src, table, dst);
         }
 
+        public static void applyContrastBrightness(Mat src, Mat dst,  double brightness, double contrast)
+        {
+            double shadow = 0.0;
+            double highlight = 0.0;
+            double alpha_b = 0.0;
+            double gamma_b = 0.0;
+            //Mat result = new Mat();
+            if (brightness != 0.0)
+            {
+                if (brightness > 0.0)
+                {
+                    shadow = brightness;
+                    highlight = 255.0;
+                }
+                else
+                {
+                    shadow = 0.0;
+                    highlight = 255.0 + brightness;
+                }
+                alpha_b = (highlight - shadow) / 255.0;
+                gamma_b = shadow;
+                Cv2.AddWeighted(src, alpha_b, src, 0, gamma_b, dst);
+
+            }
+            else
+            {
+                dst = src.Clone();
+            }
+
+            if (contrast != 0.0)
+            {
+                double f = 131.0*(contrast + 127.0)/(127.0*(131.0-contrast));
+                double alpha_c = f;
+                double gamma_c = 127.0 * (1 - f);
+
+                Cv2.AddWeighted(dst, alpha_c, dst, 0, gamma_c, dst);
+
+            }
+
+
+
+        }
 
         private static Scalar ConvertRgbToLabRange(Scalar rgbColor, double Threshold, bool? isLowerBound)
         {
@@ -76,7 +120,7 @@ namespace RuneReader
             using Mat hsvMat = new Mat();
             Cv2.CvtColor(rgbMat, hsvMat, ColorConversionCodes.BGR2HSV_FULL);
             
-            if (Threshold > 1.0) { Threshold = 0.8; }
+            if (Threshold > 1.0) { Threshold = 0.9; }
             if (Threshold < 0.0) { Threshold = 0.0; }
             Vec4b hsvColor = hsvMat.Get<Vec4b>(0, 0);
 
@@ -84,17 +128,26 @@ namespace RuneReader
             int h = hsvColor[0];
             int s = hsvColor[1];
             int v = hsvColor[2];
-            double hTol = (double)(h * 0.08);
+            double hTol = (double)(h * 0.05);
             double sTol = (double)(s * 0.10);
             double vTol = (double)(v * Threshold) ;
 
-            double constantVarianceHL = 255 * (0.005);
-            double constantVarianceSL = 255 * (0.04);
-            double constantVarianceVL = 255 * (Threshold);
+            double constantVarianceHL = 255.0 * (0.01);
+            double constantVarianceSL = 255.0 * (0.05);
+            double constantVarianceVL = 255.0 * (Threshold);
 
-            double constantVarianceHH = 255 * (0.002);
-            double constantVarianceSH = 255 * (0.01);
-            double constantVarianceVH = 255 * (Threshold);
+            double constantVarianceHH = 255.0 * (0.01);
+            double constantVarianceSH = 255.0 * (0.05);
+            double constantVarianceVH = 255.0 * (Threshold);
+
+
+            //double constantVarianceHL = h * (0.01);
+            //double constantVarianceSL = s * (0.03);
+            //double constantVarianceVL = v * (Threshold);
+
+            //double constantVarianceHH = h * (0.01);
+            //double constantVarianceSH = s * (0.05);
+            //double constantVarianceVH = v * (Threshold);
 
 
             if (isLowerBound == null)
@@ -114,16 +167,16 @@ namespace RuneReader
 
                 if (isLowerBound.Value)
                 {
-                    h1 = (byte)Math.Max(Math.Round(h - constantVarianceHL, 0),0.0);
-                    s1 = (byte)Math.Max(Math.Round(s - constantVarianceSL, 0),0.0);
-                    v1 = (byte)Math.Max(Math.Round(v - constantVarianceVL, 0),0.0);
+                    h1 = (byte)Math.Max(Math.Round((double)h - constantVarianceHL, 0.0),0.0);
+                    s1 = (byte)Math.Max(Math.Round((double)s - constantVarianceSL, 0.0),0.0);
+                    v1 = (byte)Math.Max(Math.Round((double)v - constantVarianceVL, 0.0),0.0);
                     return new Scalar(h1, s1, v1);
                 }
                 else
                 {
-                    h1 = (byte)Math.Min(Math.Round(h + constantVarianceHH, 0), 255);
-                    s1 = (byte)Math.Min(Math.Round(s + constantVarianceSH, 0), 255);
-                    v1 = (byte)Math.Min(Math.Round(v + constantVarianceVH, 0), 255);
+                    h1 = (byte)Math.Min(Math.Round((double)h + constantVarianceHH, 0.0), 255.0);
+                    s1 = (byte)Math.Min(Math.Round((double)s + constantVarianceSH, 0.0), 255.0);
+                    v1 = (byte)Math.Min(Math.Round((double)v + constantVarianceVH, 0.0), 255.0);
                     return new Scalar(h1,s1,v1);
                 }
 
@@ -352,7 +405,7 @@ namespace RuneReader
 
             // Resize the image
             Mat resizedImage = new Mat();
-            Cv2.Resize(src, resizedImage, new OpenCvSharp.Size(newWidth, newHeight), interpolation: InterpolationFlags.Lanczos4);
+            Cv2.Resize(src, resizedImage, new OpenCvSharp.Size(newWidth, newHeight), interpolation: InterpolationFlags.Cubic);
 
             return resizedImage;
         }

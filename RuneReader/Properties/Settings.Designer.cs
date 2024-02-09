@@ -1118,9 +1118,9 @@ namespace RuneReader.Properties {
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
         [global::System.Configuration.DefaultSettingValueAttribute("1.2")]
-        public float WowGamma {
+        public double WowGamma {
             get {
-                return ((float)(this["WowGamma"]));
+                return ((double)(this["WowGamma"]));
             }
             set {
                 this["WowGamma"] = value;

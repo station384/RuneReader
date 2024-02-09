@@ -130,7 +130,7 @@ namespace FindUniqueColor
             {
                 histMat = Cv2.ImRead(@".\testimg.png", ImreadModes.Color);
                 using var Mat3 = new Mat();
-                Cv2.CvtColor(histMat, Mat3, ColorConversionCodes.BGR2HSV_FULL);
+                Cv2.CvtColor(histMat, Mat3, ColorConversionCodes.BGR2HSV);
                 for (int y = 0; y < histMat.Rows; y++)
                 {
                     for (int x = 0; x < histMat.Cols; x++)
@@ -161,21 +161,27 @@ namespace FindUniqueColor
                     using var Mat1 = Cv2.ImRead(file, ImreadModes.Color);
                     // Cv2.CvtColor(Mat1, Mat1, ColorConversionCodes.BGR2HSV);
                     if (Mat1.Height <= 10) continue;
+
+                    //Cv2.FastNlMeansDenoisingColored(Mat1, Mat1, 3, 3, 7, 21);
+                 //   Cv2.Blur(Mat1, Mat1, new OpenCvSharp.Size(3,1));
+                  //  Cv2.ImShow("test", Mat1);
+                    
                     using var Mat2 = Mat1[new OpenCvSharp.Rect(0, 0, Mat1.Width, (int)Math.Floor(Mat1.Height / 2.0))];
 
 
-                    using Mat deNoised = new Mat();
-                    Cv2.MedianBlur(Mat2, deNoised, 5);
+//                    using Mat deNoised = new Mat();
+           
+
 
 
 
                     using var Mat3 = new Mat();
-                    Cv2.CvtColor(deNoised, Mat3, ColorConversionCodes.BGR2HSV_FULL);
-
-                
+                    Cv2.CvtColor(Mat2, Mat3, ColorConversionCodes.BGR2HSV_FULL);
 
 
 
+
+                    
                     for (int y = 0; y < Mat2.Rows; y++)
                     {
                         for (int x = 0; x < Mat2.Cols; x++)
@@ -204,7 +210,7 @@ namespace FindUniqueColor
 
                 histMat = new Mat((int)Math.Ceiling(colorFrequencies.Count / 1024.0), 1024, MatType.CV_8UC3);
                 int x1 = 0;
-                colorFrequencies = colorFrequencies.OrderBy(x => x.Value.Count).ToDictionary().OrderBy(x => x.Value.HSV.Item0).OrderBy(x => x.Value.HSV.Item1).OrderBy(x => x.Value.HSV.Item2).ToDictionary();
+                colorFrequencies = colorFrequencies.OrderByDescending(x => x.Value.Count).ToDictionary().OrderBy(x => x.Value.HSV.Item0).OrderBy(x => x.Value.HSV.Item1).OrderBy(x => x.Value.HSV.Item2).ToDictionary();
 
                 foreach (var color in colorFrequencies.Keys)
                 {
@@ -286,12 +292,13 @@ namespace FindUniqueColor
                                Vec3b hsvColorUpper;
 
 
-                               var constantVarianceHL = 255 * 0.005;
-                               var constantVarianceSL = 255 * 0.04;
-                               var constantVarianceVL = 255 * 0.80;
-                               var constantVarianceHH = 255 * 0.002;
-                               var constantVarianceSH = 255 * 0.01;
-                               var constantVarianceVH = 255 * 0.80;
+                               var constantVarianceHL = 255.0 * 0.01;
+                               var constantVarianceSL = 255.0 * 0.05;
+                               var constantVarianceVL = 255.0 * 0.80;
+                              
+                               var constantVarianceHH = 255.0 * 0.01;
+                               var constantVarianceSH = 255.0 * 0.05;
+                               var constantVarianceVH = 255.0 * 0.80;
 
 
 
@@ -299,14 +306,14 @@ namespace FindUniqueColor
                                //var sTol = hsvColor1.Item1 * 20.0 / 100;
                                //var vTol = hsvColor1.Item2 * 100.0 / 100;
 
-                               byte hv1 = (byte)Math.Max(Math.Round(hsvColor1.Item0 - constantVarianceHL,0), 0.0);
-                               byte sv2 = (byte)Math.Max(Math.Round(hsvColor1.Item1 - constantVarianceSL,0), 0.0);
-                               byte vv3 = (byte)Math.Max(Math.Round(hsvColor1.Item2 - constantVarianceVL,0), 0.0);
+                               byte hv1 = (byte)Math.Max(Math.Round((double)hsvColor1.Item0 - constantVarianceHL,0), 0.0);
+                               byte sv2 = (byte)Math.Max(Math.Round((double)hsvColor1.Item1 - constantVarianceSL,0), 0.0);
+                               byte vv3 = (byte)Math.Max(Math.Round((double)hsvColor1.Item2 - constantVarianceVL,0), 0.0);
                                hsvColorLower = new Vec3b(hv1,sv2,vv3);
 
-                               hv1 = (byte)Math.Min(Math.Round(hsvColor1.Item0 + constantVarianceHH, 0), 255.0);
-                               sv2 = (byte)Math.Min(Math.Round(hsvColor1.Item1 + constantVarianceSH, 0), 255.0);
-                               vv3 = (byte)Math.Min(Math.Round(hsvColor1.Item2 + constantVarianceVH, 0), 255.0);
+                               hv1 = (byte)Math.Min(Math.Round((double)hsvColor1.Item0 + constantVarianceHH, 0), 255.0);
+                               sv2 = (byte)Math.Min(Math.Round((double)hsvColor1.Item1 + constantVarianceSH, 0), 255.0);
+                               vv3 = (byte)Math.Min(Math.Round((double)hsvColor1.Item2 + constantVarianceVH, 0), 255.0);
                                hsvColorUpper = new Vec3b(hv1,sv2,vv3);
 
 
@@ -315,6 +322,7 @@ namespace FindUniqueColor
 
 
                                 Mat outMat = new Mat();
+                                 
                                Cv2.InRange(histMat, hsvColorLower, hsvColorUpper, outMat);
 
                                //using Mat result = new Mat();
@@ -335,9 +343,10 @@ namespace FindUniqueColor
                                Scalar v1;
                                v1 = Cv2.Sum(outMat);
                                //result.Dispose();
-                               //grayWithDelays.Dispose();    
-
-                               if (v1.Val0 <= 50  && er.Val0 <= 50)
+                               //grayWithDelays.Dispose();
+                               var ColorAvg = ((lr + lg + lb) / 3);
+                             //  if ( (lr < ColorAvg - 20 || lr > ColorAvg + 20) || (lg < ColorAvg - 20 || lg > ColorAvg + 20) || (lb < ColorAvg - 20 || lb > ColorAvg + 20))
+                               if (v1.Val0 <= 170  && er.Val0 <= 170)
                                {
                                    string s1 = string.Concat(lr.ToString("X2"), lg.ToString("X2"), lb.ToString("X2"));
                                    //      UnusedColorsString.Add(string.Concat("|", r, "|", g, "|", b, "|", "`#", s1, "`", "#", s1, "|"));
