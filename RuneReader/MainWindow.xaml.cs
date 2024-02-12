@@ -15,10 +15,7 @@ using RuneReader.Properties;
 using System.Windows.Threading;
 using System.Linq;
 using MahApps.Metro.Controls;
-using Tesseract;
-using ControlzEx.Standard;
-using System.ComponentModel.Design;
-using System.Windows.Media.Converters;
+
 
 namespace RuneReader
 {
@@ -233,22 +230,39 @@ namespace RuneReader
             resizedMat = ImageProcessingOpenCV.RescaleImageToNewDpi(CVMat, image.HorizontalResolution, 300);
           
             double gammaAdjust;
+            double contrastAdjust;
+            double brightnessAdjust;
             double wowGammaSetting = WowGamma;
             if (cbColorCustom.IsChecked.Value == true)
             {
                 gammaAdjust = 1.0;
+                contrastAdjust = 0.0;
+                brightnessAdjust = 0.0;
             }
             else
             { 
                 gammaAdjust = ( 1-(WowGamma - 1)  );
+                //double percentContrast = (255 * (100.0 / 100))  - 128;
+                //double percentBrightness = (255 * (54.0 / 100))  ;
+
+                //double percentNeutralContrast = (255 * (50.0 / 100))  - 128;
+                //double percentNeutralBrightness = (255 * (50.0 / 100))  ;
+
+
+
+                //contrastAdjust = (percentNeutralContrast - percentContrast  ) ;
+                //brightnessAdjust = (  percentBrightness - percentNeutralBrightness) ;
             }
+
+
+
 
 
             //         ImageProcessingOpenCV.applyContrastBrightness(resizedMat, resizedMat, 0, -64.0);
 
-       //     ImageProcessingOpenCV.applyContrastBrightness(resizedMat, resizedMat, 1.0,-2.0);
-            ImageProcessingOpenCV.gammaCorrection(resizedMat, resizedMat, WowGamma);
-            Cv2.ImShow("test", resizedMat);
+   //         ImageProcessingOpenCV.applyContrastBrightness(resizedMat, resizedMat, brightnessAdjust,contrastAdjust);
+            ImageProcessingOpenCV.gammaCorrection(resizedMat, resizedMat, gammaAdjust);
+          //  Cv2.ImShow("test", resizedMat);
             using var IsolatedColorWithDelays = ImageProcessingOpenCV.IsolateColorHSV(resizedMat, Scalar.FromRgb(CurrentR, CurrentG, CurrentB), Threshold);
            using var IsolatedColorWithoutDelays = ImageProcessingOpenCV.IsolateColorHSV(resizedMat, Scalar.FromRgb(CurrentR, CurrentG, CurrentB), Threshold +1  );
 
@@ -700,9 +714,9 @@ if (usefulRegionsWithDelays.Count == 0) {
             //cp = (ColorPicker.PortableColorPicker)cbColorDemonHunter.Content;
             //cp.SelectedColor = System.Windows.Media.Color.FromArgb((byte)Settings.Default.DemonHunterTargetA, (byte)Settings.Default.DemonHunterTargetR, (byte)Settings.Default.DemonHunterTargetG, (byte)Settings.Default.DemonHunterTargetB);
             cp = (ColorPicker.PortableColorPicker)cbColorCustom.Content;
-            cp.SelectedColor = System.Windows.Media.Color.FromArgb((byte)Settings.Default.TargetA, (byte)Settings.Default.TargetR, (byte)Settings.Default.TargetG, (byte)Settings.Default.TargetB);
+            cp.SelectedColor = System.Windows.Media.Color.FromArgb((byte)Settings.Default.CustomTargetA, (byte)Settings.Default.CustomTargetR, (byte)Settings.Default.CustomTargetG, (byte)Settings.Default.CustomTargetB);
 
-
+            
 
             RadioButton cb =  GetSelectedCheckBox();
             cp = (ColorPicker.PortableColorPicker)cb.Content;
@@ -1347,6 +1361,7 @@ if (usefulRegionsWithDelays.Count == 0) {
                 _MouseHookID = MouseSetHook(_mouseProc);
                 ColorPicker.PortableColorPicker cp = (ColorPicker.PortableColorPicker)item.Content;
                 cp.SelectedColor = System.Windows.Media.Color.FromArgb(0, 0, 0, 0);
+               
 
             } else
             {

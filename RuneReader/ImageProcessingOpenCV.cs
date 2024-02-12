@@ -120,7 +120,7 @@ namespace RuneReader
             using Mat hsvMat = new Mat();
             Cv2.CvtColor(rgbMat, hsvMat, ColorConversionCodes.BGR2HSV_FULL);
             
-            if (Threshold > 1.0) { Threshold = 0.9; }
+            if (Threshold > 1.0) { Threshold = 0.7; }
             if (Threshold < 0.0) { Threshold = 0.0; }
             Vec4b hsvColor = hsvMat.Get<Vec4b>(0, 0);
 
@@ -128,8 +128,8 @@ namespace RuneReader
             int h = hsvColor[0];
             int s = hsvColor[1];
             int v = hsvColor[2];
-            double hTol = (double)(h * 0.05);
-            double sTol = (double)(s * 0.10);
+            double hTol = (double)(h * 0.01);
+            double sTol = (double)(s * 0.05);
             double vTol = (double)(v * Threshold) ;
 
             double constantVarianceHL = 255.0 * (0.01);
@@ -141,12 +141,12 @@ namespace RuneReader
             double constantVarianceVH = 255.0 * (Threshold);
 
 
-            //double constantVarianceHL = h * (0.01);
-            //double constantVarianceSL = s * (0.03);
+            //double constantVarianceHL = h * (0.025);
+            //double constantVarianceSL = s * (0.13);
             //double constantVarianceVL = v * (Threshold);
 
-            //double constantVarianceHH = h * (0.01);
-            //double constantVarianceSH = s * (0.05);
+            //double constantVarianceHH = h * (0.00);
+            //double constantVarianceSH = s * (0.03);
             //double constantVarianceVH = v * (Threshold);
 
 
