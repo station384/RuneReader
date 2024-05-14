@@ -51,6 +51,8 @@ actions+=/shadow_bolt,moving=0
 
 ## actions.aoe+=/cycling_variable,name=min_agony,op=min,value=dot.agony.remains+(99*!dot.agony.ticking)
 actions.aoe+=/haunt,moving=0,if=debuff.haunt.remains<3
+actions+=/healthstone,if=(health.pct<=60&target.health.pct>10)|(health.pct<=30&target.health.pct<10)
+actions+=/drain_life,if=(health.pct<=60&target.health.pct>10)|(health.pct<=30&target.health.pct<10)
 actions.aoe+=/vile_taint,if=(talent.souleaters_gluttony.rank=2&(active_dot.agony<active_enemies|cooldown.soul_rot.remains<=execute_time))|((talent.souleaters_gluttony.rank=1&cooldown.soul_rot.remains<=execute_time))|(talent.souleaters_gluttony.rank=0&(cooldown.soul_rot.remains<=execute_time|cooldown.vile_taint.remains>25))
 actions.aoe+=/phantom_singularity
 actions.aoe+=/unstable_affliction,moving=0,if=active_dot.unstable_affliction=0&remains<5

@@ -20,12 +20,14 @@ actions+=/use_items,slots=trinket1,if=variable.on_use_trinket!=1&!trinket.2.read
 actions+=/use_items,slots=trinket2,if=variable.on_use_trinket!=2&!trinket.1.ready_cooldown|variable.on_use_trinket=2&buff.ca_inc.up|variable.no_cd_talent|boss&fight_remains<20|variable.on_use_trinket=0
 actions+=/use_items
 actions+=/natures_vigil
-actions+=/renewel,if=(health.pct<=30&target.health.pct>10)&talent.renewal
+actions+=/renewal,if=(health.pct<=30&target.health.pct>10)&talent.renewal
+actions+=/run_action_list,name=ohshit,strict=1,if=(health.pct<=40&target.health.pct>10)&talent.frenzied_regeneration&cooldown.frenzied_regeneration.remains<1
 ## actions+=/invoke_external_buff,name=power_infusion
 actions+=/run_action_list,name=aoe,strict=1,if=variable.is_aoe
 actions+=/run_action_list,name=st,strict=1,if=!variable.is_aoe
 
-
+actions.ohshit+=/bear_form
+actions.ohshit+=/frenzied_regeneration
 
 actions.aoe+=/moonfire,cycle_targets=1,if=!boss&refreshable&(target.time_to_die-remains)>6&astral_power.deficit>variable.passive_asp+energize_amount
 actions.aoe+=/variable,name=cd_condition_aoe,value=!druid.no_cds&(cooldown.ca_inc.remains<5&!buff.ca_inc.up&(target.time_to_die>10&buff.primordial_arcanic_pulsar.value<500|fight_remains<25+10*talent.incarnation_chosen_of_elune))

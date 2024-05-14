@@ -93,7 +93,7 @@
 
                         <StackPanel Orientation="Horizontal" Width="130">
                             <RadioButton Name="cbColorWarlock" HorizontalAlignment="Center" VerticalAlignment="Center" Tag="warlock"   GroupName="ClassColor" Checked="cbColorDruid_Checked" >
-                                <colorpicker:PortableColorPicker Name="cpWarlock"  Width="15" Height="15" ShowAlpha="False" IsEnabled="False" SelectedColor="#DDCEDC" />
+                                <colorpicker:PortableColorPicker Name="cpWarlock"  Width="15" Height="15" ShowAlpha="False" IsEnabled="False" SelectedColor="#B9C0BA" />
                             </RadioButton>
                             <Label>Warlock</Label>
                         </StackPanel>

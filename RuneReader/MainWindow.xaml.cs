@@ -491,7 +491,7 @@ if (usefulRegionsWithDelays.Count == 0) {
             {
                 await Task.Delay(1) ;
                 keyToSendFirst = _currentKeyToSend[0];
-                if ( currentD.AddMilliseconds(5000) < DateTime.Now)
+                if ( currentD.AddMilliseconds(1000) < DateTime.Now)
                 { 
                     keyProcessingFirst = false;
                     keyProcessingSecond = false ;
@@ -506,7 +506,7 @@ if (usefulRegionsWithDelays.Count == 0) {
             {
                 await Task.Delay(1);
                 keyToSendFirst = _currentKeyToSend[0];
-                if (currentD.AddMilliseconds(5000) < DateTime.Now)
+                if ( currentD.AddMilliseconds(1000) < DateTime.Now)
                 {
                     keyProcessingFirst = false;
                     keyProcessingSecond = false;
@@ -527,7 +527,7 @@ if (usefulRegionsWithDelays.Count == 0) {
             {
                 await Task.Delay(1);
                // keyToSendFirst = _currentKeyToSend[0];
-                if (currentD.AddMilliseconds(5000) < DateTime.Now)
+                if (currentD.AddMilliseconds(1000) < DateTime.Now)
                 {
                     keyProcessingFirst = false;
                     keyProcessingSecond = false;
@@ -583,7 +583,7 @@ if (usefulRegionsWithDelays.Count == 0) {
                 if (keyToSendFirst[0] == 'C' ) WindowsAPICalls.PostMessage(_wowWindowHandle, WindowsAPICalls.WM_KEYUP, WindowsAPICalls.VK_CONTROL, 0); //&& CtrlPressed == true
                 if (keyToSendFirst[0] == 'A' ) WindowsAPICalls.PostMessage(_wowWindowHandle, WindowsAPICalls.WM_KEYUP, WindowsAPICalls.VK_MENU, 0); //&& AltPressed == true
                 //_currentKeyToSend[0] = "";
-                await Task.Delay(500) ;  // we want atleast a 150ms delay when pressing and releasing the key. Wow cooldown can be no less that 500 accept for instant not GCD.  we will just have to suffer with those.
+                await Task.Delay(50) ;  // we want atleast a 150ms delay when pressing and releasing the key. Wow cooldown can be no less that 500 accept for instant not GCD.  we will just have to suffer with those.
 
 
 
@@ -597,7 +597,7 @@ if (usefulRegionsWithDelays.Count == 0) {
                     {
            
                         await Task.Delay(1);
-                        if (currentD.AddMilliseconds(5000) < DateTime.Now)  // Max of a 3 second channel  or wait
+                        if (currentD.AddMilliseconds(7000) < DateTime.Now)  // Max of a 3 second channel  or wait
 
                         {
                             keyProcessingFirst = false;
