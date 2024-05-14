@@ -130,7 +130,7 @@ namespace FindUniqueColor
             {
                 histMat = Cv2.ImRead(@".\testimg.png", ImreadModes.Color);
                 using var Mat3 = new Mat();
-                Cv2.CvtColor(histMat, Mat3, ColorConversionCodes.BGR2HSV);
+                Cv2.CvtColor(histMat, Mat3, ColorConversionCodes.BGR2HSV_FULL);
                 for (int y = 0; y < histMat.Rows; y++)
                 {
                     for (int x = 0; x < histMat.Cols; x++)
@@ -214,7 +214,7 @@ namespace FindUniqueColor
 
                 foreach (var color in colorFrequencies.Keys)
                 {
-                    histMat.Set(Math.Abs(x1 / 1024), x1 % 1024, color);
+                    histMat.Set(Math.Abs(x1 / 1024), x1 % 1024, new Vec3b((byte)Math.Min(color.Item0+3,255), (byte)Math.Min(color.Item1+3, 255), (byte)Math.Min(color.Item2+3,255)));
                     x1++;
                 }
 
@@ -280,7 +280,7 @@ namespace FindUniqueColor
                            )
                            {
 
-                               using var rgbMat1 = new Mat(1, 1, MatType.CV_8UC3, Scalar.FromRgb(lr, lg, lb));
+                               using var rgbMat1 = new Mat(1, 1, MatType.CV_8UC3, Scalar.FromRgb(Math.Min(lr+3,255), Math.Min(lg+3,255), Math.Min(lb+3,255)));
                                using var hsvMat1 = new Mat();
                                Cv2.CvtColor(rgbMat1, hsvMat1, ColorConversionCodes.BGR2HSV_FULL);
 
@@ -293,13 +293,19 @@ namespace FindUniqueColor
 
 
                                var constantVarianceHL = 255.0 * 0.01;
-                               var constantVarianceSL = 255.0 * 0.05;
+                               var constantVarianceSL = 255.0 * 0.02;
                                var constantVarianceVL = 255.0 * 0.80;
-                              
-                               var constantVarianceHH = 255.0 * 0.01;
-                               var constantVarianceSH = 255.0 * 0.05;
-                               var constantVarianceVH = 255.0 * 0.80;
 
+                               var constantVarianceHH = 255.0 * 0.01;
+                               var constantVarianceSH = 255.0 * 0.01;
+                               var constantVarianceVH = 255.0 * 0.80;
+                               //var constantVarianceHL = hsvColor1.Item0 * 0.025;
+                               //var constantVarianceSL = hsvColor1.Item1 * 0.13;
+                               //var constantVarianceVL = hsvColor1.Item2 * 0.80;
+
+                               //var constantVarianceHH = hsvColor1.Item0 * 0.00;
+                               //var constantVarianceSH = hsvColor1.Item1 * 0.03;
+                               //var constantVarianceVH = hsvColor1.Item2 * 0.80;
 
 
                                //var hTol = hsvColor1.Item0 * 10.0 / 100;
@@ -344,8 +350,9 @@ namespace FindUniqueColor
                                v1 = Cv2.Sum(outMat);
                                //result.Dispose();
                                //grayWithDelays.Dispose();
+                               
                                var ColorAvg = ((lr + lg + lb) / 3);
-                             //  if ( (lr < ColorAvg - 20 || lr > ColorAvg + 20) || (lg < ColorAvg - 20 || lg > ColorAvg + 20) || (lb < ColorAvg - 20 || lb > ColorAvg + 20))
+                              // if ( (lr < ColorAvg - 20 || lr > ColorAvg + 20) || (lg < ColorAvg - 20 || lg > ColorAvg + 20) || (lb < ColorAvg - 20 || lb > ColorAvg + 20))
                                if (v1.Val0 <= 170  && er.Val0 <= 170)
                                {
                                    string s1 = string.Concat(lr.ToString("X2"), lg.ToString("X2"), lb.ToString("X2"));
