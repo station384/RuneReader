@@ -883,8 +883,9 @@ namespace RuneReader
  
             StartCaptureProcess();
 
+            magnifier.Visibility = Visibility.Hidden;
 
-         _TimerWowWindowMonitor = new System.Windows.Threading.DispatcherTimer(DispatcherPriority.Background);
+            _TimerWowWindowMonitor = new System.Windows.Threading.DispatcherTimer(DispatcherPriority.Background);
             _TimerWowWindowMonitor.Interval = TimeSpan.FromSeconds(5);
             _TimerWowWindowMonitor.Tick += _TimerWowWindowMonitor_Tick;
             _TimerWowWindowMonitor.Stop();
