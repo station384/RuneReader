@@ -169,7 +169,7 @@
             </StackPanel>
         </StackPanel>
 
-        <CheckBox x:Name="cbStayOnTop" Content="Stay on top" IsChecked="False"  Click="button_Click"/>
+        <CheckBox x:Name="cbStayOnTop" Content="Stay on top" IsChecked="False"  Click="buClickKeepMagOnTop"/>
 
         <Expander x:Name="expander" HorizontalAlignment="Center" Height="Auto" Header="Advanced Options" Margin="2,3,0,0" VerticalAlignment="Top" Width="300" >
             <StackPanel Orientation="Vertical">

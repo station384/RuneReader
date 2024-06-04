@@ -47,6 +47,7 @@ namespace RuneReader
         private MagnifierWindow magnifier2;
         private ImageRegions CurrentImageRegions = new ImageRegions();
         private DispatcherTimer _timer;
+        private DispatcherTimer _TimerWowWindowMonitor; // This timer is here just incase the game closes and is reopened, this will catch the new window ID.
 
 
 
@@ -168,14 +169,14 @@ namespace RuneReader
             // If the keypress has been handled, return a non-zero value.
             // Otherwise, call the next hook in the chain.
 
-            return WindowsAPICalls.CallNextHookEx(_hookID, nCode, wParam, lParam); // Doesn't lock explorer
+            return WindowsAPICalls.CallNextHookEx(_hookID, nCode, wParam, lParam); // Doesn't lock explorer but does not consume the event.
             // return handled ? (IntPtr)0:CallNextHookEx(_hookID, nCode, wParam, lParam); // Locks explorer
             // return handled ? (IntPtr)1:CallNextHookEx(_hookID, nCode, wParam, lParam); // Blocks input to game does not block windows
         }
 
         private string OCRProcess(Bitmap b, System.Windows.Rect region)
         {
-            string Result = "";
+            string Result = String.Empty;
             var ocrResult = ocr.PerformPointOcr(b, region);
 
             string s = ocrResult.Replace("\n", "");
@@ -315,7 +316,7 @@ namespace RuneReader
 
             } 
 
-if (usefulRegionsWithDelays.Count == 0) { 
+            if (usefulRegionsWithDelays.Count == 0) { 
                 usefulRegionsWithDelays.Add(new System.Windows.Rect(0,0, grayWithDelays.Width, grayWithDelays.Height));
             }
 
@@ -883,18 +884,30 @@ if (usefulRegionsWithDelays.Count == 0) {
             StartCaptureProcess();
 
 
+         _TimerWowWindowMonitor = new System.Windows.Threading.DispatcherTimer(DispatcherPriority.Background);
+            _TimerWowWindowMonitor.Interval = TimeSpan.FromSeconds(5);
+            _TimerWowWindowMonitor.Tick += _TimerWowWindowMonitor_Tick;
+            _TimerWowWindowMonitor.Stop();
+
+
             // This timer handles the key sending
-          
+
             _timer = new System.Windows.Threading.DispatcherTimer(DispatcherPriority.Background);
             _timer.Interval = TimeSpan.FromMilliseconds(25);
             _timer.Tick += mainTimerTick;
+            _timer.Stop();
 
           
         }
 
-  
+        private void _TimerWowWindowMonitor_Tick(object? sender, EventArgs e)
+        {
+            _wowWindowHandle = WindowsAPICalls.FindWindow(null, "World of Warcraft");
+        }
+
+
         #region UI Event handlers
-        private void button_Click(object sender, RoutedEventArgs e)
+        private void buClickKeepMagOnTop(object sender, RoutedEventArgs e)
         {
             if (cbStayOnTop.IsChecked == true)
             {
@@ -921,9 +934,12 @@ if (usefulRegionsWithDelays.Count == 0) {
                     Magnifier2_LocationChanged(sender, e);
                     screenCapture.StartCapture();
 
-                    _hookID = _hookID == 0 ? SetHookActionKey(_proc) : 0; 
+                    _hookID = _hookID == IntPtr.Zero ? SetHookActionKey(_proc) : IntPtr.Zero; 
                     button_Start.IsEnabled = false;
                     button_Stop.IsEnabled = true;
+                    _TimerWowWindowMonitor.Start();
+                    _timer.Start();
+
                 }
             }
  
@@ -934,12 +950,15 @@ if (usefulRegionsWithDelays.Count == 0) {
             if (screenCapture.IsCapturing)
             {
                 screenCapture.StopCapture();
-                if (_hookID == 0) {
+                if (_hookID == IntPtr.Zero) {
                     WindowsAPICalls.UnhookWindowsHookEx(_hookID);
-                    _hookID = 0;
+                    _hookID = IntPtr.Zero;
                 }
                 button_Start.IsEnabled = true;
                 button_Stop.IsEnabled = false;
+                _timer.Stop();
+                _TimerWowWindowMonitor.Stop();
+
             }
         }
 
@@ -1151,12 +1170,12 @@ if (usefulRegionsWithDelays.Count == 0) {
             {
                 screenCapture.StopCapture();
             }
-            if (_hookID != 0) {
+            if (_hookID != IntPtr.Zero) {
                 // Make sure we stop trapping the keyboard
                 WindowsAPICalls.UnhookWindowsHookEx(_hookID);
-            _hookID = 0;
+            _hookID = IntPtr.Zero;
             }
-            
+            _timer.Stop();
   
 
             if (_MouseHookID != IntPtr.Zero)
