@@ -61,7 +61,7 @@ namespace RuneReader
         private int CurrentKeyPressSpeedMS = 125;
         private int CurrentKeyDownDelayMS = 25;
         private Dispatcher mainWindowDispatcher;
-
+        private int PetKeyVKCode = 0;
 
         private volatile bool _keyPressMode = false;
         private volatile float WowGamma = 1.0f;
@@ -465,6 +465,11 @@ namespace RuneReader
                 return;
                
             }
+            if (activationKeyPressed == false)
+            {
+                return;
+            }
+
             var keyToSendFirst = string.Empty;
             var keyToSendSecond = string.Empty;
             int vkCode = 0;
@@ -524,11 +529,24 @@ namespace RuneReader
                 goto allDone;
             }
 
+            currentD = DateTime.Now;
             while (CurrentImageRegions.FirstImageRegions.TopLeft == false && button_Start.IsEnabled == false && activationKeyPressed == true && (!VirtualKeyCodeMapper.HasExcludeKey(keyToSendFirst) && VirtualKeyCodeMapper.HasKey(keyToSendFirst)))
             {
                 await Task.Delay(1);
-               // keyToSendFirst = _currentKeyToSend[0];
-                if (currentD.AddMilliseconds(1000) < DateTime.Now)
+                // keyToSendFirst = _currentKeyToSend[0];
+                if (Settings.Default.PetKeyEnables == true)
+                {
+                    if (PetKeyVKCode >= 112) {WindowsAPICalls.PostMessage(_wowWindowHandle, WindowsAPICalls.WM_KEYDOWN, WindowsAPICalls.VK_CONTROL, 0);}
+
+                    WindowsAPICalls.PostMessage(_wowWindowHandle, WindowsAPICalls.WM_KEYDOWN, PetKeyVKCode, 0);
+                    if (PetKeyVKCode >= 112) { WindowsAPICalls.PostMessage(_wowWindowHandle, WindowsAPICalls.WM_KEYUP, WindowsAPICalls.VK_CONTROL, 0); }
+
+                    await Task.Delay(50);
+                    WindowsAPICalls.PostMessage(_wowWindowHandle, WindowsAPICalls.WM_KEYUP, PetKeyVKCode, 0);
+
+                }
+
+                if (currentD.AddMilliseconds(3000) < DateTime.Now)
                 {
                     keyProcessingFirst = false;
                     keyProcessingSecond = false;
@@ -598,6 +616,23 @@ namespace RuneReader
                     {
            
                         await Task.Delay(1);
+                       
+                        if (Settings.Default.PetKeyEnables == true)
+                        {
+                            if (PetKeyVKCode >= 112)
+                            {
+                                WindowsAPICalls.PostMessage(_wowWindowHandle, WindowsAPICalls.WM_KEYDOWN, WindowsAPICalls.VK_CONTROL, 0);
+                            }
+
+                            WindowsAPICalls.PostMessage(_wowWindowHandle, WindowsAPICalls.WM_KEYDOWN, PetKeyVKCode, 0);
+                            if (PetKeyVKCode >= 112)
+                            { WindowsAPICalls.PostMessage(_wowWindowHandle, WindowsAPICalls.WM_KEYUP, WindowsAPICalls.VK_CONTROL, 0); }
+
+                            await Task.Delay(50);
+                            WindowsAPICalls.PostMessage(_wowWindowHandle, WindowsAPICalls.WM_KEYUP, PetKeyVKCode, 0);
+
+                        }
+
                         if (currentD.AddMilliseconds(7000) < DateTime.Now)  // Max of a 3 second channel  or wait
 
                         {
@@ -688,32 +723,21 @@ namespace RuneReader
 
             magnifier2.Visibility = Visibility.Hidden;
 
+            cbPetAttackKey.SelectedValue = cbPetAttackKey.Items[Settings.Default.PetKey]; 
+            if (Settings.Default.PetKeyEnables == true)
+            {
+                lPet.IsEnabled = true;
+                cbPetAttackKey.IsEnabled = true;
+                cbPetKeyEnabled.IsChecked = true;
+            }
+            else
+            {
+                lPet.IsEnabled = false;
+                cbPetAttackKey.IsEnabled = false;
+                cbPetKeyEnabled.IsChecked = false;
+            }
 
             ColorPicker.PortableColorPicker cp;
-            //cp = (ColorPicker.PortableColorPicker)cbColorDruid.Content;
-            //cp.SelectedColor = System.Windows.Media.Color.FromArgb((byte)Settings.Default.DruidTargetA, (byte)Settings.Default.DruidTargetR, (byte)Settings.Default.DruidTargetG, (byte)Settings.Default.DruidTargetB);
-            //cp = (ColorPicker.PortableColorPicker)cbColorPaladin.Content;
-            //cp.SelectedColor = System.Windows.Media.Color.FromArgb((byte)Settings.Default.PaladinTargetA, (byte)Settings.Default.PaladinTargetR, (byte)Settings.Default.PaladinTargetG, (byte)Settings.Default.PaladinTargetB);
-            //cp = (ColorPicker.PortableColorPicker)cbColorWarlock.Content;
-            //cp.SelectedColor = System.Windows.Media.Color.FromArgb((byte)Settings.Default.WarlockTargetA, (byte)Settings.Default.WarlockTargetR, (byte)Settings.Default.WarlockTargetG, (byte)Settings.Default.WarlockTargetB);
-            //cp = (ColorPicker.PortableColorPicker)cbColorShaman.Content;
-            //cp.SelectedColor = System.Windows.Media.Color.FromArgb((byte)Settings.Default.ShamanTargetA, (byte)Settings.Default.ShamanTargetR, (byte)Settings.Default.ShamanTargetG, (byte)Settings.Default.ShamanTargetB);
-            //cp = (ColorPicker.PortableColorPicker)cbColorRogue.Content;
-            //cp.SelectedColor = System.Windows.Media.Color.FromArgb((byte)Settings.Default.RogueTargetA, (byte)Settings.Default.RogueTargetR, (byte)Settings.Default.RogueTargetG, (byte)Settings.Default.RogueTargetB);
-            //cp = (ColorPicker.PortableColorPicker)cbColorWarrior.Content;
-            //cp.SelectedColor = System.Windows.Media.Color.FromArgb((byte)Settings.Default.WarriorTargetA, (byte)Settings.Default.WarriorTargetR, (byte)Settings.Default.WarriorTargetG, (byte)Settings.Default.WarriorTargetB);
-            //cp = (ColorPicker.PortableColorPicker)cbColorEvoker.Content;
-            //cp.SelectedColor = System.Windows.Media.Color.FromArgb((byte)Settings.Default.EvokerTargetA, (byte)Settings.Default.EvokerTargetR, (byte)Settings.Default.EvokerTargetG, (byte)Settings.Default.EvokerTargetB);
-            //cp = (ColorPicker.PortableColorPicker)cbColorHunter.Content;
-            //cp.SelectedColor = System.Windows.Media.Color.FromArgb((byte)Settings.Default.HunterTargetA, (byte)Settings.Default.HunterTargetR, (byte)Settings.Default.HunterTargetG, (byte)Settings.Default.HunterTargetB);
-            //cp = (ColorPicker.PortableColorPicker)cbColorMage.Content;
-            //cp.SelectedColor = System.Windows.Media.Color.FromArgb((byte)Settings.Default.MageTargetA, (byte)Settings.Default.MageTargetR, (byte)Settings.Default.MageTargetG, (byte)Settings.Default.MageTargetB);
-            //cp = (ColorPicker.PortableColorPicker)cbColorPriest.Content;
-            //cp.SelectedColor = System.Windows.Media.Color.FromArgb((byte)Settings.Default.PriestTargetA, (byte)Settings.Default.PriestTargetR, (byte)Settings.Default.PriestTargetG, (byte)Settings.Default.PriestTargetB);
-            //cp = (ColorPicker.PortableColorPicker)cbColorMonk.Content;
-            //cp.SelectedColor = System.Windows.Media.Color.FromArgb((byte)Settings.Default.MonkTargetA, (byte)Settings.Default.MonkTargetR, (byte)Settings.Default.MonkTargetG, (byte)Settings.Default.MonkTargetB);
-            //cp = (ColorPicker.PortableColorPicker)cbColorDemonHunter.Content;
-            //cp.SelectedColor = System.Windows.Media.Color.FromArgb((byte)Settings.Default.DemonHunterTargetA, (byte)Settings.Default.DemonHunterTargetR, (byte)Settings.Default.DemonHunterTargetG, (byte)Settings.Default.DemonHunterTargetB);
             cp = (ColorPicker.PortableColorPicker)cbColorCustom.Content;
             cp.SelectedColor = System.Windows.Media.Color.FromArgb((byte)Settings.Default.CustomTargetA, (byte)Settings.Default.CustomTargetR, (byte)Settings.Default.CustomTargetG, (byte)Settings.Default.CustomTargetB);
 
@@ -933,6 +957,8 @@ namespace RuneReader
                 {
                     Magnifier_LocationChanged(sender, e);
                     Magnifier2_LocationChanged(sender, e);
+                    _currentKeyToSend[0] = "";
+                    _currentKeyToSend[1] = "";
                     screenCapture.StartCapture();
 
                     _hookID = _hookID == IntPtr.Zero ? SetHookActionKey(_proc) : IntPtr.Zero; 
@@ -951,7 +977,7 @@ namespace RuneReader
             if (screenCapture.IsCapturing)
             {
                 screenCapture.StopCapture();
-                if (_hookID == IntPtr.Zero) {
+                if (_hookID != IntPtr.Zero) {
                     WindowsAPICalls.UnhookWindowsHookEx(_hookID);
                     _hookID = IntPtr.Zero;
                 }
@@ -1164,8 +1190,9 @@ namespace RuneReader
 
             Settings.Default.Save();
 
-            magnifier.Close();
-            magnifier2.Close();
+            _timer.Stop();
+            _TimerWowWindowMonitor.Stop();
+
 
             if (screenCapture.IsCapturing)
             {
@@ -1176,8 +1203,7 @@ namespace RuneReader
                 WindowsAPICalls.UnhookWindowsHookEx(_hookID);
             _hookID = IntPtr.Zero;
             }
-            _timer.Stop();
-  
+
 
             if (_MouseHookID != IntPtr.Zero)
             {
@@ -1186,11 +1212,14 @@ namespace RuneReader
                 WindowsAPICalls.UnhookWindowsHookEx(_MouseHookID);
                 _MouseHookID = IntPtr.Zero;
             }
+            magnifier.Close();
+            magnifier2.Close();
+
 
         }
 
 
- 
+
 
         private RadioButton GetSelectedCheckBox ()
         {
@@ -1858,8 +1887,36 @@ namespace RuneReader
 
 
         }
+
         #endregion
 
+        private void cbPetAttackKey_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
 
+            Settings.Default.PetKey = ((ComboBox)e.Source).SelectedIndex;
+            if (e.Source != null)
+            {
+                if (((ComboBox)e.Source).SelectedItem != null)
+                {
+                    PetKeyVKCode = VirtualKeyCodeMapper.GetVirtualKeyCode( ((ComboBoxItem)((ComboBox)e.Source).SelectedItem).Content.ToString() );
+                }
+            }
+        }
+
+
+
+        private void cbPetKeyEnabled_Checked(object sender, RoutedEventArgs e)
+        {
+            lPet.IsEnabled = true;
+            cbPetAttackKey.IsEnabled = true;
+            Settings.Default.PetKeyEnables = lPet.IsEnabled;
+        }
+
+        private void cbPetKeyEnabled_Unchecked(object sender, RoutedEventArgs e)
+        {
+            lPet.IsEnabled = false;
+            cbPetAttackKey.IsEnabled = false;
+            Settings.Default.PetKeyEnables = lPet.IsEnabled;
+        }
     }
 }
