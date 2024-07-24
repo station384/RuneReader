@@ -1,5 +1,5 @@
 local addonname = ...
-local Options = CreateFrame("Frame", nil, InterfaceOptionsFramePanelContainer)
+local Options = CreateFrame("Frame", "MyAddonPanel", InterfaceOptionsFramePanelContainer)
 Options:Hide()
 Options.name = addonname
 

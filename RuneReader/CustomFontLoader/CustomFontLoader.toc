@@ -6,4 +6,4 @@
 
 Libs\lib.xml
 fonts.lua
-core.lua
+## core.lua

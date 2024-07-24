@@ -15,3 +15,6 @@ LSM:Register("font", "Ubuntu-Regular", [[Interface\Addons\CustomFontLoader\Fonts
 LSM:Register("font", "ocr-1", [[Interface\Addons\CustomFontLoader\Fonts\ufonts.com_ocr-1-ssi.ttf]])
 LSM:Register("font", "mitra-lt-bold", [[Interface\Addons\CustomFontLoader\Fonts\ufonts.com_mitra-lt-bold.ttf]])
 LSM:Register("font", "dejavu-serif", [[Interface\Addons\CustomFontLoader\Fonts\ufonts.com_dejavu-serif.ttf]])
+LSM:Register("font", "Code39", [[Interface\Addons\CustomFontLoader\Fonts\LibreBarcode39ExtendedText-Regular.ttf]])
+LSM:Register("font", "Code128", [[Interface\Addons\CustomFontLoader\Fonts\LibreBarcode128-Regular.ttf]])
+

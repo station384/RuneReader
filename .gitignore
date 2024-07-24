@@ -260,3 +260,7 @@ paket-files/
 __pycache__/
 *.pyc
 /WowIconCapture
+FindUniqueColor/
+UnusedColors.csv
+WowIconCaptureAll/
+WowIconCaptureUnused/
