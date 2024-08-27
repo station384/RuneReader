@@ -737,6 +737,9 @@ namespace RuneReader
                 cbPetKeyEnabled.IsChecked = false;
             }
 
+            cbUseOCR.IsChecked = Settings.Default.UseOCR;
+            cbUseBarcode.IsChecked = Settings.Default.UseBarCode;
+
             ColorPicker.PortableColorPicker cp;
             cp = (ColorPicker.PortableColorPicker)cbColorCustom.Content;
             cp.SelectedColor = System.Windows.Media.Color.FromArgb((byte)Settings.Default.CustomTargetA, (byte)Settings.Default.CustomTargetR, (byte)Settings.Default.CustomTargetG, (byte)Settings.Default.CustomTargetB);
@@ -1917,6 +1920,16 @@ namespace RuneReader
             lPet.IsEnabled = false;
             cbPetAttackKey.IsEnabled = false;
             Settings.Default.PetKeyEnables = lPet.IsEnabled;
+        }
+
+        private void cbUseBarcode_Checked(object sender, RoutedEventArgs e)
+        {
+            Settings.Default.UseBarCode = true;
+        }
+
+        private void cbUseOCR_Checked(object sender, RoutedEventArgs e)
+        {
+            Settings.Default.UseOCR = true;
         }
     }
 }
