@@ -1,0 +1,11 @@
+## Interface: 110002
+## X-Interface: 110002
+## Author: Tanstaafl
+## Version: 1.0.01
+## Title: RuneReader Font Installer
+## DefaultState: Enable
+## X-Curse-Project-ID: 1091053
+
+Libs\lib.xml
+fonts.lua
+## core.lua
