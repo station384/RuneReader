@@ -2,6 +2,7 @@
 Rune Reader is an accessibility aid for World of Warcraft (WoW). 
 Its primary goal is to provide assistance to gamers who may face challenges in gameplay due to various accessibility issues.
 Rune Reader utilizes the [Hekili Priority helper](https://github.com/Hekili/hekili) addon to assist players in executing the suggested command.
+It can use the text on the screen, or it can use a generated barcode using https://wago.io/wxHi6JahK
 > [!NOTE]
 > This is the code repository for a personal project.  Compiled releases will not be made available here at this time.
 
