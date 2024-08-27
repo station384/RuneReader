@@ -15,6 +15,8 @@ using RuneReader.Properties;
 using System.Windows.Threading;
 using System.Linq;
 using MahApps.Metro.Controls;
+using System.Runtime.CompilerServices;
+
 
 
 namespace RuneReader
@@ -43,6 +45,10 @@ namespace RuneReader
 
 
         private OcrModule ocr = new OcrModule();
+        private bool BarCodeFound = false;
+        
+  
+
         private MagnifierWindow magnifier;
         private MagnifierWindow magnifier2;
         private ImageRegions CurrentImageRegions = new ImageRegions();
@@ -243,38 +249,24 @@ namespace RuneReader
             else
             { 
                 gammaAdjust = ( 1-(WowGamma - 1)  );
-                //double percentContrast = (255 * (100.0 / 100))  - 128;
-                //double percentBrightness = (255 * (54.0 / 100))  ;
-
-                //double percentNeutralContrast = (255 * (50.0 / 100))  - 128;
-                //double percentNeutralBrightness = (255 * (50.0 / 100))  ;
-
-
-
-                //contrastAdjust = (percentNeutralContrast - percentContrast  ) ;
-                //brightnessAdjust = (  percentBrightness - percentNeutralBrightness) ;
             }
 
 
 
 
 
-            //         ImageProcessingOpenCV.applyContrastBrightness(resizedMat, resizedMat, 0, -64.0);
 
-   //         ImageProcessingOpenCV.applyContrastBrightness(resizedMat, resizedMat, brightnessAdjust,contrastAdjust);
             ImageProcessingOpenCV.gammaCorrection(resizedMat, resizedMat, gammaAdjust);
           //  Cv2.ImShow("test", resizedMat);
             using var IsolatedColorWithDelays = ImageProcessingOpenCV.IsolateColorHSV(resizedMat, Scalar.FromRgb(CurrentR, CurrentG, CurrentB), Threshold);
-           using var IsolatedColorWithoutDelays = ImageProcessingOpenCV.IsolateColorHSV(resizedMat, Scalar.FromRgb(CurrentR, CurrentG, CurrentB), Threshold +1  );
+            using var IsolatedColorWithoutDelays = ImageProcessingOpenCV.IsolateColorHSV(resizedMat, Scalar.FromRgb(CurrentR, CurrentG, CurrentB), Threshold +1  );
 
 
-            Mat grayWithDelays = IsolatedColorWithDelays.Clone();//new Mat();
-            Mat grayWithoutDelays = IsolatedColorWithoutDelays.Clone();//new Mat();
-          //  Cv2.ImShow("WithDelays", grayWithDelays);
-          //  Cv2.ImShow("WithoutDelays", grayWithoutDelays);
+            Mat grayWithDelays = IsolatedColorWithDelays.Clone();
+            Mat grayWithoutDelays = IsolatedColorWithoutDelays.Clone();
+            //  Cv2.ImShow("WithDelays", grayWithDelays);
+            //  Cv2.ImShow("WithoutDelays", grayWithoutDelays);
 
-            //     Cv2.CvtColor(IsolatedColorWithDelays, grayWithDelays, ColorConversionCodes.BGR2GRAY);
-            //     Cv2.CvtColor(IsolatedColorWithoutDelays, grayWithoutDelays, ColorConversionCodes.BGR2GRAY);
 
             //// Apply Otsu's thresholding
             ////Cv2.Threshold(grayWithDelays, grayWithDelays, 250, 255, ThresholdTypes.Otsu | ThresholdTypes.BinaryInv); //
@@ -283,106 +275,137 @@ namespace RuneReader
             //      Cv2.Threshold(grayWithDelays, grayWithDelays, 0, 255,  ThresholdTypes.BinaryInv); //
             //      Cv2.Threshold(grayWithoutDelays, grayWithoutDelays, 0, 255, ThresholdTypes.BinaryInv); //
 
-
-
-            // Find the current bounding boxes, and try and get rid of the useless ones
-            System.Windows.Rect[] ocrRegionsWithDelays = ocr.GetRegions(OpenCvSharp.Extensions.BitmapConverter.ToBitmap(grayWithDelays));
-            System.Windows.Rect[] ocrRegionsWithoutDelays = ocr.GetRegions(OpenCvSharp.Extensions.BitmapConverter.ToBitmap(grayWithoutDelays));
-
-            // If no bounding boxes were found create one that encompasess the entire image
-            if (ocrRegionsWithDelays == null)
-                ocrRegionsWithDelays = new System.Windows.Rect[] {new System.Windows.Rect(0,0,grayWithDelays.Width, grayWithDelays.Height) };
-            if (ocrRegionsWithoutDelays == null)
-                ocrRegionsWithoutDelays = new System.Windows.Rect[] { new System.Windows.Rect(0, 0, grayWithoutDelays.Width, grayWithoutDelays.Height) };
-
-            // Used to keep a list of the rational bounding boxes
-            List<System.Windows.Rect> usefulRegionsWithDelays = new List<System.Windows.Rect>();
-            List<System.Windows.Rect> usefulRegionsWithoutDelays = new List<System.Windows.Rect>();
-
-            //Sort thru a max of 50 and find all the ones that are a reasonable size and add those to the list with Delays
-            if (ocrRegionsWithDelays.Length >= 1 )
-            {
-                for (int i = 0; i < ocrRegionsWithDelays.Length && i  <= 50; i++)
-                {
-                    if (ocrRegionsWithDelays[i].Height * ocrRegionsWithDelays[i].Width < 1500)
-                    {
-                            ImageProcessingOpenCV.FillRectangle(ref grayWithDelays, new OpenCvSharp.Rect((int)ocrRegionsWithDelays[i].X, (int)ocrRegionsWithDelays[i].Y, (int)ocrRegionsWithDelays[i].Width, (int)ocrRegionsWithDelays[i].Width), Scalar.FromRgb(255, 255, 255) );
-                    }
-                    else
-                    {
-                        usefulRegionsWithDelays.Add(ocrRegionsWithDelays[i]);
-                    }
-                }
-
-            } 
-
-            if (usefulRegionsWithDelays.Count == 0) { 
-                usefulRegionsWithDelays.Add(new System.Windows.Rect(0,0, grayWithDelays.Width, grayWithDelays.Height));
-            }
-
-
-
-            // Find the total region size of all the regions that were detected for the image used with delays
-            xMin = usefulRegionsWithDelays.Min(s => s.X);
-            yMin = usefulRegionsWithDelays.Min(s => s.Y);
-            xMax = usefulRegionsWithDelays.Max(s => s.X + s.Width);
-            yMax = usefulRegionsWithDelays.Max(s => s.Y + s.Height);
-
-            var int32Rect = new Int32Rect((int)xMin, (int)yMin, (int)xMax - (int)xMin, (int)yMax - (int)yMin);
-            System.Windows.Rect finalRegionWithDelays = new System.Windows.Rect(int32Rect.X, int32Rect.Y, int32Rect.Width, int32Rect.Height);
-
-
-
-            //Sort thru a max of 50 and find all the ones that are a reasonable size and add those to the list (Without delays in the image)
-            if (ocrRegionsWithoutDelays.Length > 1 )
-            {
-                for (int i = 0; i < ocrRegionsWithoutDelays.Length &&  i <= 50; i++)
-                {
-                    if (ocrRegionsWithoutDelays[i].Height * ocrRegionsWithoutDelays[i].Width < 1500)
-                    {
-                        ImageProcessingOpenCV.FillRectangle(ref grayWithoutDelays, new OpenCvSharp.Rect((int)ocrRegionsWithoutDelays[i].X, (int)ocrRegionsWithoutDelays[i].Y, (int)ocrRegionsWithoutDelays[i].Width, (int)ocrRegionsWithoutDelays[i].Width), Scalar.FromRgb(255, 255, 255));
-                    }
-                    else
-                    {
-                        usefulRegionsWithoutDelays.Add(ocrRegionsWithoutDelays[i]);
-                    }
-                }
-            }
-
-            if (usefulRegionsWithoutDelays.Count == 0)
-            {
-                usefulRegionsWithoutDelays.Add(new System.Windows.Rect(0, 0, grayWithoutDelays.Width, grayWithoutDelays.Height));
-            }
-            // Find the total region size of all the regions that were detected for the image with out delays
-            xMin = usefulRegionsWithoutDelays.Min(s => s.X);
-            yMin = usefulRegionsWithoutDelays.Min(s => s.Y);
-            xMax = usefulRegionsWithoutDelays.Max(s => s.X + s.Width);
-            yMax = usefulRegionsWithoutDelays.Max(s => s.Y + s.Height);
-            int32Rect = new Int32Rect((int)xMin, (int)yMin, (int)xMax - (int)xMin, (int)yMax - (int)yMin);
-            System.Windows.Rect finalRegionWithoutDelays = new System.Windows.Rect(int32Rect.X, int32Rect.Y, int32Rect.Width, int32Rect.Height);
-
-
             // grab a copy of the image with delays, and resize it to 96 dpi (standard size), this will be used to display to the user
             resizedMat = grayWithDelays.Clone();
             resizedMat = ImageProcessingOpenCV.RescaleImageToNewDpi(resizedMat, image.HorizontalResolution, 96);
+            if (Settings.Default.UseOCR)
+            {
 
 
-            // This is where we detect if there are pixels in a certain region of the image.   This is used to detect command delays
-            regions.TopLeft = ImageProcessingOpenCV.IsThereAnImageInTopLeftQuarter(grayWithDelays);
-            regions.TopRight = ImageProcessingOpenCV.IsThereAnImageInTopRightQuarter(grayWithDelays);
-            regions.BottomLeft = ImageProcessingOpenCV.IsThereAnImageInBottomLeftQuarter(grayWithDelays);
-            regions.BottomCenter = ImageProcessingOpenCV.IsThereAnImageInBottomCenter(grayWithDelays);
-    
+                // Find the current bounding boxes, and try and get rid of the useless ones
+                System.Windows.Rect[] ocrRegionsWithDelays = ocr.GetRegions(OpenCvSharp.Extensions.BitmapConverter.ToBitmap(grayWithDelays));
+                System.Windows.Rect[] ocrRegionsWithoutDelays = ocr.GetRegions(OpenCvSharp.Extensions.BitmapConverter.ToBitmap(grayWithoutDelays));
+
+                // If no bounding boxes were found create one that encompasess the entire image
+                if (ocrRegionsWithDelays == null)
+                    ocrRegionsWithDelays = new System.Windows.Rect[] { new System.Windows.Rect(0, 0, grayWithDelays.Width, grayWithDelays.Height) };
+                if (ocrRegionsWithoutDelays == null)
+                    ocrRegionsWithoutDelays = new System.Windows.Rect[] { new System.Windows.Rect(0, 0, grayWithoutDelays.Width, grayWithoutDelays.Height) };
+
+                // Used to keep a list of the rational bounding boxes
+                List<System.Windows.Rect> usefulRegionsWithDelays = new List<System.Windows.Rect>();
+                List<System.Windows.Rect> usefulRegionsWithoutDelays = new List<System.Windows.Rect>();
+
+                //Sort thru a max of 50 and find all the ones that are a reasonable size and add those to the list with Delays
+                if (ocrRegionsWithDelays.Length >= 1)
+                {
+                    for (int i = 0; i < ocrRegionsWithDelays.Length && i <= 50; i++)
+                    {
+                        if (ocrRegionsWithDelays[i].Height * ocrRegionsWithDelays[i].Width < 1500)
+                        {
+                            ImageProcessingOpenCV.FillRectangle(ref grayWithDelays, new OpenCvSharp.Rect((int)ocrRegionsWithDelays[i].X, (int)ocrRegionsWithDelays[i].Y, (int)ocrRegionsWithDelays[i].Width, (int)ocrRegionsWithDelays[i].Width), Scalar.FromRgb(255, 255, 255));
+                        }
+                        else
+                        {
+                            usefulRegionsWithDelays.Add(ocrRegionsWithDelays[i]);
+                        }
+                    }
+
+                }
+
+                if (usefulRegionsWithDelays.Count == 0)
+                {
+                    usefulRegionsWithDelays.Add(new System.Windows.Rect(0, 0, grayWithDelays.Width, grayWithDelays.Height));
+                }
 
 
-            // The heart of the detection  OCR
-            string s = OCRProcess(OpenCvSharp.Extensions.BitmapConverter.ToBitmap(grayWithoutDelays), finalRegionWithoutDelays);
 
-            // Unnecessary assignment to a new var.  but have it split for possible logic if nothing is detected, and debuging.
-            CurrentKeyToSend = s;
+                // Find the total region size of all the regions that were detected for the image used with delays
+                xMin = usefulRegionsWithDelays.Min(s => s.X);
+                yMin = usefulRegionsWithDelays.Min(s => s.Y);
+                xMax = usefulRegionsWithDelays.Max(s => s.X + s.Width);
+                yMax = usefulRegionsWithDelays.Max(s => s.Y + s.Height);
 
-            // Convert the Image for binay to RGB so we can draw some colored markers on the image
-            Cv2.CvtColor(resizedMat, resizedMat, ColorConversionCodes.BayerBG2RGB);
+                var int32Rect = new Int32Rect((int)xMin, (int)yMin, (int)xMax - (int)xMin, (int)yMax - (int)yMin);
+                System.Windows.Rect finalRegionWithDelays = new System.Windows.Rect(int32Rect.X, int32Rect.Y, int32Rect.Width, int32Rect.Height);
+
+
+
+                //Sort thru a max of 50 and find all the ones that are a reasonable size and add those to the list (Without delays in the image)
+                if (ocrRegionsWithoutDelays.Length > 1)
+                {
+                    for (int i = 0; i < ocrRegionsWithoutDelays.Length && i <= 50; i++)
+                    {
+                        if (ocrRegionsWithoutDelays[i].Height * ocrRegionsWithoutDelays[i].Width < 1500)
+                        {
+                            ImageProcessingOpenCV.FillRectangle(ref grayWithoutDelays, new OpenCvSharp.Rect((int)ocrRegionsWithoutDelays[i].X, (int)ocrRegionsWithoutDelays[i].Y, (int)ocrRegionsWithoutDelays[i].Width, (int)ocrRegionsWithoutDelays[i].Width), Scalar.FromRgb(255, 255, 255));
+                        }
+                        else
+                        {
+                            usefulRegionsWithoutDelays.Add(ocrRegionsWithoutDelays[i]);
+                        }
+                    }
+                }
+
+                if (usefulRegionsWithoutDelays.Count == 0)
+                {
+                    usefulRegionsWithoutDelays.Add(new System.Windows.Rect(0, 0, grayWithoutDelays.Width, grayWithoutDelays.Height));
+                }
+                // Find the total region size of all the regions that were detected for the image with out delays
+                xMin = usefulRegionsWithoutDelays.Min(s => s.X);
+                yMin = usefulRegionsWithoutDelays.Min(s => s.Y);
+                xMax = usefulRegionsWithoutDelays.Max(s => s.X + s.Width);
+                yMax = usefulRegionsWithoutDelays.Max(s => s.Y + s.Height);
+                int32Rect = new Int32Rect((int)xMin, (int)yMin, (int)xMax - (int)xMin, (int)yMax - (int)yMin);
+                System.Windows.Rect finalRegionWithoutDelays = new System.Windows.Rect(int32Rect.X, int32Rect.Y, int32Rect.Width, int32Rect.Height);
+
+
+
+
+
+                // This is where we detect if there are pixels in a certain region of the image.   This is used to detect command delays
+                regions.TopLeft = ImageProcessingOpenCV.IsThereAnImageInTopLeftQuarter(grayWithDelays);
+                regions.TopRight = ImageProcessingOpenCV.IsThereAnImageInTopRightQuarter(grayWithDelays);
+                regions.BottomLeft = ImageProcessingOpenCV.IsThereAnImageInBottomLeftQuarter(grayWithDelays);
+                regions.BottomCenter = ImageProcessingOpenCV.IsThereAnImageInBottomCenter(grayWithDelays);
+
+
+
+                // The heart of the detection  OCR
+                string s = OCRProcess(OpenCvSharp.Extensions.BitmapConverter.ToBitmap(grayWithoutDelays), finalRegionWithoutDelays);
+
+                // Unnecessary assignment to a new var.  but have it split for possible logic if nothing is detected, and debuging.
+                CurrentKeyToSend = s;
+            }  // End of OCR Processing
+
+
+            if (Settings.Default.UseBarCode)
+            {
+
+
+                //  Cv2.ImShow("WithDelays", grayWithDelays);
+                // Cv2.ImShow("WithDelays", CVMat);
+            //    var lresizedMat = ImageProcessingOpenCV.RescaleImageToNewDpi(CVMat, image.HorizontalResolution, 300);
+                var barcodeResult = BarcodeDecode.DecodeBarcode(CVMat);
+                if (barcodeResult.BarcodeFound)
+                {
+
+                    regions.TopRight = (barcodeResult.WaitTime < 1000);
+                    regions.BottomCenter = (barcodeResult.WaitTime < 800);
+                    regions.BottomLeft = (barcodeResult.WaitTime < 700);
+                    regions.TopLeft = (barcodeResult.WaitTime < 500);
+
+                    CurrentKeyToSend = barcodeResult.DecodedTextValue;
+                    BarCodeFound = true;
+                }
+                else
+                {
+                    BarCodeFound = false;
+                }
+            }
+
+                // Convert the Image for binay to RGB so we can draw some colored markers on the image
+                Cv2.CvtColor(resizedMat, resizedMat, ColorConversionCodes.BayerBG2RGB);
 
             // Draw the colored markers
             ImageProcessingOpenCV.DrawMarkers(ref resizedMat);
@@ -508,7 +531,7 @@ namespace RuneReader
 
 
             currentD = DateTime.Now;
-            while (keyToSendFirst == "" && button_Start.IsEnabled == false && activationKeyPressed == true && (!VirtualKeyCodeMapper.HasExcludeKey(keyToSendFirst) && VirtualKeyCodeMapper.HasKey(keyToSendFirst) ))
+            while (keyToSendFirst == "" && button_Start.IsEnabled == false && activationKeyPressed == true && (!(VirtualKeyCodeMapper.HasExcludeKey(keyToSendFirst) && BarCodeFound==false) && VirtualKeyCodeMapper.HasKey(keyToSendFirst) ))
             {
                 await Task.Delay(1);
                 keyToSendFirst = _currentKeyToSend[0];
@@ -530,7 +553,7 @@ namespace RuneReader
             }
 
             currentD = DateTime.Now;
-            while (CurrentImageRegions.FirstImageRegions.TopLeft == false && button_Start.IsEnabled == false && activationKeyPressed == true && (!VirtualKeyCodeMapper.HasExcludeKey(keyToSendFirst) && VirtualKeyCodeMapper.HasKey(keyToSendFirst)))
+            while (CurrentImageRegions.FirstImageRegions.TopLeft == false && button_Start.IsEnabled == false && activationKeyPressed == true && (!(VirtualKeyCodeMapper.HasExcludeKey(keyToSendFirst) && BarCodeFound == false) && VirtualKeyCodeMapper.HasKey(keyToSendFirst)))
             {
                 await Task.Delay(1);
                 // keyToSendFirst = _currentKeyToSend[0];
@@ -736,6 +759,9 @@ namespace RuneReader
                 cbPetAttackKey.IsEnabled = false;
                 cbPetKeyEnabled.IsChecked = false;
             }
+
+            cbUseOCR.IsChecked = Settings.Default.UseOCR;
+            cbUseBarcode.IsChecked = Settings.Default.UseBarCode;
 
             ColorPicker.PortableColorPicker cp;
             cp = (ColorPicker.PortableColorPicker)cbColorCustom.Content;
@@ -1917,6 +1943,26 @@ namespace RuneReader
             lPet.IsEnabled = false;
             cbPetAttackKey.IsEnabled = false;
             Settings.Default.PetKeyEnables = lPet.IsEnabled;
+        }
+
+        private void cbUseBarcode_Checked(object sender, RoutedEventArgs e)
+        {
+            Settings.Default.UseBarCode = true;
+        }
+
+        private void cbUseOCR_Checked(object sender, RoutedEventArgs e)
+        {
+            Settings.Default.UseOCR = true;
+        }
+
+        private void cbUseBarcode_Unchecked(object sender, RoutedEventArgs e)
+        {
+            Settings.Default.UseBarCode = false;
+        }
+
+        private void cbUseOCR_Unchecked(object sender, RoutedEventArgs e)
+        {
+            Settings.Default.UseOCR = false;
         }
     }
 }

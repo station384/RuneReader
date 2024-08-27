@@ -72,6 +72,7 @@
     <PackageReference Include="Vortice.Direct3D11" Version="3.3.4" />
     <PackageReference Include="Vortice.DXGI" Version="3.3.4" />
     <PackageReference Include="Vortice.Mathematics" Version="1.7.6" />
+    <PackageReference Include="ZXing.Net" Version="0.16.9" />
   </ItemGroup>
 
   <ItemGroup>

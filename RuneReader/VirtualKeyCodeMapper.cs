@@ -23,7 +23,7 @@ namespace RuneReader
             {"AF4", (int)VirtualKeyCodes.VirtualKeyStates.VK_F4},   // Durr.....  What would happen if you sent ALT-F4 to the game....   
 
             // Had to remove these keys as that can't be detected using OCR very well.   only about a 30% accuarcy
-           {"-", (int)VirtualKeyCodes.VirtualKeyStates.VK_OEM_MINUS},
+            {"-", (int)VirtualKeyCodes.VirtualKeyStates.VK_OEM_MINUS},
             {"=", 187}, // This key can be different depending on country, i.e.  US its the = key,  Spanish is the ? (upside down)
         };
 
@@ -31,19 +31,20 @@ namespace RuneReader
 
         private static readonly Dictionary<string, int> KeyMappings = new Dictionary<string, int>
         {
-            //{"1", (int)VirtualKeyCodes.VirtualKeyStates.VK_Alphanumeric_1},
-            //{"2", (int)VirtualKeyCodes.VirtualKeyStates.VK_Alphanumeric_2},
-            //{"3", (int)VirtualKeyCodes.VirtualKeyStates.VK_Alphanumeric_3},
-            //{"4", (int)VirtualKeyCodes.VirtualKeyStates.VK_Alphanumeric_4},
-            //{"5", (int)VirtualKeyCodes.VirtualKeyStates.VK_Alphanumeric_5},
-            //{"6", (int)VirtualKeyCodes.VirtualKeyStates.VK_Alphanumeric_6},
-            //{"7", (int)VirtualKeyCodes.VirtualKeyStates.VK_Alphanumeric_7},
-            //{"8", (int)VirtualKeyCodes.VirtualKeyStates.VK_Alphanumeric_8},
-            //{"9", (int)VirtualKeyCodes.VirtualKeyStates.VK_Alphanumeric_9},
-            //{"0", (int)VirtualKeyCodes.VirtualKeyStates.VK_Alphanumeric_0},
+            { "1", (int)VirtualKeyCodes.VirtualKeyStates.VK_Alphanumeric_1},
+            {"2", (int)VirtualKeyCodes.VirtualKeyStates.VK_Alphanumeric_2},
+            {"3", (int)VirtualKeyCodes.VirtualKeyStates.VK_Alphanumeric_3},
+            {"4", (int)VirtualKeyCodes.VirtualKeyStates.VK_Alphanumeric_4},
+            {"5", (int)VirtualKeyCodes.VirtualKeyStates.VK_Alphanumeric_5},
+            {"6", (int)VirtualKeyCodes.VirtualKeyStates.VK_Alphanumeric_6},
+            {"7", (int)VirtualKeyCodes.VirtualKeyStates.VK_Alphanumeric_7},
+            {"8", (int)VirtualKeyCodes.VirtualKeyStates.VK_Alphanumeric_8},
+            {"9", (int)VirtualKeyCodes.VirtualKeyStates.VK_Alphanumeric_9},
+            {"0", (int)VirtualKeyCodes.VirtualKeyStates.VK_Alphanumeric_0},
+            {"-", (int)VirtualKeyCodes.VirtualKeyStates.VK_OEM_MINUS},
+            {"=", 187}, // This key can be different depending on country, i.e.  US its the = key,  Spanish is the ? (upside down)
             // Had to remove these keys as that can't be detected using OCR very well.   only about a 30% accuarcy
-            // {"-", (int)VirtualKeyCodes.VirtualKeyStates.VK_OEM_MINUS},
-          //    {"=", 187}, // This key can be different depending on country, i.e.  US its the = key,  Spanish is the ? (upside down)
+
             {"F1", (int)VirtualKeyCodes.VirtualKeyStates.VK_F1},
             {"F2", (int)VirtualKeyCodes.VirtualKeyStates.VK_F2},
             {"F3", (int)VirtualKeyCodes.VirtualKeyStates.VK_F3},
@@ -84,8 +85,8 @@ namespace RuneReader
             {"AF8", (int)VirtualKeyCodes.VirtualKeyStates.VK_F8},
             {"AF9", (int)VirtualKeyCodes.VirtualKeyStates.VK_F9},
             {"AF10", (int)VirtualKeyCodes.VirtualKeyStates.VK_F10},
-                        {"AF11", (int)VirtualKeyCodes.VirtualKeyStates.VK_F11},
-                                    {"AF12", (int)VirtualKeyCodes.VirtualKeyStates.VK_F12},
+            {"AF11", (int)VirtualKeyCodes.VirtualKeyStates.VK_F11},
+            {"AF12", (int)VirtualKeyCodes.VirtualKeyStates.VK_F12},
                 // ... add additional key mappings as needed
     };
         

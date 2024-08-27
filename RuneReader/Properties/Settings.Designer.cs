@@ -1150,5 +1150,29 @@ namespace RuneReader.Properties {
                 this["PetKey"] = value;
             }
         }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("False")]
+        public bool UseBarCode {
+            get {
+                return ((bool)(this["UseBarCode"]));
+            }
+            set {
+                this["UseBarCode"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("True")]
+        public bool UseOCR {
+            get {
+                return ((bool)(this["UseOCR"]));
+            }
+            set {
+                this["UseOCR"] = value;
+            }
+        }
     }
 }

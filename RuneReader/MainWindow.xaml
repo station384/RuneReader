@@ -37,14 +37,14 @@
                 <StackPanel Width="300">
                 
                     <StackPanel  Orientation="Horizontal" HorizontalAlignment="Center" Margin="20">
-                        <Button x:Name="button_Start" Content="Start" Click="StartButton_Click"  Width="60"  />
-                        <Button x:Name="button_Stop" Content="Stop" Click="StopButton_Click" IsEnabled="False" Width="60"  />
+                        <Button Name="button_Start" Content="Start" Click="StartButton_Click"  Width="60"  />
+                        <Button Name="button_Stop" Content="Stop" Click="StopButton_Click" IsEnabled="False" Width="60"  />
                     </StackPanel>
 
                     <StackPanel Orientation="Vertical" Width="300">
-                        <Button x:Name="button_Capture" Content="Capture" HorizontalAlignment="Center"  VerticalAlignment="Top" Click="Capture_Click" Visibility="Collapsed" ToolTip="Enable/Disable capture frame" Width="150"/>
-                        <Button x:Name="bToggleMagBorder" Content="Toggle Capture Selector" HorizontalAlignment="Center" VerticalAlignment="Top" Click="bToggleMagBorder_Click" Width="150"/>
-                        <Button x:Name="bResetMagPosition" Content="Reset Selection" HorizontalAlignment="Center" VerticalAlignment="Top" Click="bResetMagPosition_Click" Margin="0,5,0,5" ToolTip="Emergecy postion reset of capture frame" Width="150"/>
+                        <Button Name="button_Capture" Content="Capture" HorizontalAlignment="Center"  VerticalAlignment="Top" Click="Capture_Click" Visibility="Collapsed" ToolTip="Enable/Disable capture frame" Width="150"/>
+                        <Button Name="bToggleMagBorder" Content="Toggle Capture Selector" HorizontalAlignment="Center" VerticalAlignment="Top" Click="bToggleMagBorder_Click" Width="150"/>
+                        <Button Name="bResetMagPosition" Content="Reset Selection" HorizontalAlignment="Center" VerticalAlignment="Top" Click="bResetMagPosition_Click" Margin="0,5,0,5" ToolTip="Emergecy postion reset of capture frame" Width="150"/>
                         <Button Click="buPicker_Click" ToolTip="Click on the screen to get the color of the pixel under the cursor" Margin="0,5,0,5" Width="150">Pick Text Color</Button>
                     </StackPanel>
 
@@ -173,6 +173,17 @@
 
         <Expander x:Name="expander" HorizontalAlignment="Center" Height="Auto" Header="Advanced Options" Margin="2,3,0,0" VerticalAlignment="Top" Width="300" >
             <StackPanel Orientation="Vertical">
+                <StackPanel Orientation="Horizontal" Margin="0,5,0,5">
+                    <Label Name="lUseOCR" Content="Use OCR"></Label>
+                    <CheckBox Name="cbUseOCR"   Checked="cbUseOCR_Checked" Unchecked="cbUseOCR_Unchecked" Width="120"/>
+
+                    <Label Name="lUseBarcode" Content="Use Barcode"/>
+
+
+                    <CheckBox Name="cbUseBarcode"   Checked="cbUseBarcode_Checked" Unchecked="cbUseBarcode_Unchecked" Width="120"/>
+
+
+                </StackPanel>
                 <StackPanel Orientation="Horizontal" Margin="0,5,0,5">
                     <Label Content="Activation Key"></Label>
                     <ComboBox x:Name="cbActivationKey" SelectionChanged="cbActivationKey_SelectionChanged" Width="120">
