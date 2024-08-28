@@ -395,8 +395,17 @@ namespace RuneReader
                     regions.BottomLeft = (barcodeResult.WaitTime < 700);
                     regions.TopLeft = (barcodeResult.WaitTime < 500);
 
-                    CurrentKeyToSend = barcodeResult.DecodedTextValue;
-                    BarCodeFound = true;
+                    if (barcodeResult.HasTarget == true)
+                    {
+
+                        CurrentKeyToSend = barcodeResult.DecodedTextValue;
+                    }
+                    else
+                        CurrentKeyToSend = "";
+
+                        BarCodeFound = true;
+           
+            
                 }
                 else
                 {

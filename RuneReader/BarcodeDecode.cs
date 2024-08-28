@@ -15,7 +15,7 @@ namespace RuneReader
 {
     public class BarcodeDecode
     {
-      //  private static BarcodeReaderGeneric BarcodeReaderEngine = new BarcodeReaderGeneric();
+        //  private static BarcodeReaderGeneric BarcodeReaderEngine = new BarcodeReaderGeneric();
         public class BarcodeResult
         {
             public bool BarcodeFound { get; set; }
@@ -23,6 +23,9 @@ namespace RuneReader
             public String DetectedText { get; set; }
             public String DecodedTextValue { get; set; }
             public int WaitTime { get; set; }
+            public bool InCombat { get; set; }
+            public bool HasTarget { get; set; }
+
             public BarcodeResult()
             {
                 //Regions = new System.Windows.Rect[0];
@@ -33,21 +36,21 @@ namespace RuneReader
             }
         }
 
-        private static string DecodeTextValue (string s)
+        private static string DecodeTextValue(string s)
         {
             string result = string.Empty;
             string segment = string.Empty;
-            if (s.Length == 5)
+            if (s.Length >= 5)
             {
                 segment = s.Substring(0, 2);
                 int tInt = 0;
-                    if (int.TryParse(segment, out tInt))
+                if (int.TryParse(segment, out tInt))
                 {
-                        switch (tInt)
-                        {
-                            case 1:
-                                result = "1";
-                                break;
+                    switch (tInt)
+                    {
+                        case 1:
+                            result = "1";
+                            break;
                         case 2:
                             result = "2";
                             break;
@@ -197,8 +200,8 @@ namespace RuneReader
 
                         default:
                             result = string.Empty;
-                                break;
-                        }
+                            break;
+                    }
                 };
 
             }
@@ -212,16 +215,34 @@ namespace RuneReader
         {
             int result = 0;
             string segment = string.Empty;
-            if (s.Length == 5)
+            if (s.Length >= 5)
             {
-                segment = s.Substring(2,3);
-                if (int.TryParse(segment+"00", out result))
-                    {
+                segment = s.Substring(2, 3);
+                if (int.TryParse(segment + "00", out result))
+                {
                     //     result = result;
                     //result = result ;
-                    };
+                };
             }
-            
+
+            return result;
+        }
+
+        private static byte DecodeConditionsBits(string s)
+        {
+            byte result = 0;
+            string segment = string.Empty;
+            if (s.Length >= 6)
+            {
+                segment = s.Substring(5, 1);
+                if (byte.TryParse(segment, out result))
+                {
+                    //     result = result;
+                    //result = result ;
+                };
+
+            }
+
             return result;
         }
 
@@ -255,7 +276,7 @@ namespace RuneReader
             };
             hints.Hints[DecodeHintType.ASSUME_CODE_39_CHECK_DIGIT] = false;
             hints.Hints[DecodeHintType.TRY_HARDER] = false;
-            hints.Hints[DecodeHintType.USE_CODE_39_EXTENDED_MODE] = true;
+            hints.Hints[DecodeHintType.USE_CODE_39_EXTENDED_MODE] = false;
             //hints.Hints[DecodeHintType.ALLOWED_LENGTHS] = 255;
 
             var BarcodeReaderEngine =  new BarcodeReaderGeneric()
@@ -281,6 +302,10 @@ namespace RuneReader
                 result.DetectedText = decodeResult.Text;
                 result.DecodedTextValue = DecodeTextValue(decodeResult.Text);
                 result.WaitTime = DecodeWaitValue(decodeResult.Text);
+                // Bit0 hasTarget Bit1 inCombat Bit3 NotUsed
+                var conditions = DecodeConditionsBits(decodeResult.Text);
+                result.HasTarget = (conditions & (1 << 0)) != 0;
+                result.InCombat = (conditions & (1 << 1)) != 0;
 
             }
             return result;
