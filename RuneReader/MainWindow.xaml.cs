@@ -130,7 +130,7 @@ namespace RuneReader
                 // We don't want to send key repeats if the app is not in focus
                 if (!WindowsAPICalls.IsCurrentWindowWithTitle("World of Warcraft"))
                 {
-                    _timer.IsEnabled = false;
+                    _timer.Stop();
 
                     // Let the key event go thru so the new focused app can handle it
                     keyProcessingFirst = false;
@@ -149,12 +149,12 @@ namespace RuneReader
                             {
                                 _wowWindowHandle = WindowsAPICalls.FindWindow(null, "wow");
                             }
-                            if (_wowWindowHandle != IntPtr.Zero && !_timer.IsEnabled )  
+                            if (_wowWindowHandle != IntPtr.Zero  )  
                             {
                                 activationKeyPressed = true;
                                 keyProcessingFirst = true;
 
-                                _timer.IsEnabled = true;
+                                _timer.Start();
 
                                 // we want the timer to react NOW.   
                                 // mainTimerTick(this, new EventArgs());
@@ -172,7 +172,7 @@ namespace RuneReader
                     {
                         activationKeyPressed = false;
                         keyProcessingFirst = false;
-                        _timer.IsEnabled = false;
+                        _timer.Stop();
   
 
                         handled = true;
@@ -553,11 +553,8 @@ namespace RuneReader
             if (_wowWindowHandle != nint.Zero)
             {
                 DateTime currentD = DateTime.Now;
-                //  ImageCapBorder.BorderBrush = System.Windows.Media.Brushes.Red;
+         
 
-                //CurrentImageRegions.FirstImageRegions.TopLeft = false;
-                //CurrentImageRegions.FirstImageRegions.BottomLeft = false;
-                //CurrentImageRegions.FirstImageRegions.BottomCenter = false;
                 // I keep poking at this trying to figure out how to only send the key press again if a new key is to me pressed.
                 // It fails if the next key to press is the same.
                 // There would have to some logic in the capture to say its a new detection
@@ -575,7 +572,7 @@ namespace RuneReader
                     // keyboards are global so that may work.
                     WindowsAPICalls.PostMessage(_wowWindowHandle, WindowsAPICalls.WM_KEYUP, WindowsAPICalls.VK_CONTROL, 0);
 
-                if (currentKey.Alt) // && AltPressed == false
+                if (currentKey.Alt) 
                     WindowsAPICalls.PostMessage(_wowWindowHandle, WindowsAPICalls.WM_KEYDOWN, WindowsAPICalls.VK_MENU, 0);
                 else
                     // See Notes on CTRL.
@@ -588,8 +585,6 @@ namespace RuneReader
                 // CTRL and ALT do not need to be held down just only pressed initally for the command to be interpeted correctly
                 if (currentKey.Ctrl) WindowsAPICalls.PostMessage(_wowWindowHandle, WindowsAPICalls.WM_KEYUP, WindowsAPICalls.VK_CONTROL, 0); //&& CtrlPressed == true
                 if (currentKey.Alt) WindowsAPICalls.PostMessage(_wowWindowHandle, WindowsAPICalls.WM_KEYUP, WindowsAPICalls.VK_MENU, 0); //&& AltPressed == true
-                //_currentKeyToSend[0] = "";
-                //await Task.Delay(50);  // we want atleast a 150ms delay when pressing and releasing the key. Wow cooldown can be no less that 500 accept for instant not GCD.  we will just have to suffer with those.
 
 
 
@@ -602,8 +597,8 @@ namespace RuneReader
                     DateTime currentMS = DateTime.Now;
 
                     currentMS = DateTime.Now.AddMilliseconds(1000);
-                  
-                    while (currentKey.MaxWaitTime == 0)
+
+                    while (currentKey.MaxWaitTime == 0 && activationKeyPressed == true)
                     {
                         await Task.Delay(1);
                         currentKey.MaxWaitTime = CurrentImageRegions.FirstImageRegions.WaitTime;
@@ -615,40 +610,14 @@ namespace RuneReader
                             return;
                         }
                     }
-                    currentMS = DateTime.Now;
-                    while ( activationKeyPressed == true && currentKey.MaxWaitTime > 200)  // Do this loop till we have see we have a value starting to appear
+                    currentMS = DateTime.Now.AddMilliseconds(currentKey.MaxWaitTime);
+
+                    while (currentMS > DateTime.Now && activationKeyPressed == true)
                     {
-
-
                         await Task.Delay(1);
-              
-                        //DateTime durrWait = DateTime.Now;
-                        //while (currentKey.MaxWaitTime <= 0)
-                        //{
-                        //    await Task.Delay(1);
-                        //    currentKey.MaxWaitTime = CurrentImageRegions.FirstImageRegions.WaitTime;
-                        //    if (durrWait.AddMilliseconds(currentKey.MaxWaitTime) < DateTime.Now)
-                        //    {
-                        //        break;
-                        //    }
-                        //    if (currentMS.AddMilliseconds(7000) < DateTime.Now || activationKeyPressed == false)
-                        //    {
-                        //        break;
-                        //    }
-
-                        //}
-
-                        //if (currentMS.AddMilliseconds(7000) < DateTime.Now || activationKeyPressed == false)  // Max of a 3 second channel  or wait
-                        //{
-                        //    break;
-                        //}
-
                     }
 
-
                     WindowsAPICalls.PostMessage(_wowWindowHandle, WindowsAPICalls.WM_KEYUP, vkCode, 0);
-                    currentKey.MaxWaitTime = CurrentImageRegions.FirstImageRegions.WaitTime;
-                    await Task.Delay(1);
                 }
 
 
@@ -678,7 +647,7 @@ namespace RuneReader
         private async Task ProcessBarCodeKey()
         {
 
-            await Task.Delay(1);
+          
 
             if (activationKeyPressed == false)
             {
@@ -701,14 +670,7 @@ namespace RuneReader
             vkCode = 0;
 
             #region WaitFor a Key to show up
-            //if (CurrentImageRegions.FirstImageRegions.WaitTime == 0 && keyProcessingFirst == true)  // First Image is almost done processing
-            //{
-            //    keyProcessingFirst = false;
-            //    ImageCapBorder.BorderBrush = System.Windows.Media.Brushes.Black;
-            //    goto allDone;
-            //    //return;
-            //}
-            ImageCapBorder.BorderBrush = System.Windows.Media.Brushes.Black;
+
 
             // lets just hang out here till we have a key
             currentD = DateTime.Now;
@@ -720,32 +682,16 @@ namespace RuneReader
                 if (currentD.AddMilliseconds(1000) < DateTime.Now)
                 {
                     goto allDone;
-                    //return;
                 }
             }
 
 
-            currentD = DateTime.Now;
-            while (keyToSendFirst == "" && button_Start.IsEnabled == false && activationKeyPressed == true && (!(VirtualKeyCodeMapper.HasExcludeKey(keyToSendFirst) && BarCodeFound == false) && VirtualKeyCodeMapper.HasKey(keyToSendFirst)))
+            
+            if (  !VirtualKeyCodeMapper.HasKey(keyToSendFirst) )
             {
-                await Task.Delay(1);
-                keyToSendFirst = _currentKeyToSend[0];
-                if (currentD.AddMilliseconds(1000) < DateTime.Now)
-                {
-                    goto allDone;
-                }
+                 goto allDone;
             }
 
-            if (keyToSendFirst == "")
-            {
-                goto allDone;
-            }
-
-            currentD = DateTime.Now;
-            while (CurrentImageRegions.FirstImageRegions.WaitTime != 0 && button_Start.IsEnabled == false && activationKeyPressed == true )
-            {
-                await Task.Delay(1);
-            }
 
             #endregion
             while (ProcessingKey)
@@ -767,8 +713,8 @@ namespace RuneReader
 
 
         allDone:
-            _timer.IsEnabled = true;
-            keyProcessingFirst = true;
+     
+           
             ImageCapBorder.BorderBrush = System.Windows.Media.Brushes.Black;
         }
 
@@ -1277,7 +1223,7 @@ namespace RuneReader
                     button_Start.IsEnabled = false;
                     button_Stop.IsEnabled = true;
                     _TimerWowWindowMonitor.Start();
-                    _timer.IsEnabled = true;
+                    _timer.Start();
 
                 }
             }
@@ -1295,7 +1241,7 @@ namespace RuneReader
                 }
                 button_Start.IsEnabled = true;
                 button_Stop.IsEnabled = false;
-                _timer.IsEnabled = false;
+                _timer.Stop(); 
                 _TimerWowWindowMonitor.Stop();
 
             }
@@ -1508,7 +1454,7 @@ namespace RuneReader
 
             Settings.Default.Save();
 
-            _timer.IsEnabled = false;
+            _timer.Stop();
             _TimerWowWindowMonitor.Stop();
 
 
