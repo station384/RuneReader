@@ -390,7 +390,7 @@ namespace RuneReader
                     regions.TopRight = (barcodeResult.WaitTime < 1000);
                     regions.BottomCenter = (barcodeResult.WaitTime <= 500);
                     regions.BottomLeft = (barcodeResult.WaitTime <= 300);
-                    regions.TopLeft = (barcodeResult.WaitTime <= 200);
+                    regions.TopLeft = (barcodeResult.WaitTime <= 0);
                     regions.WaitTime = barcodeResult.WaitTime;
                     BarCodeFound = true;
                     if (barcodeResult.HasTarget == true || cbIgnoreTargetInfo.IsChecked == true)
@@ -485,14 +485,14 @@ namespace RuneReader
 
         private async void mainTimerTick(object? sender, EventArgs args)
         {
-            if (Settings.Default.UseBarCode)
-            {
-                await ProcessBarCodeKey();
-            } 
-            else
-            {
+            //if (Settings.Default.UseBarCode)
+            //{
+            //    await ProcessBarCodeKey();
+            //} 
+            //else
+            //{
                 await ProcessOCRKey();
-            }
+            
         }
 
        
