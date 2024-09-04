@@ -72,11 +72,13 @@ namespace RuneReader
             if (isCapturing == false)
             { 
             isCapturing = true;
-            captureThread = new Thread(CaptureLoop)
-            {
-                IsBackground = false // Set the thread as a background thread
-
-            };
+                captureThread = new Thread(CaptureLoop)
+                {
+                    IsBackground = false // Set the thread as a background thread
+                    , Priority = ThreadPriority.AboveNormal
+                    
+                   
+                };
             captureThread.Start();
             }
         }
