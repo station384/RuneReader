@@ -168,9 +168,10 @@
                 </StackPanel>
             </StackPanel>
         </StackPanel>
-
-        <CheckBox x:Name="cbStayOnTop" Content="Stay on top" IsChecked="False"  Click="buClickKeepMagOnTop"/>
-
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Stretch">
+            <CheckBox x:Name="cbStayOnTop" Content="Stay on top" IsChecked="False"  Click="buClickKeepMagOnTop"/>
+            <CheckBox  Name="cbIgnoreTargetInfo" Content="Ignore player targeting" IsChecked="False" Click="cbIgnoreTargetInfo_Click"/>
+        </StackPanel>
         <Expander x:Name="expander" HorizontalAlignment="Center" Height="Auto" Header="Advanced Options" Margin="2,3,0,0" VerticalAlignment="Top" Width="300" >
             <StackPanel Orientation="Vertical">
                 <StackPanel Orientation="Horizontal" Margin="0,5,0,5">

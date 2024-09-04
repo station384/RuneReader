@@ -16,6 +16,7 @@ using System.Windows.Threading;
 using System.Linq;
 using MahApps.Metro.Controls;
 using System.Runtime.CompilerServices;
+using static RuneReader.BarcodeDecode;
 
 
 
@@ -46,6 +47,7 @@ namespace RuneReader
 
         private OcrModule ocr = new OcrModule();
         private bool BarCodeFound = false;
+
         
   
 
@@ -382,39 +384,34 @@ namespace RuneReader
             if (Settings.Default.UseBarCode)
             {
 
-
-                //  Cv2.ImShow("WithDelays", grayWithDelays);
-                // Cv2.ImShow("WithDelays", CVMat);
-            //    var lresizedMat = ImageProcessingOpenCV.RescaleImageToNewDpi(CVMat, image.HorizontalResolution, 300);
                 var barcodeResult = BarcodeDecode.DecodeBarcode(CVMat);
                 if (barcodeResult.BarcodeFound)
                 {
-
                     regions.TopRight = (barcodeResult.WaitTime < 1000);
-                    regions.BottomCenter = (barcodeResult.WaitTime < 800);
-                    regions.BottomLeft = (barcodeResult.WaitTime < 700);
-                    regions.TopLeft = (barcodeResult.WaitTime < 500);
-
-                    if (barcodeResult.HasTarget == true)
+                    regions.BottomCenter = (barcodeResult.WaitTime <= 500);
+                    regions.BottomLeft = (barcodeResult.WaitTime <= 300);
+                    regions.TopLeft = (barcodeResult.WaitTime <= 200);
+                    regions.WaitTime = barcodeResult.WaitTime;
+                    BarCodeFound = true;
+                    if (barcodeResult.HasTarget == true || cbIgnoreTargetInfo.IsChecked == true)
                     {
-
                         CurrentKeyToSend = barcodeResult.DecodedTextValue;
+                     
                     }
                     else
+                    {
                         CurrentKeyToSend = "";
-
-                        BarCodeFound = true;
-           
-            
+              
+                    }
                 }
                 else
                 {
                     BarCodeFound = false;
                 }
-            }
+            } 
 
-                // Convert the Image for binay to RGB so we can draw some colored markers on the image
-                Cv2.CvtColor(resizedMat, resizedMat, ColorConversionCodes.BayerBG2RGB);
+            // Convert the Image for binay to RGB so we can draw some colored markers on the image
+            Cv2.CvtColor(resizedMat, resizedMat, ColorConversionCodes.BayerBG2RGB);
 
             // Draw the colored markers
             ImageProcessingOpenCV.DrawMarkers(ref resizedMat);
@@ -488,14 +485,25 @@ namespace RuneReader
 
         private async void mainTimerTick(object? sender, EventArgs args)
         {
- 
+            if (Settings.Default.UseBarCode)
+            {
+                await ProcessBarCodeKey();
+            } 
+            else
+            {
+                await ProcessOCRKey();
+            }
+        }
+
+       
+        private async Task ProcessBarCodeKey()
+        {
             _timer.Stop();
-      
+
             // If key is already processing skip this tick
             if (keyProcessingFirst || keyProcessingSecond)
             {
                 return;
-               
             }
             if (activationKeyPressed == false)
             {
@@ -508,6 +516,7 @@ namespace RuneReader
             DateTime currentD = DateTime.Now;
 
         repeatWithoutDelay:
+
             keyToSendFirst = string.Empty;
             keyToSendSecond = string.Empty;
             vkCode = 0;
@@ -527,12 +536,12 @@ namespace RuneReader
             keyToSendFirst = _currentKeyToSend[0];
             while (keyToSendFirst == "" && button_Start.IsEnabled == false && activationKeyPressed == true)
             {
-                await Task.Delay(1) ;
+                await Task.Delay(1);
                 keyToSendFirst = _currentKeyToSend[0];
-                if ( currentD.AddMilliseconds(1000) < DateTime.Now)
-                { 
+                if (currentD.AddMilliseconds(1000) < DateTime.Now)
+                {
                     keyProcessingFirst = false;
-                    keyProcessingSecond = false ;
+                    keyProcessingSecond = false;
                     goto allDone;
                     //return;
                 }
@@ -540,11 +549,11 @@ namespace RuneReader
 
 
             currentD = DateTime.Now;
-            while (keyToSendFirst == "" && button_Start.IsEnabled == false && activationKeyPressed == true && (!(VirtualKeyCodeMapper.HasExcludeKey(keyToSendFirst) && BarCodeFound==false) && VirtualKeyCodeMapper.HasKey(keyToSendFirst) ))
+            while (keyToSendFirst == "" && button_Start.IsEnabled == false && activationKeyPressed == true && (!(VirtualKeyCodeMapper.HasExcludeKey(keyToSendFirst) && BarCodeFound == false) && VirtualKeyCodeMapper.HasKey(keyToSendFirst)))
             {
                 await Task.Delay(1);
                 keyToSendFirst = _currentKeyToSend[0];
-                if ( currentD.AddMilliseconds(1000) < DateTime.Now)
+                if (currentD.AddMilliseconds(1000) < DateTime.Now)
                 {
                     keyProcessingFirst = false;
                     keyProcessingSecond = false;
@@ -568,7 +577,7 @@ namespace RuneReader
                 // keyToSendFirst = _currentKeyToSend[0];
                 if (Settings.Default.PetKeyEnables == true)
                 {
-                    if (PetKeyVKCode >= 112) {WindowsAPICalls.PostMessage(_wowWindowHandle, WindowsAPICalls.WM_KEYDOWN, WindowsAPICalls.VK_CONTROL, 0);}
+                    if (PetKeyVKCode >= 112) { WindowsAPICalls.PostMessage(_wowWindowHandle, WindowsAPICalls.WM_KEYDOWN, WindowsAPICalls.VK_CONTROL, 0); }
 
                     WindowsAPICalls.PostMessage(_wowWindowHandle, WindowsAPICalls.WM_KEYDOWN, PetKeyVKCode, 0);
                     if (PetKeyVKCode >= 112) { WindowsAPICalls.PostMessage(_wowWindowHandle, WindowsAPICalls.WM_KEYUP, WindowsAPICalls.VK_CONTROL, 0); }
@@ -591,12 +600,12 @@ namespace RuneReader
             keyProcessingFirst = true;
 
 
-       
+
 
 
             if (_wowWindowHandle != nint.Zero)
             {
-      
+
                 ImageCapBorder.BorderBrush = System.Windows.Media.Brushes.Red;
 
                 //CurrentImageRegions.FirstImageRegions.TopLeft = false;
@@ -617,8 +626,8 @@ namespace RuneReader
                     // This should really be peeking in the message buffer to see if the the key is really pressed or not. and only send the up if it is. 
                     // This could also be accomlished buy storing off the value in the message processor and storing a flag local if it saw one or not.
                     // keyboards are global so that may work.
-                    WindowsAPICalls.PostMessage(_wowWindowHandle, WindowsAPICalls.WM_KEYUP, WindowsAPICalls.VK_CONTROL, 0);  
-                
+                    WindowsAPICalls.PostMessage(_wowWindowHandle, WindowsAPICalls.WM_KEYUP, WindowsAPICalls.VK_CONTROL, 0);
+
                 if (keyToSendFirst[0] == 'A') // && AltPressed == false
                     WindowsAPICalls.PostMessage(_wowWindowHandle, WindowsAPICalls.WM_KEYDOWN, WindowsAPICalls.VK_MENU, 0);
                 else
@@ -627,28 +636,30 @@ namespace RuneReader
 
                 // Press the command Key Down
                 WindowsAPICalls.PostMessage(_wowWindowHandle, WindowsAPICalls.WM_KEYDOWN, vkCode, 0);
-             //   tbCommandLog.Text = tbCommandLog.Text + "I1-"+keyToSendFirst + "\r";
+                //   tbCommandLog.Text = tbCommandLog.Text + "I1-"+keyToSendFirst + "\r";
 
 
                 // CTRL and ALT do not need to be held down just only pressed initally for the command to be interpeted correctly
-                if (keyToSendFirst[0] == 'C' ) WindowsAPICalls.PostMessage(_wowWindowHandle, WindowsAPICalls.WM_KEYUP, WindowsAPICalls.VK_CONTROL, 0); //&& CtrlPressed == true
-                if (keyToSendFirst[0] == 'A' ) WindowsAPICalls.PostMessage(_wowWindowHandle, WindowsAPICalls.WM_KEYUP, WindowsAPICalls.VK_MENU, 0); //&& AltPressed == true
+                if (keyToSendFirst[0] == 'C') WindowsAPICalls.PostMessage(_wowWindowHandle, WindowsAPICalls.WM_KEYUP, WindowsAPICalls.VK_CONTROL, 0); //&& CtrlPressed == true
+                if (keyToSendFirst[0] == 'A') WindowsAPICalls.PostMessage(_wowWindowHandle, WindowsAPICalls.WM_KEYUP, WindowsAPICalls.VK_MENU, 0); //&& AltPressed == true
                 //_currentKeyToSend[0] = "";
-                await Task.Delay(50) ;  // we want atleast a 150ms delay when pressing and releasing the key. Wow cooldown can be no less that 500 accept for instant not GCD.  we will just have to suffer with those.
+                await Task.Delay(50);  // we want atleast a 150ms delay when pressing and releasing the key. Wow cooldown can be no less that 500 accept for instant not GCD.  we will just have to suffer with those.
 
 
 
 
-
+                await Task.Delay(1);
                 if (_keyPressMode)
                 {
 
                     currentD = DateTime.Now;
+
+                    await Task.Delay(50);
                     while (CurrentImageRegions.FirstImageRegions.BottomLeft == false && button_Start.IsEnabled == false && activationKeyPressed == true)  // Do this loop till we have see we have a value starting to appear
                     {
-           
+
                         await Task.Delay(1);
-                       
+
                         if (Settings.Default.PetKeyEnables == true)
                         {
                             if (PetKeyVKCode >= 112)
@@ -666,20 +677,18 @@ namespace RuneReader
                         }
 
                         if (currentD.AddMilliseconds(7000) < DateTime.Now)  // Max of a 3 second channel  or wait
-
                         {
-                            keyProcessingFirst = false;
-                            keyProcessingSecond = false;
                             break;
                         }
 
                     }
 
+
                     WindowsAPICalls.PostMessage(_wowWindowHandle, WindowsAPICalls.WM_KEYUP, vkCode, 0);
                 }
-         
-              
-         
+
+
+
 
 
 
@@ -703,26 +712,242 @@ namespace RuneReader
                 keyProcessingSecond = false;
             }
 
-           
-            allDone:
+
+        allDone:
             keyProcessingFirst = false;
             keyProcessingSecond = false;
             //   if (activationKeyPressed) _timer.Start();
             ImageCapBorder.BorderBrush = System.Windows.Media.Brushes.Black;
             if (activationKeyPressed == true)
                 _timer.Start();
-
-
-
         }
 
-        // Method to open the MagnifierWindow
-        private void OpenMagnifierWindow()
+
+        private async Task ProcessOCRKey()
         {
-            magnifier.Show();
-            magnifier2.Show();
-        }
+            _timer.Stop();
 
+            // If key is already processing skip this tick
+            if (keyProcessingFirst || keyProcessingSecond)
+            {
+                return;
+            }
+            if (activationKeyPressed == false)
+            {
+                return;
+            }
+
+            var keyToSendFirst = string.Empty;
+            var keyToSendSecond = string.Empty;
+            int vkCode = 0;
+            DateTime currentD = DateTime.Now;
+
+        repeatWithoutDelay:
+
+            keyToSendFirst = string.Empty;
+            keyToSendSecond = string.Empty;
+            vkCode = 0;
+
+            if (CurrentImageRegions.FirstImageRegions.TopRight == false && keyProcessingFirst == true)  // First Image is almost done processing
+            {
+                keyProcessingFirst = false;
+                keyProcessingSecond = false;
+                ImageCapBorder.BorderBrush = System.Windows.Media.Brushes.Black;
+                goto allDone;
+                //return;
+            }
+
+            // lets just hang out here till we have a key
+            currentD = DateTime.Now;
+
+            keyToSendFirst = _currentKeyToSend[0];
+            while (keyToSendFirst == "" && button_Start.IsEnabled == false && activationKeyPressed == true)
+            {
+                await Task.Delay(1);
+                keyToSendFirst = _currentKeyToSend[0];
+                if (currentD.AddMilliseconds(1000) < DateTime.Now)
+                {
+                    keyProcessingFirst = false;
+                    keyProcessingSecond = false;
+                    goto allDone;
+                    //return;
+                }
+            }
+
+
+            currentD = DateTime.Now;
+            while (keyToSendFirst == "" && button_Start.IsEnabled == false && activationKeyPressed == true && (!(VirtualKeyCodeMapper.HasExcludeKey(keyToSendFirst) && BarCodeFound == false) && VirtualKeyCodeMapper.HasKey(keyToSendFirst)))
+            {
+                await Task.Delay(1);
+                keyToSendFirst = _currentKeyToSend[0];
+                if (currentD.AddMilliseconds(1000) < DateTime.Now)
+                {
+                    keyProcessingFirst = false;
+                    keyProcessingSecond = false;
+                    //return;
+                    goto allDone;
+                }
+            }
+
+            if (keyToSendFirst == "")
+            {
+                keyProcessingFirst = false;
+                keyProcessingSecond = false;
+                // return;
+                goto allDone;
+            }
+
+            currentD = DateTime.Now;
+            while (CurrentImageRegions.FirstImageRegions.TopLeft == false && button_Start.IsEnabled == false && activationKeyPressed == true && (!(VirtualKeyCodeMapper.HasExcludeKey(keyToSendFirst) && BarCodeFound == false) && VirtualKeyCodeMapper.HasKey(keyToSendFirst)))
+            {
+                await Task.Delay(1);
+                // keyToSendFirst = _currentKeyToSend[0];
+                if (Settings.Default.PetKeyEnables == true)
+                {
+                    if (PetKeyVKCode >= 112) { WindowsAPICalls.PostMessage(_wowWindowHandle, WindowsAPICalls.WM_KEYDOWN, WindowsAPICalls.VK_CONTROL, 0); }
+
+                    WindowsAPICalls.PostMessage(_wowWindowHandle, WindowsAPICalls.WM_KEYDOWN, PetKeyVKCode, 0);
+                    if (PetKeyVKCode >= 112) { WindowsAPICalls.PostMessage(_wowWindowHandle, WindowsAPICalls.WM_KEYUP, WindowsAPICalls.VK_CONTROL, 0); }
+
+                    await Task.Delay(50);
+                    WindowsAPICalls.PostMessage(_wowWindowHandle, WindowsAPICalls.WM_KEYUP, PetKeyVKCode, 0);
+
+                }
+
+                if (currentD.AddMilliseconds(3000) < DateTime.Now)
+                {
+                    keyProcessingFirst = false;
+                    keyProcessingSecond = false;
+                    //return;
+                    goto allDone;
+                }
+            }
+
+
+            keyProcessingFirst = true;
+
+
+
+
+
+            if (_wowWindowHandle != nint.Zero)
+            {
+
+                ImageCapBorder.BorderBrush = System.Windows.Media.Brushes.Red;
+
+                //CurrentImageRegions.FirstImageRegions.TopLeft = false;
+                //CurrentImageRegions.FirstImageRegions.BottomLeft = false;
+                //CurrentImageRegions.FirstImageRegions.BottomCenter = false;
+                // I keep poking at this trying to figure out how to only send the key press again if a new key is to me pressed.
+                // It fails if the next key to press is the same.
+                // There would have to some logic in the capture to say its a new detection
+
+                // Tranlate the char to the virtual Key Code
+                vkCode = VirtualKeyCodeMapper.GetVirtualKeyCode(keyToSendFirst);
+
+                // command is tied to CTRL or ALT So have to press them
+                if (keyToSendFirst[0] == 'C') //&& CtrlPressed == false
+                    WindowsAPICalls.PostMessage(_wowWindowHandle, WindowsAPICalls.WM_KEYDOWN, WindowsAPICalls.VK_CONTROL, 0);
+                else
+                    // Command isn't tied to CTRL so send a CTRL Up.
+                    // This should really be peeking in the message buffer to see if the the key is really pressed or not. and only send the up if it is. 
+                    // This could also be accomlished buy storing off the value in the message processor and storing a flag local if it saw one or not.
+                    // keyboards are global so that may work.
+                    WindowsAPICalls.PostMessage(_wowWindowHandle, WindowsAPICalls.WM_KEYUP, WindowsAPICalls.VK_CONTROL, 0);
+
+                if (keyToSendFirst[0] == 'A') // && AltPressed == false
+                    WindowsAPICalls.PostMessage(_wowWindowHandle, WindowsAPICalls.WM_KEYDOWN, WindowsAPICalls.VK_MENU, 0);
+                else
+                    // See Notes on CTRL.
+                    WindowsAPICalls.PostMessage(_wowWindowHandle, WindowsAPICalls.WM_KEYUP, WindowsAPICalls.VK_MENU, 0);
+
+                // Press the command Key Down
+                WindowsAPICalls.PostMessage(_wowWindowHandle, WindowsAPICalls.WM_KEYDOWN, vkCode, 0);
+                //   tbCommandLog.Text = tbCommandLog.Text + "I1-"+keyToSendFirst + "\r";
+
+
+                // CTRL and ALT do not need to be held down just only pressed initally for the command to be interpeted correctly
+                if (keyToSendFirst[0] == 'C') WindowsAPICalls.PostMessage(_wowWindowHandle, WindowsAPICalls.WM_KEYUP, WindowsAPICalls.VK_CONTROL, 0); //&& CtrlPressed == true
+                if (keyToSendFirst[0] == 'A') WindowsAPICalls.PostMessage(_wowWindowHandle, WindowsAPICalls.WM_KEYUP, WindowsAPICalls.VK_MENU, 0); //&& AltPressed == true
+                //_currentKeyToSend[0] = "";
+                await Task.Delay(50);  // we want atleast a 150ms delay when pressing and releasing the key. Wow cooldown can be no less that 500 accept for instant not GCD.  we will just have to suffer with those.
+
+
+
+
+                await Task.Delay(1);
+                if (_keyPressMode)
+                {
+
+                    currentD = DateTime.Now;
+
+                    await Task.Delay(50);
+                    while (CurrentImageRegions.FirstImageRegions.BottomLeft == false && button_Start.IsEnabled == false && activationKeyPressed == true)  // Do this loop till we have see we have a value starting to appear
+                    {
+
+                        await Task.Delay(1);
+
+                        if (Settings.Default.PetKeyEnables == true)
+                        {
+                            if (PetKeyVKCode >= 112)
+                            {
+                                WindowsAPICalls.PostMessage(_wowWindowHandle, WindowsAPICalls.WM_KEYDOWN, WindowsAPICalls.VK_CONTROL, 0);
+                            }
+
+                            WindowsAPICalls.PostMessage(_wowWindowHandle, WindowsAPICalls.WM_KEYDOWN, PetKeyVKCode, 0);
+                            if (PetKeyVKCode >= 112)
+                            { WindowsAPICalls.PostMessage(_wowWindowHandle, WindowsAPICalls.WM_KEYUP, WindowsAPICalls.VK_CONTROL, 0); }
+
+                            await Task.Delay(50);
+                            WindowsAPICalls.PostMessage(_wowWindowHandle, WindowsAPICalls.WM_KEYUP, PetKeyVKCode, 0);
+
+                        }
+
+                        if (currentD.AddMilliseconds(7000) < DateTime.Now)  // Max of a 3 second channel  or wait
+                        {
+                            break;
+                        }
+
+                    }
+
+
+                    WindowsAPICalls.PostMessage(_wowWindowHandle, WindowsAPICalls.WM_KEYUP, vkCode, 0);
+                }
+
+
+
+
+
+
+                // If where not watching for when things time out, we insert a hard delay
+                if (!_keyPressMode)
+                {
+                    await Task.Delay(Random.Shared.Next() % 5 + CurrentKeyDownDelayMS).ConfigureAwait(true);
+                    WindowsAPICalls.PostMessage(_wowWindowHandle, WindowsAPICalls.WM_KEYUP, vkCode, 0);
+                }
+
+
+                if (_currentKeyToSend[0] != "" && button_Start.IsEnabled == false && activationKeyPressed == true)
+                {
+                    goto repeatWithoutDelay;
+                }
+
+
+
+                // Let up on the command key
+                keyProcessingFirst = false;
+                keyProcessingSecond = false;
+            }
+
+
+        allDone:
+            keyProcessingFirst = false;
+            keyProcessingSecond = false;
+            //   if (activationKeyPressed) _timer.Start();
+            ImageCapBorder.BorderBrush = System.Windows.Media.Brushes.Black;
+            if (activationKeyPressed == true)
+                _timer.Start();
+        }
 
         public MainWindow()
         {
@@ -912,6 +1137,16 @@ namespace RuneReader
             ImageCap2Border.Visibility = cbUse2ndImage.IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
             lDetectedValue2.Visibility = ImageCap2Border.Visibility; // no need to reeval the vars, we already know.  (yeah this can be done in xaml bindings..  but right now I don't know how and don't feel like looking it up.)
             ImageCap2Border.Visibility = Visibility.Visible;
+
+            if (Settings.Default.IgnoreTargetingInfo == true)
+            {
+                cbIgnoreTargetInfo.IsChecked =  true;
+            }
+            else
+            {
+                cbIgnoreTargetInfo.IsChecked = false;
+
+            }
 
             this.Topmost = Settings.Default.KeepOnTop;
 
@@ -1205,6 +1440,12 @@ namespace RuneReader
             }
         }
 
+        // Method to open the MagnifierWindow
+        private void OpenMagnifierWindow()
+        {
+            magnifier.Show();
+            magnifier2.Show();
+        }
 
         private void Window_Closed(object sender, EventArgs e)
         {
@@ -1922,9 +2163,6 @@ namespace RuneReader
 
 
         }
-
-        #endregion
-
         private void cbPetAttackKey_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
 
@@ -1933,7 +2171,7 @@ namespace RuneReader
             {
                 if (((ComboBox)e.Source).SelectedItem != null)
                 {
-                    PetKeyVKCode = VirtualKeyCodeMapper.GetVirtualKeyCode( ((ComboBoxItem)((ComboBox)e.Source).SelectedItem).Content.ToString() );
+                    PetKeyVKCode = VirtualKeyCodeMapper.GetVirtualKeyCode(((ComboBoxItem)((ComboBox)e.Source).SelectedItem).Content.ToString());
                 }
             }
         }
@@ -1973,5 +2211,28 @@ namespace RuneReader
         {
             Settings.Default.UseOCR = false;
         }
+
+        private void cbIgnoreTargetInfo_Click(object sender, RoutedEventArgs e)
+        {
+            if (cbIgnoreTargetInfo.IsChecked == null)
+            {
+                Settings.Default.IgnoreTargetingInfo = true;
+            }
+            else
+            {
+                if (cbIgnoreTargetInfo.IsChecked.Value)
+                {
+                    Settings.Default.IgnoreTargetingInfo = true;
+                }
+                else
+                {
+                    Settings.Default.IgnoreTargetingInfo = false;
+                }
+            }
+
+        }
+        #endregion
+
+
     }
 }
