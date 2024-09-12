@@ -31,8 +31,9 @@ namespace RuneReader
         public bool Shift { get; private set; } = false;
         public string Key { get; private set; } = string.Empty;
         public int MaxWaitTime { get;  set; } = 0;
+        public bool HasTarget { get; set; } = false;
 
-        public KeyCommand(string key, int maxWaitTime)
+        public KeyCommand(string key, int maxWaitTime, bool hasTarget)
         {
             if (!string.IsNullOrEmpty(key))
             {
@@ -40,6 +41,7 @@ namespace RuneReader
                 if (key[0] == 'A') { Alt = true; }
                 if (key[0] == 'S') { Shift = true; }
                 MaxWaitTime = maxWaitTime;
+                HasTarget = hasTarget;
                 Key = key;
             }
         }
@@ -418,6 +420,7 @@ namespace RuneReader
                     regions.BottomLeft = (barcodeResult.WaitTime <= 300);
                     regions.TopLeft = (barcodeResult.WaitTime <= 0);
                     regions.WaitTime = barcodeResult.WaitTime;
+                    regions.HasTarget = barcodeResult.HasTarget;
                     BarCodeFound = true;
                     if (barcodeResult.HasTarget == true || cbIgnoreTargetInfo.IsChecked == true)
                     {
@@ -527,7 +530,7 @@ namespace RuneReader
      
             //_timer.IsEnabled = false;
             if (activationKeyPressed == true)
-            if (Settings.Default.UseBarCode && BarCodeFound)
+            if (Settings.Default.UseBarCode )
             {
                 
                     await ProcessBarCodeKey();  
@@ -542,19 +545,31 @@ namespace RuneReader
             //    _timer.IsEnabled = true;
         }
 
+        
+        
+        
+        
         private bool ProcessingKey = false;
         private async Task ProcessKey()
         {
            
             if (KeyCommandStack.Count == 0) return;
-            ProcessingKey = true;
+           // ProcessingKey = true;
             KeyCommand currentKey = KeyCommandStack.Pop();
     
             if (_wowWindowHandle != nint.Zero)
             {
                 DateTime currentD = DateTime.Now;
-         
 
+                if (currentKey.Alt == true && currentKey.Key == "F4")  // Some how AF4 got thru and killed wow.   so I want to Explictly ignore it.  I will never allow ALT-F4
+                {
+                    return;
+                }
+                if (WindowsAPICalls.IsKeyPressed(WindowsAPICalls.VK_MENU) && currentKey.Key == "F4")  // Alt key was pressed so don't want that
+                {
+                    return;
+                }
+ 
                 // I keep poking at this trying to figure out how to only send the key press again if a new key is to me pressed.
                 // It fails if the next key to press is the same.
                 // There would have to some logic in the capture to say its a new detection
@@ -571,21 +586,29 @@ namespace RuneReader
                     // This could also be accomlished buy storing off the value in the message processor and storing a flag local if it saw one or not.
                     // keyboards are global so that may work.
                     WindowsAPICalls.PostMessage(_wowWindowHandle, WindowsAPICalls.WM_KEYUP, WindowsAPICalls.VK_CONTROL, 0);
-
+             
                 if (currentKey.Alt) 
                     WindowsAPICalls.PostMessage(_wowWindowHandle, WindowsAPICalls.WM_KEYDOWN, WindowsAPICalls.VK_MENU, 0);
                 else
                     // See Notes on CTRL.
                     WindowsAPICalls.PostMessage(_wowWindowHandle, WindowsAPICalls.WM_KEYUP, WindowsAPICalls.VK_MENU, 0);
 
+
+
                 // Press the command Key Down
-                WindowsAPICalls.PostMessage(_wowWindowHandle, WindowsAPICalls.WM_KEYDOWN, vkCode, 0);
+                //if (WindowsAPICalls.IsKeyPressed(vkCode))
+                //{
+                //    WindowsAPICalls.PostMessage(_wowWindowHandle, WindowsAPICalls.WM_KEYUP, vkCode, 0);
+                //}
+                    WindowsAPICalls.PostMessage(_wowWindowHandle, WindowsAPICalls.WM_KEYDOWN, vkCode, 0);
+              
 
 
                 // CTRL and ALT do not need to be held down just only pressed initally for the command to be interpeted correctly
                 if (currentKey.Ctrl) WindowsAPICalls.PostMessage(_wowWindowHandle, WindowsAPICalls.WM_KEYUP, WindowsAPICalls.VK_CONTROL, 0); //&& CtrlPressed == true
+            
                 if (currentKey.Alt) WindowsAPICalls.PostMessage(_wowWindowHandle, WindowsAPICalls.WM_KEYUP, WindowsAPICalls.VK_MENU, 0); //&& AltPressed == true
-
+        
 
 
 
@@ -594,30 +617,41 @@ namespace RuneReader
                 if (_keyPressMode )
                 {
 
-                    DateTime currentMS = DateTime.Now;
+                    DateTime  currentMS = DateTime.Now;
 
-                    currentMS = DateTime.Now.AddMilliseconds(1000);
+                    currentMS = DateTime.Now.AddMilliseconds(200);
 
-                    while (currentKey.MaxWaitTime == 0 && activationKeyPressed == true)
+                    while (currentKey.MaxWaitTime == 0 && activationKeyPressed == true )
                     {
                         await Task.Delay(1);
                         currentKey.MaxWaitTime = CurrentImageRegions.FirstImageRegions.WaitTime;
-                        if (DateTime.Now > currentMS)
+                        if (DateTime.Now > currentMS )
                         {
-
-                            WindowsAPICalls.PostMessage(_wowWindowHandle, WindowsAPICalls.WM_KEYUP, vkCode, 0);
-                            ProcessingKey = false;
-                            return;
+                            goto alldone;
                         }
                     }
                     currentMS = DateTime.Now.AddMilliseconds(currentKey.MaxWaitTime);
+                    DateTime MaxWaitTime = DateTime.Now.AddSeconds(8);
 
-                    while (currentMS > DateTime.Now && activationKeyPressed == true)
+                    while ((currentMS >= DateTime.Now && currentKey.MaxWaitTime != 0) && activationKeyPressed == true )
                     {
+
                         await Task.Delay(1);
+                        currentKey.MaxWaitTime = CurrentImageRegions.FirstImageRegions.WaitTime;
+                        if (currentKey.MaxWaitTime <= 500)
+                        {
+
+                            //This is so we can exit early and start the next key.   BUT we still need to finish this one.  
+                            //await Task.Yield();
+                           // goto alldone;
+                        }
+                        if (DateTime.Now > MaxWaitTime)
+                        {
+                            goto alldone;
+                        }
                     }
 
-                    WindowsAPICalls.PostMessage(_wowWindowHandle, WindowsAPICalls.WM_KEYUP, vkCode, 0);
+               
                 }
 
 
@@ -629,14 +663,15 @@ namespace RuneReader
                 if (!_keyPressMode)
                 {
                     await Task.Delay(Random.Shared.Next() % 5 + CurrentKeyDownDelayMS).ConfigureAwait(true);
-                    WindowsAPICalls.PostMessage(_wowWindowHandle, WindowsAPICalls.WM_KEYUP, vkCode, 0);
                 }
-
-
+            alldone:
+                WindowsAPICalls.PostMessage(_wowWindowHandle, WindowsAPICalls.WM_KEYUP, vkCode, 0);
+                await Task.Delay(1);
 
             }
 
-            ProcessingKey = false;
+        
+         //   ProcessingKey = false;
             return;
        
         }
@@ -675,11 +710,11 @@ namespace RuneReader
             // lets just hang out here till we have a key
             currentD = DateTime.Now;
             keyToSendFirst = _currentKeyToSend[0];
-            while (keyToSendFirst == "" && button_Start.IsEnabled == false && activationKeyPressed == true)
+            while (keyToSendFirst == "" && button_Start.IsEnabled == false && activationKeyPressed == true )
             {
                 await Task.Delay(1);
                 keyToSendFirst = _currentKeyToSend[0];
-                if (currentD.AddMilliseconds(1000) < DateTime.Now)
+                if (currentD.AddMilliseconds(5000) < DateTime.Now)
                 {
                     goto allDone;
                 }
@@ -694,13 +729,14 @@ namespace RuneReader
 
 
             #endregion
-            while (ProcessingKey)
-            {
-                await Task.Delay(1);
-            }
-            KeyCommandStack.Push(new KeyCommand(keyToSendFirst, CurrentImageRegions.FirstImageRegions.WaitTime));
+            //while (ProcessingKey)
+            //{
+            //    await Task.Delay(1);
+            //}
+            KeyCommandStack.Push(new KeyCommand(keyToSendFirst, CurrentImageRegions.FirstImageRegions.WaitTime, CurrentImageRegions.FirstImageRegions.HasTarget));
             //ProcessingKey = true;
             await ProcessKey();
+         
 
 
 
@@ -1175,7 +1211,7 @@ namespace RuneReader
 
             //This timer needs to go away and be converted into a thread.
             _timer = new System.Windows.Threading.DispatcherTimer(DispatcherPriority.Normal);
-            _timer.Interval = TimeSpan.FromMilliseconds(25);
+            _timer.Interval = TimeSpan.FromMilliseconds(10);
             _timer.Tick += mainTimerTick;
 
             _timer.IsEnabled = false ;

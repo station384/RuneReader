@@ -7,6 +7,7 @@
         public bool BottomLeft = false;
         public bool BottomCenter = false;
         public int WaitTime = 0;
+        public bool HasTarget { get; internal set; }
 
         public DetectionRegions()
         {
@@ -15,7 +16,10 @@
             BottomLeft = false;
             BottomCenter = false;
             WaitTime = 0;
+            HasTarget = false;
         }
+
+   
     }
     public class ImageRegions
     {
