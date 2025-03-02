@@ -285,7 +285,7 @@ namespace RuneReader
                 TryInverted = false,
                 Options = hints
             };
-            BarcodeReaderEngine.AutoRotate = true;
+            BarcodeReaderEngine.AutoRotate = false;
             //BarcodeReaderEngine.TryInverted = true;
 
 

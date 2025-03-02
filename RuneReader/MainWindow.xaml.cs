@@ -17,21 +17,46 @@ using System.Linq;
 using MahApps.Metro.Controls;
 using System.Runtime.CompilerServices;
 using static RuneReader.BarcodeDecode;
+using System.Threading;
 
 
 
 namespace RuneReader
 {
 
+    public class KeyCommand
+    {
+        public bool Alt { get; private set; } = false;
+        public bool Ctrl { get; private set; } = false;
+        public bool Shift { get; private set; } = false;
+        public string Key { get; private set; } = string.Empty;
+        public int MaxWaitTime { get;  set; } = 0;
+        public bool HasTarget { get; set; } = false;
+
+        public KeyCommand(string key, int maxWaitTime, bool hasTarget)
+        {
+            if (!string.IsNullOrEmpty(key))
+            {
+                if (key[0] == 'C') { Ctrl = true; }
+                if (key[0] == 'A') { Alt = true; }
+                if (key[0] == 'S') { Shift = true; }
+                MaxWaitTime = maxWaitTime;
+                HasTarget = hasTarget;
+                Key = key;
+            }
+        }
+    }
+
     public partial class MainWindow : MetroWindow
     {
 
 
+        private  Stack<KeyCommand> KeyCommandStack = new Stack<KeyCommand> ();
+
         private  string[] _currentKeyToSend = new string[] { string.Empty, string.Empty }; // Default key to send, can be changed dynamically
 
         private volatile bool keyProcessingFirst = false;
-        private volatile bool keyProcessingSecond = false;
-        private volatile bool activationKeyPressed = false;
+        private  bool activationKeyPressed = false;
 
 
         private volatile int[] _DetectedSameCount = new int[2] { 0, 0 };
@@ -53,7 +78,7 @@ namespace RuneReader
 
         private MagnifierWindow magnifier;
         private MagnifierWindow magnifier2;
-        private ImageRegions CurrentImageRegions = new ImageRegions();
+        private volatile ImageRegions CurrentImageRegions = new ImageRegions();
         private DispatcherTimer _timer;
         private DispatcherTimer _TimerWowWindowMonitor; // This timer is here just incase the game closes and is reopened, this will catch the new window ID.
 
@@ -95,7 +120,8 @@ namespace RuneReader
         private bool AltPressed = false;
         private bool CtrlPressed = false;
 
-
+        private DateTime keypressStart = DateTime.MinValue;
+        private DateTime keypressEnd = DateTime.MinValue;
         private IntPtr HookCallbackActionKey(int nCode, IntPtr wParam, IntPtr lParam)
         {
             bool handled = false;
@@ -111,7 +137,6 @@ namespace RuneReader
 
                     // Let the key event go thru so the new focused app can handle it
                     keyProcessingFirst = false;
-                    keyProcessingSecond = false;
                     activationKeyPressed = false;
 
                     handled = false;
@@ -119,22 +144,28 @@ namespace RuneReader
                 else
                 {
                     var item = ActivationKeyCodeMapper.GetVirtualKeyCode(Settings.Default.ActivationKey);
-                    if (keyProcessingFirst == false || keyProcessingSecond == false)
+                    if (keyProcessingFirst == false)
+                    {
                         if (wParam == (IntPtr)WindowsAPICalls.WM_KEYDOWN && (int)key == item)
                         {
                             // Find the window with the title "wow" only if we haven't already found it
                             if (_wowWindowHandle == IntPtr.Zero)
                             {
-                                _wowWindowHandle = WindowsAPICalls.FindWindow(null, "wow");
+                                _wowWindowHandle =  WindowsAPICalls.FindWowWindow("World of Warcraft");
                             }
-                            if (_wowWindowHandle != IntPtr.Zero && !_timer.IsEnabled )  
+                            if (_wowWindowHandle != IntPtr.Zero)
                             {
                                 activationKeyPressed = true;
-
+                                keyProcessingFirst = true;
 
                                 _timer.Start();
+
                                 // we want the timer to react NOW.   
-                                mainTimerTick(this, new EventArgs());
+                                // mainTimerTick(this, new EventArgs());
+                                keypressStart = DateTime.Now;
+                                keypressEnd = DateTime.MinValue; 
+
+
 
                                 // Don't let the message go thru.  this blocks the game from seeing the key press
                                 handled = true;
@@ -142,12 +173,13 @@ namespace RuneReader
 
 
                         }
+                    }
                     if (wParam == (IntPtr)WindowsAPICalls.WM_KEYUP && (int)key == item)
                     {
                         activationKeyPressed = false;
-
+                        keyProcessingFirst = false;
                         _timer.Stop();
-  
+                        keypressEnd = DateTime.Now;
 
                         handled = true;
                     }
@@ -176,10 +208,24 @@ namespace RuneReader
 
             // If the keypress has been handled, return a non-zero value.
             // Otherwise, call the next hook in the chain.
-
-            return WindowsAPICalls.CallNextHookEx(_hookID, nCode, wParam, lParam); // Doesn't lock explorer but does not consume the event.
+            //if (_currentKeyToSend[0] != "" )
+            //    return handled ? (IntPtr)1: WindowsAPICalls.CallNextHookEx(_hookID, nCode, wParam, lParam); // Blocks input to game does not block windows
+            //else
+            //                return WindowsAPICalls.CallNextHookEx(_hookID, nCode, wParam, lParam); // Doesn't lock explorer but does not consume the event.
             // return handled ? (IntPtr)0:CallNextHookEx(_hookID, nCode, wParam, lParam); // Locks explorer
-            // return handled ? (IntPtr)1:CallNextHookEx(_hookID, nCode, wParam, lParam); // Blocks input to game does not block windows
+
+            if (KeyCommandStack.Count > 0)
+            {
+                return handled ? (IntPtr)1 : WindowsAPICalls.CallNextHookEx(_hookID, nCode, wParam, lParam); // Blocks input to game does not block windows
+            }
+            if (keypressEnd != DateTime.MinValue && keypressEnd.Subtract(keypressStart).Milliseconds < 100 )
+            { 
+                return handled ? (IntPtr)1 : WindowsAPICalls.CallNextHookEx(_hookID, nCode, wParam, lParam); // Blocks input to game does not block windows
+            }
+            else
+            {
+                return WindowsAPICalls.CallNextHookEx(_hookID, nCode, wParam, lParam); // Doesn't lock explorer but does not consume the event.
+            }
         }
 
         private string OCRProcess(Bitmap b, System.Windows.Rect region)
@@ -390,8 +436,9 @@ namespace RuneReader
                     regions.TopRight = (barcodeResult.WaitTime < 1000);
                     regions.BottomCenter = (barcodeResult.WaitTime <= 500);
                     regions.BottomLeft = (barcodeResult.WaitTime <= 300);
-                    regions.TopLeft = (barcodeResult.WaitTime <= 200);
+                    regions.TopLeft = (barcodeResult.WaitTime <= 0);
                     regions.WaitTime = barcodeResult.WaitTime;
+                    regions.HasTarget = barcodeResult.HasTarget;
                     BarCodeFound = true;
                     if (barcodeResult.HasTarget == true || cbIgnoreTargetInfo.IsChecked == true)
                     {
@@ -411,16 +458,29 @@ namespace RuneReader
             } 
 
             // Convert the Image for binay to RGB so we can draw some colored markers on the image
+//                Cv2.CvtColor(CVMat, resizedMat, ColorConversionCodes.BayerBG2RGB);
             Cv2.CvtColor(resizedMat, resizedMat, ColorConversionCodes.BayerBG2RGB);
 
             // Draw the colored markers
             ImageProcessingOpenCV.DrawMarkers(ref resizedMat);
 
             // Push the new image out the the first image,  this has the markers and delays
-            OutImageSource = BitmapSourceConverter.ToBitmapSource(resizedMat);
+            if (BarCodeFound)
+
+                OutImageSource = BitmapSourceConverter.ToBitmapSource(CVMat);
+         
+            
+            else
+                OutImageSource = BitmapSourceConverter.ToBitmapSource(resizedMat);
+
+
             DisplayControl.Source = OutImageSource;
 
             // Push the image that doesn't have delays out to the second display.   This image is what is OCRed on.
+            if (BarCodeFound)
+
+                OutImageSource = BitmapSourceConverter.ToBitmapSource(CVMat);
+            else
             OutImageSource = BitmapSourceConverter.ToBitmapSource(grayWithoutDelays);
             DisplayControlDelays.Source = OutImageSource;
 
@@ -485,141 +545,60 @@ namespace RuneReader
 
         private async void mainTimerTick(object? sender, EventArgs args)
         {
-            if (Settings.Default.UseBarCode)
+     
+            //_timer.IsEnabled = false;
+            if (activationKeyPressed == true)
+            if (Settings.Default.UseBarCode )
             {
-                await ProcessBarCodeKey();
+                
+                    await ProcessBarCodeKey();  
+              
             } 
             else
             {
-                await ProcessOCRKey();
+                    keyProcessingFirst = false;
+                    await ProcessOCRKey();
             }
+            //if (activationKeyPressed == true)
+            //    _timer.IsEnabled = true;
         }
 
-       
-        private async Task ProcessBarCodeKey()
+        
+        
+        
+        
+        private bool ProcessingKey = false;
+        private async Task ProcessKey()
         {
-            _timer.Stop();
-
-            // If key is already processing skip this tick
-            if (keyProcessingFirst || keyProcessingSecond)
-            {
-                return;
-            }
-            if (activationKeyPressed == false)
-            {
-                return;
-            }
-
-            var keyToSendFirst = string.Empty;
-            var keyToSendSecond = string.Empty;
-            int vkCode = 0;
-            DateTime currentD = DateTime.Now;
-
-        repeatWithoutDelay:
-
-            keyToSendFirst = string.Empty;
-            keyToSendSecond = string.Empty;
-            vkCode = 0;
-
-            if (CurrentImageRegions.FirstImageRegions.TopRight == false && keyProcessingFirst == true)  // First Image is almost done processing
-            {
-                keyProcessingFirst = false;
-                keyProcessingSecond = false;
-                ImageCapBorder.BorderBrush = System.Windows.Media.Brushes.Black;
-                goto allDone;
-                //return;
-            }
-
-            // lets just hang out here till we have a key
-            currentD = DateTime.Now;
-
-            keyToSendFirst = _currentKeyToSend[0];
-            while (keyToSendFirst == "" && button_Start.IsEnabled == false && activationKeyPressed == true)
-            {
-                await Task.Delay(1);
-                keyToSendFirst = _currentKeyToSend[0];
-                if (currentD.AddMilliseconds(1000) < DateTime.Now)
-                {
-                    keyProcessingFirst = false;
-                    keyProcessingSecond = false;
-                    goto allDone;
-                    //return;
-                }
-            }
-
-
-            currentD = DateTime.Now;
-            while (keyToSendFirst == "" && button_Start.IsEnabled == false && activationKeyPressed == true && (!(VirtualKeyCodeMapper.HasExcludeKey(keyToSendFirst) && BarCodeFound == false) && VirtualKeyCodeMapper.HasKey(keyToSendFirst)))
-            {
-                await Task.Delay(1);
-                keyToSendFirst = _currentKeyToSend[0];
-                if (currentD.AddMilliseconds(1000) < DateTime.Now)
-                {
-                    keyProcessingFirst = false;
-                    keyProcessingSecond = false;
-                    //return;
-                    goto allDone;
-                }
-            }
-
-            if (keyToSendFirst == "")
-            {
-                keyProcessingFirst = false;
-                keyProcessingSecond = false;
-                // return;
-                goto allDone;
-            }
-
-            currentD = DateTime.Now;
-            while (CurrentImageRegions.FirstImageRegions.TopLeft == false && button_Start.IsEnabled == false && activationKeyPressed == true && (!(VirtualKeyCodeMapper.HasExcludeKey(keyToSendFirst) && BarCodeFound == false) && VirtualKeyCodeMapper.HasKey(keyToSendFirst)))
-            {
-                await Task.Delay(1);
-                // keyToSendFirst = _currentKeyToSend[0];
-                if (Settings.Default.PetKeyEnables == true)
-                {
-                    if (PetKeyVKCode >= 112) { WindowsAPICalls.PostMessage(_wowWindowHandle, WindowsAPICalls.WM_KEYDOWN, WindowsAPICalls.VK_CONTROL, 0); }
-
-                    WindowsAPICalls.PostMessage(_wowWindowHandle, WindowsAPICalls.WM_KEYDOWN, PetKeyVKCode, 0);
-                    if (PetKeyVKCode >= 112) { WindowsAPICalls.PostMessage(_wowWindowHandle, WindowsAPICalls.WM_KEYUP, WindowsAPICalls.VK_CONTROL, 0); }
-
-                    await Task.Delay(50);
-                    WindowsAPICalls.PostMessage(_wowWindowHandle, WindowsAPICalls.WM_KEYUP, PetKeyVKCode, 0);
-
-                }
-
-                if (currentD.AddMilliseconds(3000) < DateTime.Now)
-                {
-                    keyProcessingFirst = false;
-                    keyProcessingSecond = false;
-                    //return;
-                    goto allDone;
-                }
-            }
-
-
-            keyProcessingFirst = true;
-
-
-
-
-
+           
+            if (KeyCommandStack.Count == 0 || ProcessingKey == true) return;
+        
+            KeyCommand currentKey = currentKey = KeyCommandStack.Pop();
+            ProcessingKey = true;
             if (_wowWindowHandle != nint.Zero)
             {
+                DateTime currentD = DateTime.Now;
 
-                ImageCapBorder.BorderBrush = System.Windows.Media.Brushes.Red;
-
-                //CurrentImageRegions.FirstImageRegions.TopLeft = false;
-                //CurrentImageRegions.FirstImageRegions.BottomLeft = false;
-                //CurrentImageRegions.FirstImageRegions.BottomCenter = false;
+                if (currentKey.Alt == true && currentKey.Key == "F4")  // Some how AF4 got thru and killed wow.   so I want to Explictly ignore it.  I will never allow ALT-F4
+                {
+                    ProcessingKey = false;
+                    return;
+                }
+                if (WindowsAPICalls.IsKeyPressed(WindowsAPICalls.VK_MENU) && currentKey.Key == "F4")  // Alt key was pressed so don't want that
+                {
+                    ProcessingKey = false;
+                    return;
+                }
+ 
                 // I keep poking at this trying to figure out how to only send the key press again if a new key is to me pressed.
                 // It fails if the next key to press is the same.
                 // There would have to some logic in the capture to say its a new detection
 
                 // Tranlate the char to the virtual Key Code
-                vkCode = VirtualKeyCodeMapper.GetVirtualKeyCode(keyToSendFirst);
+                var vkCode = VirtualKeyCodeMapper.GetVirtualKeyCode(currentKey.Key);
 
                 // command is tied to CTRL or ALT So have to press them
-                if (keyToSendFirst[0] == 'C') //&& CtrlPressed == false
+                if (currentKey.Ctrl) 
                     WindowsAPICalls.PostMessage(_wowWindowHandle, WindowsAPICalls.WM_KEYDOWN, WindowsAPICalls.VK_CONTROL, 0);
                 else
                     // Command isn't tied to CTRL so send a CTRL Up.
@@ -627,64 +606,82 @@ namespace RuneReader
                     // This could also be accomlished buy storing off the value in the message processor and storing a flag local if it saw one or not.
                     // keyboards are global so that may work.
                     WindowsAPICalls.PostMessage(_wowWindowHandle, WindowsAPICalls.WM_KEYUP, WindowsAPICalls.VK_CONTROL, 0);
-
-                if (keyToSendFirst[0] == 'A') // && AltPressed == false
+             
+                if (currentKey.Alt) 
                     WindowsAPICalls.PostMessage(_wowWindowHandle, WindowsAPICalls.WM_KEYDOWN, WindowsAPICalls.VK_MENU, 0);
                 else
                     // See Notes on CTRL.
                     WindowsAPICalls.PostMessage(_wowWindowHandle, WindowsAPICalls.WM_KEYUP, WindowsAPICalls.VK_MENU, 0);
 
+
+
                 // Press the command Key Down
                 WindowsAPICalls.PostMessage(_wowWindowHandle, WindowsAPICalls.WM_KEYDOWN, vkCode, 0);
-                //   tbCommandLog.Text = tbCommandLog.Text + "I1-"+keyToSendFirst + "\r";
+          
 
 
                 // CTRL and ALT do not need to be held down just only pressed initally for the command to be interpeted correctly
-                if (keyToSendFirst[0] == 'C') WindowsAPICalls.PostMessage(_wowWindowHandle, WindowsAPICalls.WM_KEYUP, WindowsAPICalls.VK_CONTROL, 0); //&& CtrlPressed == true
-                if (keyToSendFirst[0] == 'A') WindowsAPICalls.PostMessage(_wowWindowHandle, WindowsAPICalls.WM_KEYUP, WindowsAPICalls.VK_MENU, 0); //&& AltPressed == true
-                //_currentKeyToSend[0] = "";
-                await Task.Delay(50);  // we want atleast a 150ms delay when pressing and releasing the key. Wow cooldown can be no less that 500 accept for instant not GCD.  we will just have to suffer with those.
+                if (currentKey.Ctrl) WindowsAPICalls.PostMessage(_wowWindowHandle, WindowsAPICalls.WM_KEYUP, WindowsAPICalls.VK_CONTROL, 0); //&& CtrlPressed == true
+            
+                if (currentKey.Alt) WindowsAPICalls.PostMessage(_wowWindowHandle, WindowsAPICalls.WM_KEYUP, WindowsAPICalls.VK_MENU, 0); //&& AltPressed == true
+        
 
 
 
 
-                await Task.Delay(1);
-                if (_keyPressMode)
+
+                if (_keyPressMode )
                 {
 
-                    currentD = DateTime.Now;
+                    DateTime  currentMS = DateTime.Now;
 
-                    await Task.Delay(50);
-                    while (CurrentImageRegions.FirstImageRegions.BottomLeft == false && button_Start.IsEnabled == false && activationKeyPressed == true)  // Do this loop till we have see we have a value starting to appear
+                    currentMS = DateTime.Now.AddMilliseconds(1000);
+
+                    while (currentKey.MaxWaitTime == 0 && activationKeyPressed == true )
+                    {
+                        await Task.Delay(1);
+                        currentKey.MaxWaitTime = CurrentImageRegions.FirstImageRegions.WaitTime;
+                        if (DateTime.Now >= currentMS )
+                        {
+                            goto alldone;
+                        }
+                    }
+
+                    currentMS = DateTime.Now.AddMilliseconds(currentKey.MaxWaitTime);
+                    DateTime MaxWaitTime = DateTime.Now.AddSeconds(8);
+
+                    while ((currentMS >= DateTime.Now && currentKey.MaxWaitTime != 0) && activationKeyPressed == true )
                     {
 
                         await Task.Delay(1);
-
-                        if (Settings.Default.PetKeyEnables == true)
+                        currentKey.MaxWaitTime = CurrentImageRegions.FirstImageRegions.WaitTime;
+                        //if (currentKey.MaxWaitTime <= 200)
+                        //{
+                        //    //This is so we can exit early and start the next key.   BUT we still need to finish this one.  
+                     
+                        //   // goto alldone;
+                        //}
+                        //else
+                        //{
+                        //    if (KeyCommandStack.Count == 0)
+                        //    {
+                        //        await Task.Delay(currentKey.MaxWaitTime);
+                        //    }
+                        //    else
+                        //    {
+                        //        if (KeyCommandStack.Peek().Key == currentKey.Key)
+                        //        {
+                        //            await Task.Delay(50);
+                        //        }
+                        //    }
+                        //}
+                        if (DateTime.Now > MaxWaitTime)
                         {
-                            if (PetKeyVKCode >= 112)
-                            {
-                                WindowsAPICalls.PostMessage(_wowWindowHandle, WindowsAPICalls.WM_KEYDOWN, WindowsAPICalls.VK_CONTROL, 0);
-                            }
-
-                            WindowsAPICalls.PostMessage(_wowWindowHandle, WindowsAPICalls.WM_KEYDOWN, PetKeyVKCode, 0);
-                            if (PetKeyVKCode >= 112)
-                            { WindowsAPICalls.PostMessage(_wowWindowHandle, WindowsAPICalls.WM_KEYUP, WindowsAPICalls.VK_CONTROL, 0); }
-
-                            await Task.Delay(50);
-                            WindowsAPICalls.PostMessage(_wowWindowHandle, WindowsAPICalls.WM_KEYUP, PetKeyVKCode, 0);
-
+                            goto alldone;
                         }
-
-                        if (currentD.AddMilliseconds(7000) < DateTime.Now)  // Max of a 3 second channel  or wait
-                        {
-                            break;
-                        }
-
                     }
 
-
-                    WindowsAPICalls.PostMessage(_wowWindowHandle, WindowsAPICalls.WM_KEYUP, vkCode, 0);
+               
                 }
 
 
@@ -695,40 +692,107 @@ namespace RuneReader
                 // If where not watching for when things time out, we insert a hard delay
                 if (!_keyPressMode)
                 {
-                    await Task.Delay(Random.Shared.Next() % 5 + CurrentKeyDownDelayMS).ConfigureAwait(true);
-                    WindowsAPICalls.PostMessage(_wowWindowHandle, WindowsAPICalls.WM_KEYUP, vkCode, 0);
+                    await Task.Delay(Random.Shared.Next() % 5 + CurrentKeyDownDelayMS);//.ConfigureAwait(true);
                 }
+            alldone:
+               
+                WindowsAPICalls.PostMessage(_wowWindowHandle, WindowsAPICalls.WM_KEYUP, vkCode, 0);
+           
+                await Task.Delay(1);
+                ProcessingKey = false;
 
-
-                if (_currentKeyToSend[0] != "" && button_Start.IsEnabled == false && activationKeyPressed == true)
-                {
-                    goto repeatWithoutDelay;
-                }
-
-
-
-                // Let up on the command key
-                keyProcessingFirst = false;
-                keyProcessingSecond = false;
             }
 
 
+            //   ProcessingKey = false;
+            return;
+       
+        }
+
+
+
+
+        private async Task ProcessBarCodeKey()
+        {
+
+          
+
+            if (activationKeyPressed == false)
+            {
+                return;
+            }
+
+            if (ProcessingKey == true)
+            {
+                return;
+            }
+
+            var keyToSendFirst = string.Empty;
+            var keyToSendSecond = string.Empty;
+            int vkCode = 0;
+            DateTime currentD = DateTime.Now;
+
+  
+
+            keyToSendFirst = string.Empty;
+            vkCode = 0;
+
+            #region WaitFor a Key to show up
+
+
+            // lets just hang out here till we have a key
+            currentD = DateTime.Now;
+            keyToSendFirst = _currentKeyToSend[0];
+            while (keyToSendFirst == "" && button_Start.IsEnabled == false && activationKeyPressed == true )
+            {
+                await Task.Delay(1);
+                keyToSendFirst = _currentKeyToSend[0];
+                if (currentD.AddMilliseconds(5000) < DateTime.Now)
+                {
+                    goto allDone;
+                }
+            }
+
+
+            
+            if (  !VirtualKeyCodeMapper.HasKey(keyToSendFirst) )
+            {
+                 goto allDone;
+            }
+
+
+            #endregion
+            //while (ProcessingKey)
+            //{
+            //    await Task.Delay(1);
+            //}
+            KeyCommandStack.Push(new KeyCommand(keyToSendFirst, CurrentImageRegions.FirstImageRegions.WaitTime, CurrentImageRegions.FirstImageRegions.HasTarget));
+            //ProcessingKey = true;
+            await ProcessKey();
+         
+
+
+
+
+
+
+
+
+
+
+
         allDone:
-            keyProcessingFirst = false;
-            keyProcessingSecond = false;
-            //   if (activationKeyPressed) _timer.Start();
+     
+           
             ImageCapBorder.BorderBrush = System.Windows.Media.Brushes.Black;
-            if (activationKeyPressed == true)
-                _timer.Start();
         }
 
 
         private async Task ProcessOCRKey()
         {
-            _timer.Stop();
 
             // If key is already processing skip this tick
-            if (keyProcessingFirst || keyProcessingSecond)
+            if (keyProcessingFirst)
             {
                 return;
             }
@@ -751,7 +815,6 @@ namespace RuneReader
             if (CurrentImageRegions.FirstImageRegions.TopRight == false && keyProcessingFirst == true)  // First Image is almost done processing
             {
                 keyProcessingFirst = false;
-                keyProcessingSecond = false;
                 ImageCapBorder.BorderBrush = System.Windows.Media.Brushes.Black;
                 goto allDone;
                 //return;
@@ -768,7 +831,6 @@ namespace RuneReader
                 if (currentD.AddMilliseconds(1000) < DateTime.Now)
                 {
                     keyProcessingFirst = false;
-                    keyProcessingSecond = false;
                     goto allDone;
                     //return;
                 }
@@ -783,7 +845,6 @@ namespace RuneReader
                 if (currentD.AddMilliseconds(1000) < DateTime.Now)
                 {
                     keyProcessingFirst = false;
-                    keyProcessingSecond = false;
                     //return;
                     goto allDone;
                 }
@@ -792,7 +853,6 @@ namespace RuneReader
             if (keyToSendFirst == "")
             {
                 keyProcessingFirst = false;
-                keyProcessingSecond = false;
                 // return;
                 goto allDone;
             }
@@ -817,7 +877,6 @@ namespace RuneReader
                 if (currentD.AddMilliseconds(3000) < DateTime.Now)
                 {
                     keyProcessingFirst = false;
-                    keyProcessingSecond = false;
                     //return;
                     goto allDone;
                 }
@@ -936,17 +995,12 @@ namespace RuneReader
 
                 // Let up on the command key
                 keyProcessingFirst = false;
-                keyProcessingSecond = false;
             }
 
 
         allDone:
             keyProcessingFirst = false;
-            keyProcessingSecond = false;
-            //   if (activationKeyPressed) _timer.Start();
             ImageCapBorder.BorderBrush = System.Windows.Media.Brushes.Black;
-            if (activationKeyPressed == true)
-                _timer.Start();
         }
 
         public MainWindow()
@@ -1172,7 +1226,7 @@ namespace RuneReader
             _mouseProc = MouseHookCallback;
 
 
-            _wowWindowHandle = WindowsAPICalls.FindWindow(null, "World of Warcraft");
+            _wowWindowHandle = WindowsAPICalls.FindWowWindow("World of Warcraft");
 
  
             StartCaptureProcess();
@@ -1187,17 +1241,20 @@ namespace RuneReader
 
             // This timer handles the key sending
 
-            _timer = new System.Windows.Threading.DispatcherTimer(DispatcherPriority.Background);
-            _timer.Interval = TimeSpan.FromMilliseconds(25);
+
+            //This timer needs to go away and be converted into a thread.
+            _timer = new System.Windows.Threading.DispatcherTimer(DispatcherPriority.Normal);
+            _timer.Interval = TimeSpan.FromMilliseconds(10);
             _timer.Tick += mainTimerTick;
-            _timer.Stop();
+
+            _timer.IsEnabled = false ;
 
           
         }
 
         private void _TimerWowWindowMonitor_Tick(object? sender, EventArgs e)
         {
-            _wowWindowHandle = WindowsAPICalls.FindWindow(null, "World of Warcraft");
+            _wowWindowHandle = WindowsAPICalls.FindWowWindow("World of Warcraft");
         }
 
 
@@ -1220,7 +1277,7 @@ namespace RuneReader
         private void StartButton_Click(object sender, RoutedEventArgs e)
         {
             // Start the continuous capturing
-            _wowWindowHandle = WindowsAPICalls.FindWindow(null, "World of Warcraft");
+            _wowWindowHandle = WindowsAPICalls.FindWowWindow("World of Warcraft"); //WindowsAPICalls.FindWindow(null, "World of Warcraft");
             if (_wowWindowHandle != IntPtr.Zero)
             {
                 if (!screenCapture.IsCapturing)
@@ -1253,7 +1310,7 @@ namespace RuneReader
                 }
                 button_Start.IsEnabled = true;
                 button_Stop.IsEnabled = false;
-                _timer.Stop();
+                _timer.Stop(); 
                 _TimerWowWindowMonitor.Stop();
 
             }
@@ -1553,6 +1610,7 @@ namespace RuneReader
             {
                 return cbColorDemonHunter;
             }
+            _wowWindowHandle = WindowsAPICalls.FindWindow(null, "World of Warcraft");
             cbColorDefault.IsChecked = true;
             cbColorDefault.Tag = "default";
             return cbColorDefault;

@@ -46,6 +46,8 @@ namespace RuneReader
         [DllImport("Dxva2.dll", SetLastError = true)]
         public static extern bool GetMonitorCapabilities(IntPtr hMonitor, out uint pdwMonitorCapabilities, out uint pdwSupportedColorTemperatures);
 
+        [DllImport("user32.dll")]
+        public static extern short GetAsyncKeyState(int vKey);
 
         public static uint OCR_NORMAL = 32512;
         public static int IDC_HAND = 32649;
@@ -144,7 +146,13 @@ namespace RuneReader
             MC_FIELD_EMISSION_DEVICE,
         }
 
+        public static IntPtr FindWowWindow(string lpWindowName)
 
+        {
+            var result = IntPtr.Zero;
+            result = WindowsAPICalls.FindWindow(null, "World of Warcraft");
+            return result;
+        }
         public static string GetActiveWindowTitle()
         {
             IntPtr hwnd = WindowsAPICalls.GetForegroundWindow();
@@ -158,6 +166,15 @@ namespace RuneReader
         {
             var currentTitle = GetActiveWindowTitle();
             return currentTitle?.Equals(title, StringComparison.OrdinalIgnoreCase) ?? false;
+        }
+
+        public static bool IsKeyPressed(int vKey)
+        {
+            // Get the state of the specified key
+            short keyState = GetAsyncKeyState(vKey);
+
+            // If the most significant bit is set, the key is down
+            return (keyState & 0x8000) != 0;
         }
     }
 }
