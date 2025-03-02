@@ -218,8 +218,8 @@ namespace RuneReader
             {
                 return handled ? (IntPtr)1 : WindowsAPICalls.CallNextHookEx(_hookID, nCode, wParam, lParam); // Blocks input to game does not block windows
             }
-            if (keypressEnd != DateTime.MinValue && keypressEnd.Subtract(keypressStart).Milliseconds < 100 )
-            { 
+            if (keypressEnd != DateTime.MinValue && keypressEnd.Subtract(keypressStart).Milliseconds < 100)
+            {
                 return handled ? (IntPtr)1 : WindowsAPICalls.CallNextHookEx(_hookID, nCode, wParam, lParam); // Blocks input to game does not block windows
             }
             else
@@ -635,7 +635,7 @@ namespace RuneReader
 
                     DateTime  currentMS = DateTime.Now;
 
-                    currentMS = DateTime.Now.AddMilliseconds(1000);
+                    currentMS = DateTime.Now.AddMilliseconds(500);
 
                     while (currentKey.MaxWaitTime == 0 && activationKeyPressed == true )
                     {
@@ -655,25 +655,25 @@ namespace RuneReader
 
                         await Task.Delay(1);
                         currentKey.MaxWaitTime = CurrentImageRegions.FirstImageRegions.WaitTime;
-                        //if (currentKey.MaxWaitTime <= 200)
+                        if (currentKey.MaxWaitTime <= 100)
+                        {
+                            //This is so we can exit early and start the next key.   BUT we still need to finish this one.  
+
+                            goto alldone;
+                        }
+                        //else
                         //{
-                        //    //This is so we can exit early and start the next key.   BUT we still need to finish this one.  
-                     
-                        //   // goto alldone;
+                        //if (KeyCommandStack.Count == 0)
+                        //{
+                        //    await Task.Delay(currentKey.MaxWaitTime);
                         //}
                         //else
                         //{
-                        //    if (KeyCommandStack.Count == 0)
+                        //    if (KeyCommandStack.Peek().Key == currentKey.Key)
                         //    {
-                        //        await Task.Delay(currentKey.MaxWaitTime);
+                        //        await Task.Delay(50);
                         //    }
-                        //    else
-                        //    {
-                        //        if (KeyCommandStack.Peek().Key == currentKey.Key)
-                        //        {
-                        //            await Task.Delay(50);
-                        //        }
-                        //    }
+                        //}
                         //}
                         if (DateTime.Now > MaxWaitTime)
                         {
