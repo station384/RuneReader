@@ -218,11 +218,12 @@ namespace RuneReader
             if (s.Length >= 5)
             {
                 segment = s.Substring(2, 3);
-                if (int.TryParse(segment + "00", out result))
+                if (int.TryParse(segment , out result))
                 {
                     //     result = result;
                     //result = result ;
                 };
+                result = result * 10;
             }
 
             return result;
@@ -307,7 +308,16 @@ namespace RuneReader
                 result.HasTarget = (conditions & (1 << 0)) != 0;
                 result.InCombat = (conditions & (1 << 1)) != 0;
 
+            } else
+            {
+                result.DecodedTextValue = "";
+                result.DetectedText = "";
+                result.WaitTime = 0;
+                result.BarcodeFound = false;
+                result.HasTarget = false;
+                result.InCombat = false;
             }
+
             return result;
         }
 

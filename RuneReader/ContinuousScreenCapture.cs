@@ -22,22 +22,17 @@ namespace RuneReader
         public event UpdateSecondImageDelegate UpdateSecondImage;
 
 
-        private Rect[] _captureRegion;
-        public Rect[] CaptureRegion { 
-            get {
-                return _captureRegion;
-                //    screenCapture.CaptureRegion;// _captureRegion;
-            }
-            set
-            {
-              
-                screenCapture.CaptureRegion = new Rect[2]
+        private Rect _captureRegion;
+        public Rect CaptureRegion { 
+                get {
+                    return _captureRegion;
+                    //    screenCapture.CaptureRegion;// _captureRegion;
+                }
+                set
                 {
-                    value[0],
-                    value[1]
-                };
-                _captureRegion = screenCapture.CaptureRegion;
-            }
+                    screenCapture.CaptureRegion = value;
+                    _captureRegion = screenCapture.CaptureRegion;
+                }
             }
         public bool IsCapturing {get { return isCapturing; }}
         
