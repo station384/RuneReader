@@ -458,11 +458,20 @@ namespace RuneReader
                 // CTRL and ALT do not need to be held down just only pressed initally for the command to be interpeted correctly
                 if (currentKey.Ctrl) WindowsAPICalls.PostMessage(_wowWindowHandle, WindowsAPICalls.WM_KEYUP, WindowsAPICalls.VK_CONTROL, 0); //&& CtrlPressed == true
                 if (currentKey.Alt) WindowsAPICalls.PostMessage(_wowWindowHandle, WindowsAPICalls.WM_KEYUP, WindowsAPICalls.VK_MENU, 0); //&& AltPressed == true
-        
+
+                //Add the keypress delay while monitoring that the activationkey is still pressed (allows interrupting the delay)
+                DateTime currentMS = DateTime.Now.Add(new TimeSpan(Random.Shared.Next() % 5 + CurrentKeyDownDelayMS) * 1000);
+                while ((currentMS >= DateTime.Now ) && activationKeyPressed == true)
+                {
+                    await Task.Delay(1);
+                }
+                
+               
+                
                 if (_keyPressMode )
                 {
                     await Task.Delay(CurrentCaptureRateMS == 0 ? 2 : CurrentCaptureRateMS / 2); // Try and wait for a capture refresh
-                    DateTime currentMS = DateTime.Now;
+                     currentMS = DateTime.Now;
                     currentKey.MaxWaitTime = 5000;
                     currentMS = DateTime.Now.AddMilliseconds(currentKey.MaxWaitTime);
                     DateTime MaxWaitTime = DateTime.Now.AddSeconds(8);
@@ -498,7 +507,7 @@ namespace RuneReader
                 // If where not watching for when things time out, we insert a hard delay
                 if (!_keyPressMode)
                 {
-                    await Task.Delay(Random.Shared.Next() % 5 + CurrentKeyDownDelayMS);//.ConfigureAwait(true);
+             //       await Task.Delay(Random.Shared.Next() % 5 + CurrentKeyDownDelayMS);//.ConfigureAwait(true);
                 }
             alldone:
                
