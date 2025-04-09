@@ -1,4 +1,5 @@
-﻿using System;
+﻿using OpenCvSharp;
+using System;
 using System.Diagnostics;
 using System.Drawing;
 using System.Threading;
@@ -16,15 +17,15 @@ namespace RuneReader
         private CaptureScreen screenCapture; // Instance of CaptureScreen class
         private readonly object intervalLock = new object();
 
-        public delegate void UpdateFirstImageDelegate(Bitmap image);
+        public delegate void UpdateFirstImageDelegate(Mat image);
         public event UpdateFirstImageDelegate UpdateFirstImage;
 
         //public delegate void UpdateSecondImageDelegate(Bitmap image);
         //public event UpdateSecondImageDelegate UpdateSecondImage;
 
 
-        private Rect _captureRegion;
-        public Rect CaptureRegion { 
+        private System.Windows.Rect _captureRegion;
+        public System.Windows.Rect CaptureRegion { 
                 get {
                     return _captureRegion;
                     //    screenCapture.CaptureRegion;// _captureRegion;
@@ -90,13 +91,16 @@ namespace RuneReader
             }
         }
 
-        private void CaptureLoop()
+        private async void CaptureLoop()
         {
-      
+            if (screenCapture == null)
+            { throw new Exception("screenCapture cannot be NULL"); 
+            }
+
             while (isCapturing)
             {
-                screenCapture.GrabScreen();
-                Bitmap capturedImage = screenCapture.CapturedImageFirst; // Implement this to capture the screen
+                var results = await screenCapture.GrabScreen();
+                Mat capturedImage = screenCapture.CapturedImageFirst; // Implement this to capture the screen
                 try
                 {
                     uiDispatcher.Invoke(() =>

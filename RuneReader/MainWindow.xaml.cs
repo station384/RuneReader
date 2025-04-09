@@ -235,7 +235,7 @@ namespace RuneReader
         /// <param name="DisplayControl">Image used for OCR refence to USER no delays</param>
         /// <param name="Threshold">0.0 -> 1.0 How much variance of color are we going to call the same</param>
         /// <returns>ProcessImageResult</returns>
-        private ProcessImageResult ProcessImageOpenCV(ref Bitmap image,  ref System.Windows.Controls.Label lKeyVal, ref Label lWait,    ref System.Windows.Controls.Image DisplayControl,  double Threshold)
+        private ProcessImageResult ProcessImageOpenCV(ref Mat image,  ref System.Windows.Controls.Label lKeyVal, ref Label lWait,    ref System.Windows.Controls.Image DisplayControl,  double Threshold)
         {
             
             var origWidth = image.Width;
@@ -252,12 +252,8 @@ namespace RuneReader
 
             var result = new ProcessImageResult { CurrentKeyToSend = "", HasTarget=false, WaitTime = 0, regions = new DetectionRegions { HasTarget=false, WaitTime = 0, BottomCenter=false, BottomLeft=false, TopLeft=false, TopRight=false} };
             BitmapSource? OutImageSource;
-            var CVMat = BitmapSourceConverter.ToMat(ImageHelpers.Convert(image));
-      //      Mat resizedMat;
+            var CVMat = image.Clone();// BitmapSourceConverter.ToMat(ImageHelpers.Convert(image));
 
-
-          //  resizedMat = ImageProcessingOpenCV.RescaleImageToNewDpi(CVMat, image.HorizontalResolution, 300);
-          
 
             double wowGammaSetting = WowGamma;
 
@@ -269,37 +265,21 @@ namespace RuneReader
 
 
             //  Cv2.ImShow("test", resizedMat);
-            //    using var IsolatedColorWithDelays = ImageProcessingOpenCV.IsolateColorHSV(resizedMat, Scalar.FromRgb(CurrentR, CurrentG, CurrentB), Threshold);
-            //       using var IsolatedColorWithoutDelays = ImageProcessingOpenCV.IsolateColorHSV(resizedMat, Scalar.FromRgb(CurrentR, CurrentG, CurrentB), Threshold +1  );
 
 
-            //      Mat grayWithDelays = IsolatedColorWithDelays.Clone();
-            //       Mat grayWithoutDelays = IsolatedColorWithoutDelays.Clone();
-
-
-
-
-
-            // grab a copy of the image with delays, and resize it to 96 dpi (standard size), this will be used to display to the user
-            //       resizedMat = grayWithDelays.Clone();
-            //       resizedMat = ImageProcessingOpenCV.RescaleImageToNewDpi(resizedMat, image.HorizontalResolution, 96);
-
-
-            Mat binary = new Mat();
+//            Mat binary = new Mat();
             Mat srcGray = new Mat();
             Cv2.CvtColor(CVMat, srcGray, ColorConversionCodes.BGR2GRAY);
-            // Set a fixed threshold value (for example, 127).
-            // You can also use Otsu's thresholding by setting the threshold value to 0 
-            // and combining with ThresholdTypes.Otsu.
+
             double thresholdValue = 220;
             double maxValue = 255;
             // For fixed thresholding:
             Cv2.BitwiseNot(srcGray, srcGray);
-            Cv2.Threshold(srcGray, binary, thresholdValue, maxValue, ThresholdTypes.Binary);
-            Cv2.BitwiseNot(binary, binary);
+            Cv2.Threshold(srcGray, srcGray, thresholdValue, maxValue, ThresholdTypes.Binary);
+            Cv2.BitwiseNot(srcGray, srcGray);
 
 
-            var barcodeResult = BarcodeDecode.DecodeBarcode(binary);
+            var barcodeResult = BarcodeDecode.DecodeBarcode(srcGray);
                 if (barcodeResult.BarcodeFound)
                 {
 
@@ -335,7 +315,7 @@ namespace RuneReader
 
             // Push the new image out the the first image,  this has the markers and delays
             if (BarCodeFound)
-                OutImageSource = BitmapSourceConverter.ToBitmapSource(binary);
+                OutImageSource = BitmapSourceConverter.ToBitmapSource(srcGray);
             else
                 OutImageSource = BitmapSourceConverter.ToBitmapSource(CVMat);
 
@@ -344,7 +324,7 @@ namespace RuneReader
 
             // Push the image that doesn't have delays out to the second display.   This image is what is OCRed on.
             if (BarCodeFound)
-                OutImageSource = BitmapSourceConverter.ToBitmapSource(binary);
+                OutImageSource = BitmapSourceConverter.ToBitmapSource(srcGray);
             else
                 OutImageSource = BitmapSourceConverter.ToBitmapSource(CVMat);
          
@@ -352,13 +332,11 @@ namespace RuneReader
             // Update the label
             lKeyVal.Content = CurrentKeyToSend;
             lWait.Content = result.WaitTime.ToString();
-            
             result.CurrentKeyToSend = CurrentKeyToSend;
-
-              binary.Dispose();
-              srcGray.Dispose();
-            //  grayWithoutDelays.Dispose();
-
+            
+            CVMat.Dispose();
+            image.Dispose();
+            srcGray.Dispose();
 
             return result;
         }
@@ -389,7 +367,7 @@ namespace RuneReader
             );
 
             // Assign a handler to the UpdateUIImage event
-            screenCapture.UpdateFirstImage +=  (Bitmap image) =>
+            screenCapture.UpdateFirstImage +=  (Mat image) =>
             {
                 double trasThreshold = CurrentThreshold == 0 ? 0.0 : CurrentThreshold / 100;
                 var capResult = ProcessImageOpenCV(ref image, ref lDetectedValue, ref lDetectedTime, ref imageCap, trasThreshold);

@@ -56,8 +56,21 @@ namespace RuneReader
         ICaptureZone capZoneFullScreen = null;
 
 
-        
-        public  Bitmap CapturedImageFirst { get; private set; }
+        private volatile Mat _CapturedImageFirst;
+        public  Mat CapturedImageFirst { get
+            {
+                return _CapturedImageFirst;
+            } 
+            private set
+            {
+                if (_CapturedImageFirst != null)
+                {
+                    if (!_CapturedImageFirst.IsDisposed) _CapturedImageFirst.Dispose();
+                  //  GC.Collect();
+                }
+                _CapturedImageFirst = value;
+
+            } }
         private volatile Mat _CapturedFullScreen;
         private  Mat CapturedFullScreen { get 
             { 
@@ -67,7 +80,7 @@ namespace RuneReader
                     if (_CapturedFullScreen != null)
                     {   
                        if (!_CapturedFullScreen.IsDisposed) _CapturedFullScreen.Dispose();
-                       GC.Collect();
+                  //     GC.Collect();
                     }
                     _CapturedFullScreen = value;
                 } 
@@ -88,16 +101,7 @@ namespace RuneReader
         }
 
 
-        public void GrabScreen()
-        {
-            // Capture the screen
-            // This should be done in a loop on a seperate thread as CaptureScreen blocks if the screen is not updated (still image).
-             screenCapture.CaptureScreen();
-           
-            // Do something with the captured image - e.g. access all pixels (same could be done with topLeft)
 
-
-        }
 
      
         public CaptureScreen(System.Windows.Rect Regions, int? downscaleLevel)
@@ -137,6 +141,24 @@ namespace RuneReader
 
 
         private bool _fullscreenUpdated = false;
+        private bool _firstImageUpdated = false;
+        public async Task<bool> GrabScreen()
+        {
+            // Capture the screen
+            // This should be done in a loop on a seperate thread as CaptureScreen blocks if the screen is not updated (still image).
+            _firstImageUpdated = false;
+            screenCapture.CaptureScreen();
+            while (!_firstImageUpdated)
+            {
+                await Task.Delay(1);
+            }
+            _firstImageUpdated = false;
+            return true;
+            // Do something with the captured image - e.g. access all pixels (same could be done with topLeft)
+
+
+        }
+
         private void CapZoneFullScreen_Updated(object? sender, EventArgs e)
         {
 
@@ -152,11 +174,15 @@ namespace RuneReader
 
         private void CapZone1_Updated(object? sender, EventArgs e)
         {
-            //Lock the zone to access the data. Remember to dispose the returned disposable to unlock again.
-            using (capZone1.Lock())
+
+            byte[]? pixelData = null;
+            using (capZoneFullScreen.Lock())
             {
-                CapturedImageFirst = ImageExtension.ToBitmap(capZone1.Image);
+                pixelData = capZone1.RawBuffer.ToArray();
             }
+
+            CapturedImageFirst = Mat.FromPixelData(capZone1.Height, capZone1.Width, MatType.CV_8UC4, pixelData);
+            _firstImageUpdated = true;
         }
 
         public async Task<Mat> GrabFullScreens()
