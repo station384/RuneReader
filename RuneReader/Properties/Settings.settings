@@ -2,66 +2,6 @@
 <SettingsFile xmlns="http://schemas.microsoft.com/VisualStudio/2004/01/settings" CurrentProfile="(Default)" GeneratedClassNamespace="RuneReader.Properties" GeneratedClassName="Settings">
   <Profiles />
   <Settings>
-    <Setting Name="CapX" Type="System.Double" Scope="User">
-      <Value Profile="(Default)">0</Value>
-    </Setting>
-    <Setting Name="CapY" Type="System.Double" Scope="User">
-      <Value Profile="(Default)">50</Value>
-    </Setting>
-    <Setting Name="CapWidth" Type="System.Double" Scope="User">
-      <Value Profile="(Default)">50</Value>
-    </Setting>
-    <Setting Name="CapHeight" Type="System.Double" Scope="User">
-      <Value Profile="(Default)">100</Value>
-    </Setting>
-    <Setting Name="AppStartX" Type="System.Double" Scope="User">
-      <Value Profile="(Default)">150</Value>
-    </Setting>
-    <Setting Name="AppStartY" Type="System.Double" Scope="User">
-      <Value Profile="(Default)">150</Value>
-    </Setting>
-    <Setting Name="SaveFontName" Type="System.String" Scope="User">
-      <Value Profile="(Default)">PT_Sans</Value>
-    </Setting>
-    <Setting Name="SaveFontSizeX" Type="System.Int32" Scope="User">
-      <Value Profile="(Default)">50</Value>
-    </Setting>
-    <Setting Name="SaveFontSizeY" Type="System.Int32" Scope="User">
-      <Value Profile="(Default)">50</Value>
-    </Setting>
-    <Setting Name="ActivationKey" Type="System.String" Scope="User">
-      <Value Profile="(Default)">1</Value>
-    </Setting>
-    <Setting Name="ActivationModeSendOnPress" Type="System.Boolean" Scope="User">
-      <Value Profile="(Default)">True</Value>
-    </Setting>
-    <Setting Name="VariancePercent" Type="System.Double" Scope="User">
-      <Value Profile="(Default)">20</Value>
-    </Setting>
-    <Setting Name="CaptureRateMS" Type="System.Int32" Scope="User">
-      <Value Profile="(Default)">30</Value>
-    </Setting>
-    <Setting Name="KeyPressSpeedMS" Type="System.Int32" Scope="User">
-      <Value Profile="(Default)">500</Value>
-    </Setting>
-    <Setting Name="PushAndRelease" Type="System.Boolean" Scope="User">
-      <Value Profile="(Default)">True</Value>
-    </Setting>
-    <Setting Name="KeepOnTop" Type="System.Boolean" Scope="User">
-      <Value Profile="(Default)">False</Value>
-    </Setting>
-    <Setting Name="WowGamma" Type="System.Double" Scope="User">
-      <Value Profile="(Default)">1.2</Value>
-    </Setting>
-    <Setting Name="PetKeyEnables" Type="System.Boolean" Scope="User">
-      <Value Profile="(Default)">False</Value>
-    </Setting>
-    <Setting Name="PetKey" Type="System.Int32" Scope="User">
-      <Value Profile="(Default)">0</Value>
-    </Setting>
-    <Setting Name="IgnoreTargetingInfo" Type="System.Boolean" Scope="User">
-      <Value Profile="(Default)">False</Value>
-    </Setting>
     <Setting Name="IsFirstRun" Type="System.Boolean" Scope="User">
       <Value Profile="(Default)">True</Value>
     </Setting>

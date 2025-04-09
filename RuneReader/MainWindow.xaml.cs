@@ -50,7 +50,7 @@ namespace RuneReader
 
     public partial class MainWindow : MetroWindow
     {
-
+        public static UserSettings AppSettings { get; private set; }
 
         private volatile Stack<KeyCommand> KeyCommandStack = new Stack<KeyCommand> ();
 
@@ -98,7 +98,7 @@ namespace RuneReader
 
         private bool Initalizing = true;  // To prevent events from firing as the xaml defaults are applied
 
-
+        
 
         private IntPtr SetHookActionKey(WindowsAPICalls.WindowsMessageProc proc)
         {
@@ -137,7 +137,7 @@ namespace RuneReader
                 }
                 else
                 {
-                    var item = ActivationKeyCodeMapper.GetVirtualKeyCode(Settings.Default.ActivationKey);
+                    var item = ActivationKeyCodeMapper.GetVirtualKeyCode(AppSettings.ActivationKey);
                     if (keyProcessingFirst == false)
                     {
                         if (wParam == (IntPtr)WindowsAPICalls.WM_KEYDOWN && (int)key == item)
@@ -596,23 +596,15 @@ namespace RuneReader
             InitializeComponent();
             Initalizing = false;
             mainWindowDispatcher = this.Dispatcher;
+            AppSettings = SettingsManager.LoadSettings();
 
-            if (Properties.Settings.Default.IsFirstRun)
-            {
-                // This method migrates settings from the previous version.
-                Properties.Settings.Default.Upgrade();
-
-                // Mark that settings have been upgraded so we don't run Upgrade() again
-                Properties.Settings.Default.IsFirstRun = false;
-                Properties.Settings.Default.Save();
-            }
 
             magnifier = new MagnifierWindow();
-            magnifier.Left = Settings.Default.CapX > SystemParameters.PrimaryScreenWidth ? 100 : Settings.Default.CapX;
-            magnifier.Left = Settings.Default.CapX < 0 ? 0 : Settings.Default.CapX;
-            magnifier.Top = Settings.Default.CapY > SystemParameters.PrimaryScreenHeight ? 100 : Settings.Default.CapY;
-            magnifier.Width = Settings.Default.CapWidth;
-            magnifier.Height = Settings.Default.CapHeight;
+            magnifier.Left = AppSettings.CapX > SystemParameters.PrimaryScreenWidth ? 100 : AppSettings.CapX;
+            magnifier.Left = AppSettings.CapX < 0 ? 0 : AppSettings.CapX;
+            magnifier.Top = AppSettings.CapY > SystemParameters.PrimaryScreenHeight ? 100 : AppSettings.CapY;
+            magnifier.Width = AppSettings.CapWidth;
+            magnifier.Height = AppSettings.CapHeight;
             magnifier.ShowInTaskbar = false;
             magnifier.SizeChanged += Magnifier_SizeChanged;
             magnifier.LocationChanged += Magnifier_LocationChanged;
@@ -620,8 +612,8 @@ namespace RuneReader
 
 
 
-            cbPetAttackKey.SelectedValue = cbPetAttackKey.Items[Settings.Default.PetKey]; 
-            if (Settings.Default.PetKeyEnables == true)
+            cbPetAttackKey.SelectedValue = cbPetAttackKey.Items[AppSettings.PetKey]; 
+            if (AppSettings.PetKeyEnables == true)
             {
                 lPet.IsEnabled = true;
                 cbPetAttackKey.IsEnabled = true;
@@ -634,17 +626,17 @@ namespace RuneReader
                 cbPetKeyEnabled.IsChecked = false;
             }
 
-            sliderWowGamma.Value = Settings.Default.WowGamma;
-            tbWowGamma.Text = Settings.Default.WowGamma.ToString("0.0");
-            tbCaptureRateMS.Text = Settings.Default.CaptureRateMS.ToString();
-            sliderCaptureRateMS.Value = Settings.Default.CaptureRateMS;
-            tbKeyRateMS.Text = Settings.Default.KeyPressSpeedMS.ToString();
-            sliderKeyRateMS.Value = Settings.Default.KeyPressSpeedMS;
-            cbPushRelease.IsChecked = Settings.Default.PushAndRelease;
-            cbStayOnTop.IsChecked = Settings.Default.KeepOnTop;
+            sliderWowGamma.Value = AppSettings.WowGamma;
+            tbWowGamma.Text = AppSettings.WowGamma.ToString("0.0");
+            tbCaptureRateMS.Text = AppSettings.CaptureRateMS.ToString();
+            sliderCaptureRateMS.Value = AppSettings.CaptureRateMS;
+            tbKeyRateMS.Text = AppSettings.KeyPressSpeedMS.ToString();
+            sliderKeyRateMS.Value = AppSettings.KeyPressSpeedMS;
+            cbPushRelease.IsChecked = AppSettings.PushAndRelease;
+            cbStayOnTop.IsChecked = AppSettings.KeepOnTop;
 
 
-            if (Settings.Default.IgnoreTargetingInfo == true)
+            if (AppSettings.IgnoreTargetingInfo == true)
             {
                 cbIgnoreTargetInfo.IsChecked =  true;
             }
@@ -654,13 +646,13 @@ namespace RuneReader
 
             }
 
-            this.Topmost = Settings.Default.KeepOnTop;
+            this.Topmost = AppSettings.KeepOnTop;
 
 
             foreach (var x in cbActivationKey.Items)
             {
 
-               if ( ((ComboBoxItem)x).Content.ToString() == Settings.Default.ActivationKey)
+               if ( ((ComboBoxItem)x).Content.ToString() == AppSettings.ActivationKey)
                     {
                     cbActivationKey.SelectedItem = x;
                 }
@@ -668,8 +660,8 @@ namespace RuneReader
 
             OpenMagnifierWindow();
 
-            this.Left = Settings.Default.AppStartX;
-            this.Top = Settings.Default.AppStartY;
+            this.Left = AppSettings.AppStartX;
+            this.Top = AppSettings.AppStartY;
 
             _proc = HookCallbackActionKey;
 
@@ -708,12 +700,12 @@ namespace RuneReader
             if (cbStayOnTop.IsChecked == true)
             {
                 this.Topmost = true;
-                Settings.Default.KeepOnTop = true;
+                AppSettings.KeepOnTop = true;
             }
             else
             {
                 this.Topmost = false;
-                Settings.Default.KeepOnTop = false;
+                AppSettings.KeepOnTop = false;
 
             }
         }
@@ -865,15 +857,15 @@ namespace RuneReader
 
 
 
-            Settings.Default.CapX = magnifier.Left;
-            Settings.Default.CapY = magnifier.Top;
-            Settings.Default.CapWidth = magnifier.Width;
-            Settings.Default.CapHeight = magnifier.Height;
-            Settings.Default.AppStartX = this.Left;
-            Settings.Default.AppStartY = this.Top;
+            AppSettings.CapX = magnifier.Left;
+            AppSettings.CapY = magnifier.Top;
+            AppSettings.CapWidth = magnifier.Width;
+            AppSettings.CapHeight = magnifier.Height;
+            AppSettings.AppStartX = this.Left;
+            AppSettings.AppStartY = this.Top;
 
 
-            Settings.Default.Save();
+            SettingsManager.SaveSettings(AppSettings);
 
             _timer.Stop();
             _TimerWowWindowMonitor.Stop();
@@ -883,10 +875,12 @@ namespace RuneReader
             {
                 screenCapture.StopCapture();
             }
+           
+            
             if (_hookID != IntPtr.Zero) {
                 // Make sure we stop trapping the keyboard
                 WindowsAPICalls.UnhookWindowsHookEx(_hookID);
-            _hookID = IntPtr.Zero;
+                _hookID = IntPtr.Zero;
             }
 
 
@@ -906,7 +900,7 @@ namespace RuneReader
         private void sliderCaptureRateMS_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
         {
             if (Initalizing) return;
-            Settings.Default.CaptureRateMS = (int)sliderCaptureRateMS.Value;
+            AppSettings.CaptureRateMS = (int)sliderCaptureRateMS.Value;
             CurrentCaptureRateMS = (int)sliderCaptureRateMS.Value;
             if (tbCaptureRateMS != null)
             tbCaptureRateMS.Text = ((int)sliderCaptureRateMS.Value).ToString();
@@ -919,17 +913,17 @@ namespace RuneReader
         private void sliderWowGamma_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
         {
             if (Initalizing) return;
-            Settings.Default.WowGamma = (float)Math.Round(sliderWowGamma.Value,1);
-            WowGamma = (float)Settings.Default.WowGamma;
+            AppSettings.WowGamma = (float)Math.Round(sliderWowGamma.Value,1);
+            WowGamma = (float)AppSettings.WowGamma;
             if (tbWowGamma != null)
-                tbWowGamma.Text = ((float)Settings.Default.WowGamma).ToString("0.0");
+                tbWowGamma.Text = ((float)AppSettings.WowGamma).ToString("0.0");
 
         }
 
         private void sliderKeyRateMS_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
         {
             if (Initalizing) return;
-            Settings.Default.KeyPressSpeedMS = (int)sliderKeyRateMS.Value;
+            AppSettings.KeyPressSpeedMS = (int)sliderKeyRateMS.Value;
             CurrentKeyDownDelayMS = (int)sliderKeyRateMS.Value;
             if (tbKeyRateMS != null)
             tbKeyRateMS.Text = ((int)sliderKeyRateMS.Value).ToString();
@@ -981,20 +975,20 @@ namespace RuneReader
         private void cbActivationKey_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
         {
             if (Initalizing) return;
-            Settings.Default.ActivationKey = ((ComboBoxItem)cbActivationKey.SelectedItem).Content.ToString();
+            AppSettings.ActivationKey = ((ComboBoxItem)cbActivationKey.SelectedItem).Content.ToString();
         }
 
         private void bResetMagPosition_Click(object sender, RoutedEventArgs e)
         {
-            Settings.Default.CapX = 50;
-            Settings.Default.CapY = 50;
-            Settings.Default.CapWidth = 100;
-            Settings.Default.CapHeight = 100 ;
+            AppSettings.CapX = 50;
+            AppSettings.CapY = 50;
+            AppSettings.CapWidth = 100;
+            AppSettings.CapHeight = 100 ;
 
-            magnifier.Left = Settings.Default.CapX > SystemParameters.PrimaryScreenWidth ? 100 : Settings.Default.CapX;
-            magnifier.Top = Settings.Default.CapY > SystemParameters.PrimaryScreenHeight ? 100 : Settings.Default.CapY;
-            magnifier.Width = Settings.Default.CapWidth;
-            magnifier.Height = Settings.Default.CapHeight;
+            magnifier.Left = AppSettings.CapX > SystemParameters.PrimaryScreenWidth ? 100 : AppSettings.CapX;
+            magnifier.Top = AppSettings.CapY > SystemParameters.PrimaryScreenHeight ? 100 : AppSettings.CapY;
+            magnifier.Width = AppSettings.CapWidth;
+            magnifier.Height = AppSettings.CapHeight;
 
 
 
@@ -1004,7 +998,7 @@ namespace RuneReader
         {
             if (Initalizing) return;
             _keyPressMode = true;
-            Settings.Default.PushAndRelease = _keyPressMode;
+            AppSettings.PushAndRelease = _keyPressMode;
 
         }
 
@@ -1012,7 +1006,7 @@ namespace RuneReader
         {
             if (Initalizing) return;
             _keyPressMode = false;
-            Settings.Default.PushAndRelease = _keyPressMode;
+            AppSettings.PushAndRelease = _keyPressMode;
 
         }
 
@@ -1030,7 +1024,7 @@ namespace RuneReader
         private void cbPetAttackKey_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
 
-            Settings.Default.PetKey = ((ComboBox)e.Source).SelectedIndex;
+            AppSettings.PetKey = ((ComboBox)e.Source).SelectedIndex;
             if (e.Source != null)
             {
                 if (((ComboBox)e.Source).SelectedItem != null)
@@ -1046,14 +1040,14 @@ namespace RuneReader
         {
             lPet.IsEnabled = true;
             cbPetAttackKey.IsEnabled = true;
-            Settings.Default.PetKeyEnables = lPet.IsEnabled;
+            AppSettings.PetKeyEnables = lPet.IsEnabled;
         }
 
         private void cbPetKeyEnabled_Unchecked(object sender, RoutedEventArgs e)
         {
             lPet.IsEnabled = false;
             cbPetAttackKey.IsEnabled = false;
-            Settings.Default.PetKeyEnables = lPet.IsEnabled;
+            AppSettings.PetKeyEnables = lPet.IsEnabled;
         }
 
 
@@ -1068,17 +1062,17 @@ namespace RuneReader
         {
             if (cbIgnoreTargetInfo.IsChecked == null)
             {
-                Settings.Default.IgnoreTargetingInfo = true;
+                AppSettings.IgnoreTargetingInfo = true;
             }
             else
             {
                 if (cbIgnoreTargetInfo.IsChecked.Value)
                 {
-                    Settings.Default.IgnoreTargetingInfo = true;
+                    AppSettings.IgnoreTargetingInfo = true;
                 }
                 else
                 {
-                    Settings.Default.IgnoreTargetingInfo = false;
+                    AppSettings.IgnoreTargetingInfo = false;
                 }
             }
 
