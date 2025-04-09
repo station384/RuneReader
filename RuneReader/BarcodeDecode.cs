@@ -1,4 +1,5 @@
-﻿using OpenCvSharp;
+﻿using ControlzEx.Standard;
+using OpenCvSharp;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -16,6 +17,16 @@ namespace RuneReader
     public class BarcodeDecode
     {
         //  private static BarcodeReaderGeneric BarcodeReaderEngine = new BarcodeReaderGeneric();
+        
+        public class BarcodeFindResult
+        {
+            public int screenID { get; set; }
+            public int X { get; set; }
+            public int Y { get; set; }
+            public int Width { get; set; }
+            public int Height { get; set; }
+        }
+
         public class BarcodeResult
         {
             public bool BarcodeFound { get; set; }
@@ -35,6 +46,41 @@ namespace RuneReader
                 WaitTime = 0;
             }
         }
+        
+        // Calculate check digit (returns 0-9)
+        public static int CalculateCheckDigit(string input)
+        {
+            int sum = 0;
+            for (int i = 0; i < input.Length; i++)
+            {
+                if (!char.IsDigit(input[i]))
+                    throw new ArgumentException("Input contains non-numeric characters.");
+
+                int digit = input[i] - '0';
+                int weight = (i % 2 == 0) ? 3 : 1;  // Match Lua's odd/even weighting
+                sum += digit * weight;
+            }
+            return (10 - (sum % 10)) % 10;
+        }
+
+        // Validate full string with check digit
+        public static bool ValidateWithCheckDigit(string input)
+        {
+            if (string.IsNullOrEmpty(input) || input.Length < 2)
+                return false;
+
+            string basePart = input.Substring(0, input.Length - 1);
+            char checkChar = input[input.Length - 1];
+
+            if (!char.IsDigit(checkChar))
+                return false;
+
+            int expected = checkChar - '0';
+            int actual = CalculateCheckDigit(basePart);
+
+            return expected == actual;
+        }
+
 
         private static string DecodeTextValue(string s)
         {
@@ -297,7 +343,8 @@ namespace RuneReader
 
 
              decodeResult = BarcodeReaderEngine.Decode(luminanceSource);
-            if (decodeResult != null)
+
+            if (decodeResult != null && ValidateWithCheckDigit(decodeResult.Text))
             {
                 result.BarcodeFound = true;
                 result.DetectedText = decodeResult.Text;
@@ -321,5 +368,101 @@ namespace RuneReader
             return result;
         }
 
+        public static BarcodeFindResult DecodeFind(Mat imageMat)
+        {
+            var result = new BarcodeFindResult();
+           // ZXing.Result decodeResult = null;
+
+
+            var hints = new DecodingOptions
+            {
+                PureBarcode = false,
+
+                PossibleFormats = new List<BarcodeFormat> { BarcodeFormat.CODE_39 },
+                TryHarder = false
+            };
+            hints.Hints[DecodeHintType.ASSUME_CODE_39_CHECK_DIGIT] = false;
+            hints.Hints[DecodeHintType.TRY_HARDER] = false;
+            hints.Hints[DecodeHintType.USE_CODE_39_EXTENDED_MODE] = false;
+            //hints.Hints[DecodeHintType.ALLOWED_LENGTHS] = 255;
+
+            var BarcodeReaderEngine = new BarcodeReaderGeneric()
+            {
+                AutoRotate = false,
+                TryInverted = false,
+                Options = hints
+            };
+            BarcodeReaderEngine.AutoRotate = false;
+
+     
+            // Convert the image to grayscale.
+            Mat srcGray = new Mat();
+            Cv2.CvtColor(imageMat, srcGray, ColorConversionCodes.BGR2GRAY);
+          
+            // Create a Mat to hold the binary (thresholded) image.
+            Mat binary = new Mat();
+           
+            // Set a fixed threshold value (for example, 127).
+            // You can also use Otsu's thresholding by setting the threshold value to 0 
+            // and combining with ThresholdTypes.Otsu.
+            double thresholdValue = 220;
+            double maxValue = 255;
+            // For fixed thresholding:
+            Cv2.BitwiseNot(srcGray, srcGray);
+            Cv2.Threshold(srcGray, binary, thresholdValue, maxValue, ThresholdTypes.Binary);
+            Cv2.BitwiseNot(binary, binary);
+            // Alternatively, for Otsu's method uncomment the next line:
+            //      Cv2.Threshold(srcGray, binary, 200, 255, ThresholdTypes.Binary | ThresholdTypes.Otsu);
+           // Cv2.ImShow("test", binary);
+
+            var luminanceSource = new OpenCvLuminanceSource(binary);
+          //    Cv2.ImShow("image", binary);
+            // var binarizer = new ZXing.Common.HybridBinarizer(luminanceSource);
+            //  var binaryBitmap = new BinaryBitmap(binarizer);
+
+
+            var decodeResult = BarcodeReaderEngine.Decode(luminanceSource);
+
+            if (decodeResult != null )
+            {
+                float minX = float.MaxValue;
+                float minY = float.MaxValue;
+                float maxX = float.MinValue;
+                float maxY = float.MinValue;
+
+                foreach (var point in decodeResult.ResultPoints)
+                {
+                    if (point.X < minX) minX = point.X;
+                    if (point.Y < minY) minY = point.Y;
+                    if (point.X > maxX) maxX = point.X;
+                    if (point.Y > maxY) maxY = point.Y;
+                }
+
+                // Optionally, you can add some padding if needed
+                int paddingW = 30;
+                int paddingH = 10;
+                var rac =  new System.Drawing.Rectangle(
+                    (int)(minX - paddingW),
+                    (int)(minY - paddingH),
+                    (int)((maxX - minX) + 2 * paddingW),
+                    (int)((maxY - minY) + 2 * paddingH)
+                );
+
+                result.screenID = 1;
+                result.X = rac.X;
+                result.Y = rac.Y;
+                result.Width = rac.Width;
+                result.Height = rac.Height;
+            }
+            else
+            {
+                result.screenID = -1;
+                result.X = 0;
+                result.Y = 0;
+                result.Width = 100;
+                result.Height = 100;
+            }
+            return result;
+        }
     }
 }

@@ -250,10 +250,10 @@ namespace RuneReader
             var result = new ProcessImageResult { CurrentKeyToSend = "", HasTarget=false, WaitTime = 0, regions = new DetectionRegions { HasTarget=false, WaitTime = 0, BottomCenter=false, BottomLeft=false, TopLeft=false, TopRight=false} };
             BitmapSource? OutImageSource;
             var CVMat = BitmapSourceConverter.ToMat(ImageHelpers.Convert(image));
-            Mat resizedMat;
+      //      Mat resizedMat;
 
 
-            resizedMat = ImageProcessingOpenCV.RescaleImageToNewDpi(CVMat, image.HorizontalResolution, 300);
+          //  resizedMat = ImageProcessingOpenCV.RescaleImageToNewDpi(CVMat, image.HorizontalResolution, 300);
           
 
             double wowGammaSetting = WowGamma;
@@ -265,27 +265,38 @@ namespace RuneReader
 
 
 
-          //  Cv2.ImShow("test", resizedMat);
-            using var IsolatedColorWithDelays = ImageProcessingOpenCV.IsolateColorHSV(resizedMat, Scalar.FromRgb(CurrentR, CurrentG, CurrentB), Threshold);
-            using var IsolatedColorWithoutDelays = ImageProcessingOpenCV.IsolateColorHSV(resizedMat, Scalar.FromRgb(CurrentR, CurrentG, CurrentB), Threshold +1  );
+            //  Cv2.ImShow("test", resizedMat);
+            //    using var IsolatedColorWithDelays = ImageProcessingOpenCV.IsolateColorHSV(resizedMat, Scalar.FromRgb(CurrentR, CurrentG, CurrentB), Threshold);
+            //       using var IsolatedColorWithoutDelays = ImageProcessingOpenCV.IsolateColorHSV(resizedMat, Scalar.FromRgb(CurrentR, CurrentG, CurrentB), Threshold +1  );
 
 
-            Mat grayWithDelays = IsolatedColorWithDelays.Clone();
-            Mat grayWithoutDelays = IsolatedColorWithoutDelays.Clone();
+            //      Mat grayWithDelays = IsolatedColorWithDelays.Clone();
+            //       Mat grayWithoutDelays = IsolatedColorWithoutDelays.Clone();
 
 
 
 
 
             // grab a copy of the image with delays, and resize it to 96 dpi (standard size), this will be used to display to the user
-            resizedMat = grayWithDelays.Clone();
-            resizedMat = ImageProcessingOpenCV.RescaleImageToNewDpi(resizedMat, image.HorizontalResolution, 96);
-   
+            //       resizedMat = grayWithDelays.Clone();
+            //       resizedMat = ImageProcessingOpenCV.RescaleImageToNewDpi(resizedMat, image.HorizontalResolution, 96);
 
-   
-            
 
-                var barcodeResult = BarcodeDecode.DecodeBarcode(CVMat);
+            Mat binary = new Mat();
+            Mat srcGray = new Mat();
+            Cv2.CvtColor(CVMat, srcGray, ColorConversionCodes.BGR2GRAY);
+            // Set a fixed threshold value (for example, 127).
+            // You can also use Otsu's thresholding by setting the threshold value to 0 
+            // and combining with ThresholdTypes.Otsu.
+            double thresholdValue = 220;
+            double maxValue = 255;
+            // For fixed thresholding:
+            Cv2.BitwiseNot(srcGray, srcGray);
+            Cv2.Threshold(srcGray, binary, thresholdValue, maxValue, ThresholdTypes.Binary);
+            Cv2.BitwiseNot(binary, binary);
+
+
+            var barcodeResult = BarcodeDecode.DecodeBarcode(binary);
                 if (barcodeResult.BarcodeFound)
                 {
 
@@ -321,18 +332,18 @@ namespace RuneReader
 
             // Push the new image out the the first image,  this has the markers and delays
             if (BarCodeFound)
-                OutImageSource = BitmapSourceConverter.ToBitmapSource(CVMat);
+                OutImageSource = BitmapSourceConverter.ToBitmapSource(binary);
             else
-                OutImageSource = BitmapSourceConverter.ToBitmapSource(resizedMat);
+                OutImageSource = BitmapSourceConverter.ToBitmapSource(CVMat);
 
 
             DisplayControl.Source = OutImageSource;
 
             // Push the image that doesn't have delays out to the second display.   This image is what is OCRed on.
             if (BarCodeFound)
-                OutImageSource = BitmapSourceConverter.ToBitmapSource(CVMat);
+                OutImageSource = BitmapSourceConverter.ToBitmapSource(binary);
             else
-                OutImageSource = BitmapSourceConverter.ToBitmapSource(grayWithoutDelays);
+                OutImageSource = BitmapSourceConverter.ToBitmapSource(CVMat);
          
 
             // Update the label
@@ -341,9 +352,9 @@ namespace RuneReader
             
             result.CurrentKeyToSend = CurrentKeyToSend;
 
-            resizedMat.Dispose();
-            grayWithDelays.Dispose();
-            grayWithoutDelays.Dispose();
+              binary.Dispose();
+              srcGray.Dispose();
+            //  grayWithoutDelays.Dispose();
 
 
             return result;
@@ -586,6 +597,15 @@ namespace RuneReader
             Initalizing = false;
             mainWindowDispatcher = this.Dispatcher;
 
+            if (Properties.Settings.Default.IsFirstRun)
+            {
+                // This method migrates settings from the previous version.
+                Properties.Settings.Default.Upgrade();
+
+                // Mark that settings have been upgraded so we don't run Upgrade() again
+                Properties.Settings.Default.IsFirstRun = false;
+                Properties.Settings.Default.Save();
+            }
 
             magnifier = new MagnifierWindow();
             magnifier.Left = Settings.Default.CapX > SystemParameters.PrimaryScreenWidth ? 100 : Settings.Default.CapX;
@@ -1063,8 +1083,37 @@ namespace RuneReader
             }
 
         }
+
         #endregion
 
+        private void bFindBarcode_Click(object sender, RoutedEventArgs e)
+        {
+            
+            var image =  captureScreen.GrabFullScreens();
+            var r = DecodeFind(image);
 
+            if (r.screenID >= 1)
+            {
+                var source = PresentationSource.FromVisual(this);
+                if (source?.CompositionTarget != null)
+                {
+                    var dpiX = source.CompositionTarget.TransformToDevice.M11;
+                    var dpiY = source.CompositionTarget.TransformToDevice.M22;
+
+                    // Get the window's current location
+                    magnifier.Left = r.X / dpiX;
+                    magnifier.Top = r.Y / dpiY;
+                    magnifier.Width = r.Width / dpiX;
+                    magnifier.Height = r.Height / dpiY;
+
+                }
+            }
+
+            if (image != null)
+            { 
+                image.Dispose();
+            }
+
+        }
     }
 }

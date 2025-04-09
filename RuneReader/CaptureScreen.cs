@@ -6,6 +6,11 @@ using System.Drawing.Imaging;
 using System.Linq;
 using System.Windows;
 using HPPH;
+using System.Threading.Tasks;
+using System.Windows.Controls;
+using OpenCvSharp;
+using System.Windows.Media.Media3D;
+using System.Runtime.InteropServices;
 
 
 
@@ -43,15 +48,17 @@ namespace RuneReader
         IScreenCaptureService screenCaptureService;
         IEnumerable<GraphicsCard> graphicsCards;
         IEnumerable<Display> displays;
-        private Rect _captureRegion = new Rect();
+        private System.Windows.Rect _captureRegion = new System.Windows.Rect();
         private int _maxHeight;
         private int _maxWidth;
         IScreenCapture screenCapture;
         ICaptureZone capZone1 = null;
+
+
         public Bitmap CapturedImageFirst { get; private set; }
         public Bitmap CapturedImageSecond { get; private set; }
 
-        public Rect CaptureRegion
+        public System.Windows.Rect CaptureRegion
         {
             get => _captureRegion; set
             {
@@ -67,7 +74,7 @@ namespace RuneReader
 
 
 
-
+      
 
 
         public void GrabScreen()
@@ -119,14 +126,15 @@ namespace RuneReader
 
         }
         //int x, int y, int width, int height,
-        public CaptureScreen(Rect Regions, int? downscaleLevel)
+        public CaptureScreen(System.Windows.Rect Regions, int? downscaleLevel)
         {
-            //            _captureRegion[0] = //new Rect { X = (double)x, Y = (double)y, Width = width, Height = height };
-            //           _captureRegion[1] = //new Rect { X = (double)x, Y = (double)y, Width = width, Height = height };
+
             _captureRegion = Regions;
             // Create a screen-capture service
-            screenCaptureService = new DX11ScreenCaptureService();
-
+            if (screenCaptureService == null)
+            {
+                screenCaptureService = new DX11ScreenCaptureService();
+            }
             // Get all available graphics cards
             graphicsCards = screenCaptureService.GetGraphicsCards();
 
@@ -146,7 +154,49 @@ namespace RuneReader
 
         }
 
+        public  Mat GrabFullScreens()
+        {
+            Mat result = null;
+            ICaptureZone capZoneFullScreen = null;
+            if (screenCaptureService == null)
+            {
+                screenCaptureService = new DX11ScreenCaptureService();
+            }
+            // Get all available graphics cards
+            var lgraphicsCards = screenCaptureService.GetGraphicsCards();
 
+            // Get the displays from the graphics card(s) you are interested in
+            var ldisplays = screenCaptureService.GetDisplays(lgraphicsCards.First());
+
+
+            // Create a screen-capture for all screens you want to capture
+            var lscreenCapture = screenCaptureService.GetScreenCapture(ldisplays.First());
+            
+            var maxHeight = ldisplays.First().Height;
+            var maxWidth = ldisplays.First().Width;
+
+            // Register the regions you want to capture om the screen
+            // Capture the whole screen
+            // ICaptureZone fullscreen = screenCapture.RegisterCaptureZone(0, 0, screenCapture.Display.Width, screenCapture.Display.Height);
+            // Capture a 100x100 region at the top left and scale it down to 50x50
+            capZoneFullScreen = lscreenCapture.RegisterCaptureZone((int)0, (int)0, (int)maxWidth, (int)maxHeight, downscaleLevel: 0);
+            var screenCap = lscreenCapture.CaptureScreen();
+            if (screenCap)
+            {
+                using (capZoneFullScreen.Lock())
+                {
+                    //result = ImageExtension.ToBitmap(capZoneFullScreen.Image);
+                    Mat image = Mat.FromPixelData(capZoneFullScreen.Height, capZoneFullScreen.Width, MatType.CV_8UC4, capZoneFullScreen.RawBuffer.ToArray());
+                    result = image;
+                }
+            }
+            lscreenCapture.UnregisterCaptureZone(capZoneFullScreen);
+
+            
+            
+            return result;
+
+        }
 
 
     }

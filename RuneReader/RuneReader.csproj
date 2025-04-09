@@ -6,16 +6,16 @@
     <Nullable>enable</Nullable>
     <UseWPF>true</UseWPF>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-	<GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+	<GenerateAssemblyInfo>True</GenerateAssemblyInfo>
     <GenerateTargetFrameworkAttribute>false</GenerateTargetFrameworkAttribute>
     <StartupObject>RuneReader.App</StartupObject>
     <ApplicationIcon>Icons\RuneReader_Icon.ico</ApplicationIcon>
     <PlatformTarget>x64</PlatformTarget>
 
 	  <!-- Enable ReadyToRun compilation -->
-	  <PublishReadyToRun>true</PublishReadyToRun>
-	  <SignAssembly>True</SignAssembly>
-	  <DelaySign>True</DelaySign>
+
+	  <SignAssembly>False</SignAssembly>
+	  <DelaySign>False</DelaySign>
 
   </PropertyGroup>
 
@@ -23,6 +23,9 @@
 		<SignManifests>true</SignManifests>
 		<ManifestCertificateThumbprint>06cb8534ee63d4af060dc0d1b3d8830b4e44d170</ManifestCertificateThumbprint>
 		<Title>Rune Reader</Title>
+		<Version>$(VersionPrefix)</Version>
+		<AssemblyVersion></AssemblyVersion>
+		<AssemblyOriginatorKeyFile></AssemblyOriginatorKeyFile>
 		<!-- Optionally, remove these if not needed:
   <ManifestCertificateFile>path\to\YourCertificate.pfx</ManifestCertificateFile>
   <ManifestCertificatePassword>YourPasswordHere</ManifestCertificatePassword>
