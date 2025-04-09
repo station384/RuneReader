@@ -190,6 +190,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Folder Include="OpenCV\" />
     <Folder Include="Properties\PublishProfiles\" />
   </ItemGroup>
 

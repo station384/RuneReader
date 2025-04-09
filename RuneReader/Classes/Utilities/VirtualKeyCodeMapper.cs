@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 
-namespace RuneReader
+namespace RuneReader.Classes.Utilities
 {
     // This is the list of acceptable keys we can send to the game and the associated Windows virtual key to send.
     // We can use this for comparison or use it for looking up the matching key
@@ -89,7 +89,7 @@ namespace RuneReader
             {"AF12", (int)VirtualKeyCodes.VirtualKeyStates.VK_F12},
                 // ... add additional key mappings as needed
     };
-        
+
         public static int GetVirtualKeyCode(string key)
         {
             if (KeyMappings.TryGetValue(key, out int vkCode))

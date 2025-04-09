@@ -1,4 +1,4 @@
-﻿namespace RuneReader
+﻿namespace RuneReader.Classes
 {
     public struct DetectionRegions
     {
@@ -19,7 +19,7 @@
             HasTarget = false;
         }
 
-   
+
     }
     public class ImageRegions
     {

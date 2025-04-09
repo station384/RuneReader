@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics;
 using System.Drawing;
 using System.Threading;
 using System.Windows;
@@ -18,8 +19,8 @@ namespace RuneReader
         public delegate void UpdateFirstImageDelegate(Bitmap image);
         public event UpdateFirstImageDelegate UpdateFirstImage;
 
-        public delegate void UpdateSecondImageDelegate(Bitmap image);
-        public event UpdateSecondImageDelegate UpdateSecondImage;
+        //public delegate void UpdateSecondImageDelegate(Bitmap image);
+        //public event UpdateSecondImageDelegate UpdateSecondImage;
 
 
         private Rect _captureRegion;
@@ -71,8 +72,6 @@ namespace RuneReader
                 {
                     IsBackground = false // Set the thread as a background thread
                     , Priority = ThreadPriority.AboveNormal
-                    
-                   
                 };
             captureThread.Start();
             }
@@ -98,20 +97,16 @@ namespace RuneReader
             {
                 screenCapture.GrabScreen();
                 Bitmap capturedImage = screenCapture.CapturedImageFirst; // Implement this to capture the screen
-                Bitmap capturedImage2 = screenCapture.CapturedImageSecond; // Implement this to capture the screen
-
                 try
                 {
                     uiDispatcher.Invoke(() =>
                     {
                         UpdateFirstImage?.Invoke(capturedImage);
-                        UpdateSecondImage?.Invoke(capturedImage2);
                     });
-                   
-
                 }
                 catch (Exception ex)
                 {
+                    Debug.WriteLine(ex);
                     isCapturing = true;
                 }
                 // Use the latest interval value
@@ -123,7 +118,6 @@ namespace RuneReader
     
                 Thread.Sleep(sleepTime);
             }
-           // Thread.Sleep(100);
         }
     }
 }

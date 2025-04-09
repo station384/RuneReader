@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Media.Animation;
 
-namespace RuneReader
+namespace RuneReader.Classes
 {
     public class UserSettings
     {
@@ -34,11 +34,11 @@ namespace RuneReader
 
         public double WowGamma { get; set; } = 1.2;
 
-        public bool PetKeyEnables {  get; set; } = false;
+        public bool PetKeyEnables { get; set; } = false;
 
-        public int PetKey { get; set ; } = 0;
+        public int PetKey { get; set; } = 0;
 
-        public bool IgnoreTargetingInfo {  get; set; } = false;
+        public bool IgnoreTargetingInfo { get; set; } = false;
         public bool IsFirstRun { get; set; } = false;
 
 

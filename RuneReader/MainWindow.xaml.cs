@@ -19,6 +19,9 @@ using System.Runtime.CompilerServices;
 using static RuneReader.BarcodeDecode;
 using System.Threading;
 using ZXing;
+using RuneReader.Classes;
+using RuneReader.Classes.NativeBitmap;
+using RuneReader.Classes.Utilities;
 
 
 
@@ -1080,34 +1083,35 @@ namespace RuneReader
 
         #endregion
 
-        private void bFindBarcode_Click(object sender, RoutedEventArgs e)
+        private async void bFindBarcode_Click(object sender, RoutedEventArgs e)
         {
-            
-            var image =  captureScreen.GrabFullScreens();
-            var r = DecodeFind(image);
 
-            if (r.screenID >= 1)
-            {
-                var source = PresentationSource.FromVisual(this);
-                if (source?.CompositionTarget != null)
+            Mat image = (await captureScreen.GrabFullScreens()).Clone();
+           
+            try {
+                var r = DecodeFind(ref image);
+                if (r.screenID >= 1)
                 {
-                    var dpiX = source.CompositionTarget.TransformToDevice.M11;
-                    var dpiY = source.CompositionTarget.TransformToDevice.M22;
+                    var source = PresentationSource.FromVisual(this);
+                    if (source?.CompositionTarget != null)
+                    {
+                        var dpiX = source.CompositionTarget.TransformToDevice.M11;
+                        var dpiY = source.CompositionTarget.TransformToDevice.M22;
 
-                    // Get the window's current location
-                    magnifier.Left = r.X / dpiX;
-                    magnifier.Top = r.Y / dpiY;
-                    magnifier.Width = r.Width / dpiX;
-                    magnifier.Height = r.Height / dpiY;
+                        // Get the window's current location
+                        magnifier.Left = r.X / dpiX;
+                        magnifier.Top = r.Y / dpiY;
+                        magnifier.Width = r.Width / dpiX;
+                        magnifier.Height = r.Height / dpiY;
 
+                    }
                 }
-            }
 
-            if (image != null)
+            }
+            finally
             { 
-                image.Dispose();
+                image.Dispose(); 
             }
-
         }
     }
 }

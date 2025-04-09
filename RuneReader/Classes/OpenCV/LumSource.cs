@@ -7,7 +7,7 @@ using ZXing;
 using OpenCvSharp;
 
 
-namespace RuneReader
+namespace RuneReader.Classes.OpenCV
 {
 
     public class OpenCvLuminanceSource : LuminanceSource

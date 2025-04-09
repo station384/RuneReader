@@ -1,8 +1,8 @@
-﻿namespace RuneReader
+﻿namespace RuneReader.Classes.Utilities
 {
     public class VirtualKeyCodes
     {
-        public  enum VirtualKeyStates : int
+        public enum VirtualKeyStates : int
         {
             VK_LBUTTON = 0x01,
             VK_RBUTTON = 0x02,

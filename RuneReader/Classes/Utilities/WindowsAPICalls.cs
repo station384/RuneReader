@@ -2,49 +2,49 @@
 using System.Runtime.InteropServices;
 using System.Text;
 
-namespace RuneReader
+namespace RuneReader.Classes.Utilities
 {
     internal class WindowsAPICalls
     {
-        public delegate IntPtr WindowsMessageProc(int nCode, IntPtr wParam, IntPtr lParam);
+        public delegate nint WindowsMessageProc(int nCode, nint wParam, nint lParam);
 
         #region Win32 Calls
         [DllImport("user32.dll")]
-        public static extern IntPtr GetForegroundWindow();
+        public static extern nint GetForegroundWindow();
 
         [DllImport("user32.dll", CharSet = CharSet.Auto, SetLastError = true)]
-        public static extern int GetWindowText(IntPtr hWnd, StringBuilder lpString, int nMaxCount);
+        public static extern int GetWindowText(nint hWnd, StringBuilder lpString, int nMaxCount);
 
         [DllImport("user32.dll", SetLastError = true, CharSet = CharSet.Auto)]
-        public static extern int GetWindowTextLength(IntPtr hWnd);
+        public static extern int GetWindowTextLength(nint hWnd);
 
         [DllImport("user32.dll", SetLastError = true)]
-        public static extern IntPtr FindWindow(string lpClassName, string lpWindowName);
+        public static extern nint FindWindow(string lpClassName, string lpWindowName);
 
         [DllImport("user32.dll")]
-        public static extern bool PostMessage(IntPtr hWnd, uint Msg, int wParam, int lParam);
+        public static extern bool PostMessage(nint hWnd, uint Msg, int wParam, int lParam);
 
         [DllImport("USER32.dll")]
         public static extern short GetKeyState(VirtualKeyCodes.VirtualKeyStates nVirtKey);
 
         [DllImport("user32.dll", SetLastError = true)]
-        public static extern IntPtr SetSystemCursor(IntPtr hcur, uint id);
+        public static extern nint SetSystemCursor(nint hcur, uint id);
 
         [DllImport("user32.dll", SetLastError = true)]
-        public static extern IntPtr LoadCursor(IntPtr hInstance, int lpCursorName);
+        public static extern nint LoadCursor(nint hInstance, int lpCursorName);
 
         // Import necessary APIs from Dxva2.dll
         [DllImport("Dxva2.dll", SetLastError = true)]
-        public static extern bool GetNumberOfPhysicalMonitorsFromHMONITOR(IntPtr hMonitor, ref uint pdwNumberOfPhysicalMonitors);
+        public static extern bool GetNumberOfPhysicalMonitorsFromHMONITOR(nint hMonitor, ref uint pdwNumberOfPhysicalMonitors);
 
         [DllImport("Dxva2.dll", SetLastError = true)]
-        public static extern bool GetPhysicalMonitorsFromHMONITOR(IntPtr hMonitor, uint dwPhysicalMonitorArraySize, [Out] PHYSICAL_MONITOR[] pPhysicalMonitorArray);
+        public static extern bool GetPhysicalMonitorsFromHMONITOR(nint hMonitor, uint dwPhysicalMonitorArraySize, [Out] PHYSICAL_MONITOR[] pPhysicalMonitorArray);
 
         [DllImport("Dxva2.dll", SetLastError = true)]
         public static extern bool DestroyPhysicalMonitors(uint dwPhysicalMonitorArraySize, PHYSICAL_MONITOR[] pPhysicalMonitorArray);
 
         [DllImport("Dxva2.dll", SetLastError = true)]
-        public static extern bool GetMonitorCapabilities(IntPtr hMonitor, out uint pdwMonitorCapabilities, out uint pdwSupportedColorTemperatures);
+        public static extern bool GetMonitorCapabilities(nint hMonitor, out uint pdwMonitorCapabilities, out uint pdwSupportedColorTemperatures);
 
         [DllImport("user32.dll")]
         public static extern short GetAsyncKeyState(int vKey);
@@ -76,16 +76,16 @@ namespace RuneReader
 
 
         [DllImport("user32.dll", CharSet = CharSet.Auto, SetLastError = true)]
-        public static extern IntPtr SetWindowsHookEx(int idHook, WindowsMessageProc lpfn, IntPtr hMod, uint dwThreadId);
+        public static extern nint SetWindowsHookEx(int idHook, WindowsMessageProc lpfn, nint hMod, uint dwThreadId);
 
         [DllImport("user32.dll", CharSet = CharSet.Auto, SetLastError = true)]
-        public static extern bool UnhookWindowsHookEx(IntPtr hhk);
+        public static extern bool UnhookWindowsHookEx(nint hhk);
 
         [DllImport("user32.dll", CharSet = CharSet.Auto, SetLastError = true)]
-        public static extern IntPtr CallNextHookEx(IntPtr hhk, int nCode, IntPtr wParam, IntPtr lParam);
+        public static extern nint CallNextHookEx(nint hhk, int nCode, nint wParam, nint lParam);
 
         [DllImport("kernel32.dll", CharSet = CharSet.Auto, SetLastError = true)]
-        public static extern IntPtr GetModuleHandle(string lpModuleName);
+        public static extern nint GetModuleHandle(string lpModuleName);
         public struct POINT
         {
             public int x;
@@ -98,7 +98,7 @@ namespace RuneReader
             public uint mouseData;
             public uint flags;
             public uint time;
-            public IntPtr dwExtraInfo;
+            public nint dwExtraInfo;
         }
         #endregion
 
@@ -107,7 +107,7 @@ namespace RuneReader
         [StructLayout(LayoutKind.Sequential)]
         public struct PHYSICAL_MONITOR
         {
-            public IntPtr hPhysicalMonitor;
+            public nint hPhysicalMonitor;
             [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 128)]
             public string szPhysicalMonitorDescription;
         }
@@ -146,19 +146,19 @@ namespace RuneReader
             MC_FIELD_EMISSION_DEVICE,
         }
 
-        public static IntPtr FindWowWindow(string lpWindowName)
+        public static nint FindWowWindow(string lpWindowName)
 
         {
-            var result = IntPtr.Zero;
-            result = WindowsAPICalls.FindWindow(null, "World of Warcraft");
+            var result = nint.Zero;
+            result = FindWindow(null, "World of Warcraft");
             return result;
         }
         public static string GetActiveWindowTitle()
         {
-            IntPtr hwnd = WindowsAPICalls.GetForegroundWindow();
-            int length = WindowsAPICalls.GetWindowTextLength(hwnd);
+            nint hwnd = GetForegroundWindow();
+            int length = GetWindowTextLength(hwnd);
             StringBuilder sb = new StringBuilder(length + 1);
-            WindowsAPICalls.GetWindowText(hwnd, sb, sb.Capacity);
+            GetWindowText(hwnd, sb, sb.Capacity);
             return sb.ToString();
         }
 

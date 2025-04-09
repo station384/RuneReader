@@ -293,6 +293,24 @@ namespace RuneReader
             return result;
         }
 
+// make this static,  no need to create the objects more than once.
+        private static readonly DecodingOptions hints = new DecodingOptions
+        {
+            PureBarcode = true, // the capture should be just the barcode and no extras
+            PossibleFormats = new List<BarcodeFormat> { BarcodeFormat.CODE_39 },
+            TryHarder = true,
+            TryInverted = false,
+            AssumeCode39CheckDigit =false,
+            UseCode39ExtendedMode = false
+        };
+
+        // make this static,  no need to create the objects more than once.
+        private static readonly BarcodeReaderGeneric BarcodeReaderEngine = new BarcodeReaderGeneric()
+        {
+            AutoRotate = false,
+            Options = hints
+        };
+
         public static BarcodeResult DecodeBarcode(Mat imageMat)
         {
             BarcodeResult result = new BarcodeResult();
@@ -314,32 +332,8 @@ namespace RuneReader
 
             ZXing.Result decodeResult = null;
 
-            var hints = new DecodingOptions
-            {
-                PureBarcode = true,
-                 
-                PossibleFormats = new List<BarcodeFormat> { BarcodeFormat.CODE_39},
-                TryHarder = true
-            };
-            hints.Hints[DecodeHintType.ASSUME_CODE_39_CHECK_DIGIT] = false;
-            hints.Hints[DecodeHintType.TRY_HARDER] = false;
-            hints.Hints[DecodeHintType.USE_CODE_39_EXTENDED_MODE] = false;
-            //hints.Hints[DecodeHintType.ALLOWED_LENGTHS] = 255;
+            var luminanceSource = new RuneReader.Classes.OpenCV.OpenCvLuminanceSource(imageMat);
 
-            var BarcodeReaderEngine =  new BarcodeReaderGeneric()
-            {
-                AutoRotate = false,
-                TryInverted = false,
-                Options = hints
-            };
-            BarcodeReaderEngine.AutoRotate = false;
-            //BarcodeReaderEngine.TryInverted = true;
-
-
-                 //    Cv2.ImShow("WithDelays", imageMat);
-            var luminanceSource = new OpenCvLuminanceSource(imageMat);
-            // var binarizer = new ZXing.Common.HybridBinarizer(luminanceSource);
-            //  var binaryBitmap = new BinaryBitmap(binarizer);
 
 
              decodeResult = BarcodeReaderEngine.Decode(luminanceSource);
@@ -368,99 +362,82 @@ namespace RuneReader
             return result;
         }
 
-        public static BarcodeFindResult DecodeFind(Mat imageMat)
+        public static BarcodeFindResult DecodeFind(ref Mat imageMat) 
         {
             var result = new BarcodeFindResult();
-           // ZXing.Result decodeResult = null;
 
-
-            var hints = new DecodingOptions
-            {
-                PureBarcode = false,
-
-                PossibleFormats = new List<BarcodeFormat> { BarcodeFormat.CODE_39 },
-                TryHarder = false
-            };
-            hints.Hints[DecodeHintType.ASSUME_CODE_39_CHECK_DIGIT] = false;
-            hints.Hints[DecodeHintType.TRY_HARDER] = false;
-            hints.Hints[DecodeHintType.USE_CODE_39_EXTENDED_MODE] = false;
-            //hints.Hints[DecodeHintType.ALLOWED_LENGTHS] = 255;
-
-            var BarcodeReaderEngine = new BarcodeReaderGeneric()
-            {
-                AutoRotate = false,
-                TryInverted = false,
-                Options = hints
-            };
-            BarcodeReaderEngine.AutoRotate = false;
-
-     
             // Convert the image to grayscale.
-            Mat srcGray = new Mat();
-            Cv2.CvtColor(imageMat, srcGray, ColorConversionCodes.BGR2GRAY);
-          
-            // Create a Mat to hold the binary (thresholded) image.
-            Mat binary = new Mat();
-           
-            // Set a fixed threshold value (for example, 127).
-            // You can also use Otsu's thresholding by setting the threshold value to 0 
-            // and combining with ThresholdTypes.Otsu.
-            double thresholdValue = 220;
-            double maxValue = 255;
-            // For fixed thresholding:
-            Cv2.BitwiseNot(srcGray, srcGray);
-            Cv2.Threshold(srcGray, binary, thresholdValue, maxValue, ThresholdTypes.Binary);
-            Cv2.BitwiseNot(binary, binary);
-            // Alternatively, for Otsu's method uncomment the next line:
-            //      Cv2.Threshold(srcGray, binary, 200, 255, ThresholdTypes.Binary | ThresholdTypes.Otsu);
-           // Cv2.ImShow("test", binary);
-
-            var luminanceSource = new OpenCvLuminanceSource(binary);
-          //    Cv2.ImShow("image", binary);
-            // var binarizer = new ZXing.Common.HybridBinarizer(luminanceSource);
-            //  var binaryBitmap = new BinaryBitmap(binarizer);
-
-
-            var decodeResult = BarcodeReaderEngine.Decode(luminanceSource);
-
-            if (decodeResult != null )
+            Mat srcGray = imageMat.Clone();
+            try
             {
-                float minX = float.MaxValue;
-                float minY = float.MaxValue;
-                float maxX = float.MinValue;
-                float maxY = float.MinValue;
+                Cv2.CvtColor(srcGray, srcGray, ColorConversionCodes.BGR2GRAY);
 
-                foreach (var point in decodeResult.ResultPoints)
+                // Create a Mat to hold the binary (thresholded) image.
+
+                // Set a fixed threshold value.
+                // We invert the image here becase the barcode is blended with grey and we want the Blacks to pop out
+                // So with iverting blacks become whites and its becomes easier to filter for white values.
+                // But we cant detect a barcode that is inverted so we have to invert it back.  the result is pure black and white barcode
+                // which is easier to detect and won't get messed up by ZXings binaryizer.
+                double thresholdValue = 220;
+                double maxValue = 255;
+                Cv2.BitwiseNot(srcGray, srcGray);
+                Cv2.Threshold(srcGray, srcGray, thresholdValue, maxValue, ThresholdTypes.Binary);
+                Cv2.BitwiseNot(srcGray, srcGray);
+                // Cv2.ImShow("test", binary);
+
+                var luminanceSource = new Classes.OpenCV.OpenCvLuminanceSource(srcGray);
+                //    Cv2.ImShow("image", binary);
+
+                var decodeResult = BarcodeReaderEngine.Decode(luminanceSource);
+                
+
+                if (decodeResult != null)
                 {
-                    if (point.X < minX) minX = point.X;
-                    if (point.Y < minY) minY = point.Y;
-                    if (point.X > maxX) maxX = point.X;
-                    if (point.Y > maxY) maxY = point.Y;
+                    float minX = float.MaxValue;
+                    float minY = float.MaxValue;
+                    float maxX = float.MinValue;
+                    float maxY = float.MinValue;
+
+                    foreach (var point in decodeResult.ResultPoints)
+                    {
+                        if (point.X < minX) minX = point.X;
+                        if (point.Y < minY) minY = point.Y;
+                        if (point.X > maxX) maxX = point.X;
+                        if (point.Y > maxY) maxY = point.Y;
+                    }
+
+                    // Have to pad out the values as the region that is reported is not always exact but close enuf
+                    int paddingW = 30;
+                    int paddingH = 10;
+                    var rac = new System.Drawing.Rectangle(
+                        (int)(minX - paddingW),
+                        (int)(minY - paddingH),
+                        (int)((maxX - minX) + 2 * paddingW),
+                        (int)((maxY - minY) + 2 * paddingH)
+                    );
+
+                    // the screenID should be the actual screenID the barcode is found on,  but that code is not implmeneted 
+                    // yet so just report it as 1, the value is irealavent right now it just has to be above -1
+                    result.screenID = 1;
+                    result.X = rac.X;
+                    result.Y = rac.Y;
+                    result.Width = rac.Width;
+                    result.Height = rac.Height;
                 }
-
-                // Optionally, you can add some padding if needed
-                int paddingW = 30;
-                int paddingH = 10;
-                var rac =  new System.Drawing.Rectangle(
-                    (int)(minX - paddingW),
-                    (int)(minY - paddingH),
-                    (int)((maxX - minX) + 2 * paddingW),
-                    (int)((maxY - minY) + 2 * paddingH)
-                );
-
-                result.screenID = 1;
-                result.X = rac.X;
-                result.Y = rac.Y;
-                result.Width = rac.Width;
-                result.Height = rac.Height;
+                else
+                {
+                    // this should be null to follow the pattern.  but don't feel like putting the check code.
+                    result.screenID = -1;
+                    result.X = 0;
+                    result.Y = 0;
+                    result.Width = 100;
+                    result.Height = 100;
+                }
             }
-            else
+            finally 
             {
-                result.screenID = -1;
-                result.X = 0;
-                result.Y = 0;
-                result.Width = 100;
-                result.Height = 100;
+                srcGray.Dispose();
             }
             return result;
         }
