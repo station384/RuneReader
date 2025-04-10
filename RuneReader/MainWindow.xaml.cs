@@ -32,9 +32,9 @@ namespace RuneReader
     {
         public static UserSettings AppSettings { get; private set; }
 
-        private volatile Stack<KeyCommand> KeyCommandStack = new Stack<KeyCommand> ();
+        private volatile Stack<KeyCommand> KeyCommandStack = new Stack<KeyCommand>();
 
-        private volatile string _currentKeyToSend =  string.Empty ; // Default key to send, can be changed dynamically
+        private volatile string _currentKeyToSend = string.Empty; // Default key to send, can be changed dynamically
 
         private volatile bool keyProcessingFirst = false;
         private volatile bool activationKeyPressed = false;
@@ -50,8 +50,8 @@ namespace RuneReader
 
         private bool BarCodeFound = false;
 
-        
-  
+
+
 
         private MagnifierWindow magnifier;
         private volatile ImageRegions CurrentImageRegions = new ImageRegions();
@@ -78,7 +78,7 @@ namespace RuneReader
 
         private bool Initalizing = true;  // To prevent events from firing as the xaml defaults are applied
 
-        
+
 
         private IntPtr SetHookActionKey(WindowsAPICalls.WindowsMessageProc proc)
         {
@@ -86,10 +86,10 @@ namespace RuneReader
             using (Process curProcess = Process.GetCurrentProcess())
             {
                 if (curProcess.MainModule != null)
-                using (ProcessModule curModule = curProcess.MainModule)
-                {
-                    result = WindowsAPICalls.SetWindowsHookEx(WindowsAPICalls.WH_KEYBOARD_LL, proc, WindowsAPICalls.GetModuleHandle(curModule.ModuleName), 0);
-                }
+                    using (ProcessModule curModule = curProcess.MainModule)
+                    {
+                        result = WindowsAPICalls.SetWindowsHookEx(WindowsAPICalls.WH_KEYBOARD_LL, proc, WindowsAPICalls.GetModuleHandle(curModule.ModuleName), 0);
+                    }
             }
             return result;
         }
@@ -100,7 +100,7 @@ namespace RuneReader
 
         private IntPtr HookCallbackActionKey(int nCode, IntPtr wParam, IntPtr lParam)
         {
-   
+
 
             if (nCode >= 0)
             {
@@ -125,7 +125,7 @@ namespace RuneReader
                             // Find the window with the title "wow" only if we haven't already found it
                             if (_wowWindowHandle == IntPtr.Zero)
                             {
-                                _wowWindowHandle =  WindowsAPICalls.FindWowWindow("World of Warcraft");
+                                _wowWindowHandle = WindowsAPICalls.FindWowWindow("World of Warcraft");
                             }
                             if (_wowWindowHandle != IntPtr.Zero)
                             {
@@ -133,7 +133,7 @@ namespace RuneReader
                                 keyProcessingFirst = true;
 
                                 _timer.Start();
-                 
+
                             }
 
 
@@ -144,7 +144,7 @@ namespace RuneReader
                         activationKeyPressed = false;
                         keyProcessingFirst = false;
                         _timer.Stop();
-                
+
                     }
                     if (wParam == (IntPtr)WindowsAPICalls.WM_KEYDOWN && key == System.Windows.Input.Key.LeftCtrl)
                     {
@@ -168,8 +168,8 @@ namespace RuneReader
                 }
             }
 
-                return WindowsAPICalls.CallNextHookEx(_hookID, nCode, wParam, lParam); // Doesn't lock explorer but does not consume the event.
-            
+            return WindowsAPICalls.CallNextHookEx(_hookID, nCode, wParam, lParam); // Doesn't lock explorer but does not consume the event.
+
         }
 
 
@@ -190,9 +190,9 @@ namespace RuneReader
         /// <param name="DisplayControl">Image used for OCR refence to USER no delays</param>
         /// <param name="Threshold">0.0 -> 1.0 How much variance of color are we going to call the same</param>
         /// <returns>ProcessImageResult</returns>
-        private ProcessImageResult ProcessImageOpenCV(ref Mat image,  ref System.Windows.Controls.Label lKeyVal, ref Label lWait,    ref System.Windows.Controls.Image DisplayControl,  double Threshold)
+        private ProcessImageResult ProcessImageOpenCV(ref Mat image, ref System.Windows.Controls.Label lKeyVal, ref Label lWait, ref System.Windows.Controls.Image DisplayControl, double Threshold)
         {
-            
+
             var origWidth = image.Width;
             var origHeight = image.Height;
             var CurrentKeyToSend = string.Empty;
@@ -205,7 +205,7 @@ namespace RuneReader
             int Bscale = ((int)(CurrentB * ((CurrentB * Threshold) / CurrentB)));
 
 
-            var result = new ProcessImageResult { CurrentKeyToSend = "", HasTarget=false, WaitTime = 0, regions = new DetectionRegions { HasTarget=false, WaitTime = 0, BottomCenter=false, BottomLeft=false, TopLeft=false, TopRight=false} };
+            var result = new ProcessImageResult { CurrentKeyToSend = "", HasTarget = false, WaitTime = 0, regions = new DetectionRegions { HasTarget = false, WaitTime = 0, BottomCenter = false, BottomLeft = false, TopLeft = false, TopRight = false } };
             BitmapSource? OutImageSource;
 
             var CVMat = image.Clone();
@@ -222,38 +222,40 @@ namespace RuneReader
 
 
             var barcodeResult = BarcodeDecode.DecodeBarcode(srcGray);
-                if (barcodeResult.BarcodeFound)
+            if (barcodeResult.BarcodeFound)
+            {
+
+                result = new ProcessImageResult
                 {
-
-                    result = new ProcessImageResult { 
-                       CurrentKeyToSend = "", 
-                       HasTarget = barcodeResult.HasTarget, 
-                       WaitTime = barcodeResult.WaitTime, 
-                       regions = new DetectionRegions { 
-                           HasTarget = barcodeResult.HasTarget, 
-                           WaitTime = barcodeResult.WaitTime, 
-                           BottomCenter = (barcodeResult.WaitTime <= 500), 
-                           BottomLeft = (barcodeResult.WaitTime <= 300), 
-                           TopLeft = (barcodeResult.WaitTime <= 0), 
-                           TopRight = (barcodeResult.WaitTime < 1000)
-                       } 
-                    };
-
-                    BarCodeFound = true;
-                    if (barcodeResult.HasTarget == true || cbIgnoreTargetInfo.IsChecked == true)
+                    CurrentKeyToSend = "",
+                    HasTarget = barcodeResult.HasTarget,
+                    WaitTime = barcodeResult.WaitTime,
+                    regions = new DetectionRegions
                     {
-                        CurrentKeyToSend = barcodeResult.DecodedTextValue;
+                        HasTarget = barcodeResult.HasTarget,
+                        WaitTime = barcodeResult.WaitTime,
+                        BottomCenter = (barcodeResult.WaitTime <= 500),
+                        BottomLeft = (barcodeResult.WaitTime <= 300),
+                        TopLeft = (barcodeResult.WaitTime <= 0),
+                        TopRight = (barcodeResult.WaitTime < 1000)
                     }
-                    else
-                    {
-                        CurrentKeyToSend = "";
-                    }
+                };
+
+                BarCodeFound = true;
+                if (barcodeResult.HasTarget == true || cbIgnoreTargetInfo.IsChecked == true)
+                {
+                    CurrentKeyToSend = barcodeResult.DecodedTextValue;
                 }
                 else
                 {
-                    BarCodeFound = false;
+                    CurrentKeyToSend = "";
                 }
-            
+            }
+            else
+            {
+                BarCodeFound = false;
+            }
+
 
             // Push the new image out the the first image,  this has the markers and delays
             if (BarCodeFound)
@@ -269,13 +271,13 @@ namespace RuneReader
                 OutImageSource = BitmapSourceConverter.ToBitmapSource(srcGray);
             else
                 OutImageSource = BitmapSourceConverter.ToBitmapSource(CVMat);
-         
+
 
             // Update the label
             lKeyVal.Content = CurrentKeyToSend;
             lWait.Content = result.WaitTime.ToString();
             result.CurrentKeyToSend = CurrentKeyToSend;
-            
+
             CVMat.Dispose();
             image.Dispose();
             srcGray.Dispose();
@@ -292,7 +294,7 @@ namespace RuneReader
                 width = (int)magnifier.Width,
                 height = (int)magnifier.Height;
 
-   
+
 
 
             // Initialize CaptureScreen with the dispatcher and the UI update action
@@ -309,7 +311,7 @@ namespace RuneReader
             );
 
             // Assign a handler to the UpdateUIImage event
-            screenCapture.UpdateFirstImage +=  (Mat image) =>
+            screenCapture.UpdateFirstImage += (Mat image) =>
             {
                 double trasThreshold = CurrentThreshold == 0 ? 0.0 : CurrentThreshold / 100;
                 var capResult = ProcessImageOpenCV(ref image, ref lDetectedValue, ref lDetectedTime, ref imageCap, trasThreshold);
@@ -328,16 +330,16 @@ namespace RuneReader
         private async void mainTimerTick(object? sender, EventArgs args)
         {
             if (activationKeyPressed == true && ProcessingKey == false)
-                await ProcessBarCodeKey();  
+                await ProcessBarCodeKey();
         }
 
         private async Task ProcessKey()
         {
-           
+
             if (KeyCommandStack.Count == 0 || ProcessingKey == true) return;
             ProcessingKey = true;
             KeyCommand currentKey = KeyCommandStack.Pop();
- 
+
             if (_wowWindowHandle != nint.Zero)
             {
                 DateTime currentD = DateTime.Now;
@@ -352,12 +354,12 @@ namespace RuneReader
                     ProcessingKey = false;
                     return;
                 }
- 
+
                 // Tranlate the char to the virtual Key Code
                 var vkCode = VirtualKeyCodeMapper.GetVirtualKeyCode(currentKey.Key);
 
                 // command is tied to CTRL or ALT So have to press them
-                if (currentKey.Ctrl) 
+                if (currentKey.Ctrl)
                     WindowsAPICalls.PostMessage(_wowWindowHandle, WindowsAPICalls.WM_KEYDOWN, WindowsAPICalls.VK_CONTROL, 0);
                 else
                     // Command isn't tied to CTRL so send a CTRL Up.
@@ -365,8 +367,8 @@ namespace RuneReader
                     // This could also be accomlished buy storing off the value in the message processor and storing a flag local if it saw one or not.
                     // keyboards are global so that may work.
                     WindowsAPICalls.PostMessage(_wowWindowHandle, WindowsAPICalls.WM_KEYUP, WindowsAPICalls.VK_CONTROL, 0);
-             
-                if (currentKey.Alt) 
+
+                if (currentKey.Alt)
                     WindowsAPICalls.PostMessage(_wowWindowHandle, WindowsAPICalls.WM_KEYDOWN, WindowsAPICalls.VK_MENU, 0);
                 else
                     // See Notes on CTRL.
@@ -376,7 +378,7 @@ namespace RuneReader
 
                 // Press the command Key Down
                 WindowsAPICalls.PostMessage(_wowWindowHandle, WindowsAPICalls.WM_KEYDOWN, vkCode, 0);
-          
+
 
 
                 // CTRL and ALT do not need to be held down just only pressed initally for the command to be interpeted correctly
@@ -385,22 +387,22 @@ namespace RuneReader
 
                 //Add the keypress delay while monitoring that the activationkey is still pressed (allows interrupting the delay)
                 DateTime currentMS = DateTime.Now.Add(new TimeSpan(Random.Shared.Next() % 5 + CurrentKeyDownDelayMS) * 1000);
-                while ((currentMS >= DateTime.Now ) && activationKeyPressed == true)
+                while ((currentMS >= DateTime.Now) && activationKeyPressed == true)
                 {
                     await Task.Delay(1);
                 }
-                
-               
-                
-                if (_keyPressMode )
+
+
+
+                if (_keyPressMode)
                 {
                     await Task.Delay(CurrentCaptureRateMS == 0 ? 2 : CurrentCaptureRateMS / 2); // Try and wait for a capture refresh
-                     currentMS = DateTime.Now;
+                    currentMS = DateTime.Now;
                     currentKey.MaxWaitTime = 5000;
                     currentMS = DateTime.Now.AddMilliseconds(currentKey.MaxWaitTime);
                     DateTime MaxWaitTime = DateTime.Now.AddSeconds(8);
 
-                    while ((currentMS >= DateTime.Now && currentKey.MaxWaitTime >= 350 ) && activationKeyPressed == true )
+                    while ((currentMS >= DateTime.Now && currentKey.MaxWaitTime >= 350) && activationKeyPressed == true)
                     {
                         await Task.Delay(1);
                         currentKey.MaxWaitTime = CurrentImageRegions.FirstImageRegions.WaitTime;
@@ -408,22 +410,22 @@ namespace RuneReader
                         {
                             goto alldone;
                         }
-                    }               
+                    }
                 }
 
-                // If where not watching for when things time out, we insert a hard delay
-                // This is no longer need as were putting a hard pause above
-                //if (!_keyPressMode)
-                //{
-                //   await Task.Delay(Random.Shared.Next() % 5 + CurrentKeyDownDelayMS);//.ConfigureAwait(true);
-                //}
+            // If where not watching for when things time out, we insert a hard delay
+            // This is no longer need as were putting a hard pause above
+            //if (!_keyPressMode)
+            //{
+            //   await Task.Delay(Random.Shared.Next() % 5 + CurrentKeyDownDelayMS);//.ConfigureAwait(true);
+            //}
             alldone:
                 WindowsAPICalls.PostMessage(_wowWindowHandle, WindowsAPICalls.WM_KEYUP, vkCode, 0);
                 ProcessingKey = false;
             }
 
             return;
-       
+
         }
 
 
@@ -446,7 +448,7 @@ namespace RuneReader
             int vkCode = 0;
             DateTime currentD = DateTime.Now;
 
-  
+
 
             keyToSendFirst = string.Empty;
             vkCode = 0;
@@ -457,7 +459,7 @@ namespace RuneReader
             // lets just hang out here till we have a key
             currentD = DateTime.Now;
             keyToSendFirst = _currentKeyToSend;
-            while (keyToSendFirst == "" && button_Start.IsEnabled == false && activationKeyPressed == true )
+            while (keyToSendFirst == "" && button_Start.IsEnabled == false && activationKeyPressed == true)
             {
                 await Task.Delay(1);
                 keyToSendFirst = _currentKeyToSend;
@@ -467,10 +469,10 @@ namespace RuneReader
                 }
             }
 
-            
-            if (  !VirtualKeyCodeMapper.HasKey(keyToSendFirst) )
+
+            if (!VirtualKeyCodeMapper.HasKey(keyToSendFirst))
             {
-                 goto allDone;
+                goto allDone;
             }
 
 
@@ -502,7 +504,7 @@ namespace RuneReader
             magnifier.SizeChanged += Magnifier_SizeChanged;
             magnifier.LocationChanged += Magnifier_LocationChanged;
 
-            cbPetAttackKey.SelectedValue = cbPetAttackKey.Items[AppSettings.PetKey]; 
+            cbPetAttackKey.SelectedValue = cbPetAttackKey.Items[AppSettings.PetKey];
             if (AppSettings.PetKeyEnables == true)
             {
                 lPet.IsEnabled = true;
@@ -528,7 +530,7 @@ namespace RuneReader
 
             if (AppSettings.IgnoreTargetingInfo == true)
             {
-                cbIgnoreTargetInfo.IsChecked =  true;
+                cbIgnoreTargetInfo.IsChecked = true;
             }
             else
             {
@@ -542,8 +544,8 @@ namespace RuneReader
             foreach (var x in cbActivationKey.Items)
             {
 
-               if ( ((ComboBoxItem)x).Content.ToString() == AppSettings.ActivationKey)
-                    {
+                if (((ComboBoxItem)x).Content.ToString() == AppSettings.ActivationKey)
+                {
                     cbActivationKey.SelectedItem = x;
                 }
             }
@@ -557,7 +559,7 @@ namespace RuneReader
 
             _wowWindowHandle = WindowsAPICalls.FindWowWindow("World of Warcraft");
 
- 
+
             StartCaptureProcess();
 
             magnifier.Visibility = Visibility.Hidden;
@@ -583,7 +585,7 @@ namespace RuneReader
 
             //_timer.IsEnabled = false ;
 
-          
+
         }
 
         private async void _TimerBarcodeMonitor_Tick(object? sender, EventArgs e)
@@ -624,7 +626,7 @@ namespace RuneReader
                 }
             }
             finally
-            { 
+            {
                 //We could do this as a using.   But I like the try, it helps me visualize when we destroy and what context.
                 image.Dispose();
             }
@@ -657,12 +659,12 @@ namespace RuneReader
                 if (!screenCapture.IsCapturing)
                 {
                     Magnifier_LocationChanged(sender, e);
-        
+
                     _currentKeyToSend = "";
-                
+
                     screenCapture.StartCapture();
 
-                    _hookID = _hookID == IntPtr.Zero ? SetHookActionKey(_proc) : IntPtr.Zero; 
+                    _hookID = _hookID == IntPtr.Zero ? SetHookActionKey(_proc) : IntPtr.Zero;
                     button_Start.IsEnabled = false;
                     button_Stop.IsEnabled = true;
                     _TimerWowWindowMonitor.Start();
@@ -671,22 +673,23 @@ namespace RuneReader
 
                 }
             }
- 
+
         }
-       
+
         private void StopButton_Click(object sender, RoutedEventArgs e)
         {
             // ... When you want to stop capturing:
             if (screenCapture.IsCapturing)
             {
                 screenCapture.StopCapture();
-                if (_hookID != IntPtr.Zero) {
+                if (_hookID != IntPtr.Zero)
+                {
                     WindowsAPICalls.UnhookWindowsHookEx(_hookID);
                     _hookID = IntPtr.Zero;
                 }
                 button_Start.IsEnabled = true;
                 button_Stop.IsEnabled = false;
-                _timer.Stop(); 
+                _timer.Stop();
                 _TimerWowWindowMonitor.Stop();
                 _TimerBarcodeMonitor.Stop();
 
@@ -695,13 +698,13 @@ namespace RuneReader
 
         private void Capture_Click(object sender, RoutedEventArgs e)
         {
-            var filePath = ".\\captures\\Cap" + DateTime.Now.ToBinary().ToString() +".tif";
+            var filePath = ".\\captures\\Cap" + DateTime.Now.ToBinary().ToString() + ".tif";
 
 
             using (var fileStream = new FileStream(filePath, FileMode.Create))
             {
                 BitmapEncoder encoder = new TiffBitmapEncoder();
-                encoder.Frames.Add(BitmapFrame.Create( ((BitmapImage)imageCap.Source) ));
+                encoder.Frames.Add(BitmapFrame.Create(((BitmapImage)imageCap.Source)));
                 encoder.Save(fileStream);
             }
         }
@@ -712,7 +715,7 @@ namespace RuneReader
             {
                 magnifier.Visibility = Visibility.Hidden;
             }
-        else
+            else
             {
                 magnifier.Visibility = Visibility.Visible;
             }
@@ -720,7 +723,7 @@ namespace RuneReader
 
         private void Magnifier_LocationChanged(object? sender, EventArgs e)
         {
-            if (Initalizing ) return;
+            if (Initalizing) return;
             //            if (screenCapture == null) return;
             //            screenCapture.CaptureRegion = magnifier.CurrrentLocationValue;
             if (screenCapture == null) return;
@@ -737,12 +740,12 @@ namespace RuneReader
                 var height = magnifier.CurrrentLocationValue.Height;
 
                 // Adjust for DPI scaling
-                var scaledLeft = left * dpiX +1;
-                var scaledTop = top * dpiY +1;
-                var scaledWidth = width * dpiX -1;
-                var scaledHeight = height * dpiY -1;
+                var scaledLeft = left * dpiX + 1;
+                var scaledTop = top * dpiY + 1;
+                var scaledWidth = width * dpiX - 1;
+                var scaledHeight = height * dpiY - 1;
                 //     if (screenCapture.CaptureRegion != null ) 
-                screenCapture.CaptureRegion = new System.Windows.Rect(scaledLeft+1, scaledTop+1, scaledWidth-1, scaledHeight-1);
+                screenCapture.CaptureRegion = new System.Windows.Rect(scaledLeft + 1, scaledTop + 1, scaledWidth - 1, scaledHeight - 1);
                 //screenCapture.CaptureRegion = magnifier.CurrrentLocationValue;
 
             }
@@ -775,8 +778,8 @@ namespace RuneReader
                 scaledHeight = scaledHeight < 0 ? 1 : scaledHeight;
 
 
- 
-                screenCapture.CaptureRegion =  new System.Windows.Rect(scaledLeft+1, scaledTop+1, scaledWidth-1, scaledHeight-1);               
+
+                screenCapture.CaptureRegion = new System.Windows.Rect(scaledLeft + 1, scaledTop + 1, scaledWidth - 1, scaledHeight - 1);
 
 
             }
@@ -809,9 +812,10 @@ namespace RuneReader
             {
                 screenCapture.StopCapture();
             }
-           
-            
-            if (_hookID != IntPtr.Zero) {
+
+
+            if (_hookID != IntPtr.Zero)
+            {
                 // Make sure we stop trapping the keyboard
                 WindowsAPICalls.UnhookWindowsHookEx(_hookID);
                 _hookID = IntPtr.Zero;
@@ -837,17 +841,17 @@ namespace RuneReader
             AppSettings.CaptureRateMS = (int)sliderCaptureRateMS.Value;
             CurrentCaptureRateMS = (int)sliderCaptureRateMS.Value;
             if (tbCaptureRateMS != null)
-            tbCaptureRateMS.Text = ((int)sliderCaptureRateMS.Value).ToString();
+                tbCaptureRateMS.Text = ((int)sliderCaptureRateMS.Value).ToString();
             if (screenCapture != null)
-            screenCapture.CaptureInterval = (int)sliderCaptureRateMS.Value;
-       
+                screenCapture.CaptureInterval = (int)sliderCaptureRateMS.Value;
+
         }
 
 
         private void sliderWowGamma_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
         {
             if (Initalizing) return;
-            AppSettings.WowGamma = (float)Math.Round(sliderWowGamma.Value,1);
+            AppSettings.WowGamma = (float)Math.Round(sliderWowGamma.Value, 1);
             WowGamma = (float)AppSettings.WowGamma;
             if (tbWowGamma != null)
                 tbWowGamma.Text = ((float)AppSettings.WowGamma).ToString("0.0");
@@ -860,13 +864,13 @@ namespace RuneReader
             AppSettings.KeyPressSpeedMS = (int)sliderKeyRateMS.Value;
             CurrentKeyDownDelayMS = (int)sliderKeyRateMS.Value;
             if (tbKeyRateMS != null)
-            tbKeyRateMS.Text = ((int)sliderKeyRateMS.Value).ToString();
+                tbKeyRateMS.Text = ((int)sliderKeyRateMS.Value).ToString();
 
         }
 
         private new void PreviewTextInput(object sender, TextCompositionEventArgs e)
         {
-            
+
             e.Handled = !StringExtensions.IsTextAllowed(e.Text);
         }
 
@@ -917,7 +921,7 @@ namespace RuneReader
             AppSettings.CapX = 50;
             AppSettings.CapY = 50;
             AppSettings.CapWidth = 100;
-            AppSettings.CapHeight = 100 ;
+            AppSettings.CapHeight = 100;
 
             magnifier.Left = AppSettings.CapX > SystemParameters.PrimaryScreenWidth ? 100 : AppSettings.CapX;
             magnifier.Top = AppSettings.CapY > SystemParameters.PrimaryScreenHeight ? 100 : AppSettings.CapY;
