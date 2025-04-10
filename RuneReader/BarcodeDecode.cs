@@ -30,7 +30,6 @@ namespace RuneReader
         public class BarcodeResult
         {
             public bool BarcodeFound { get; set; }
-
             public String DetectedText { get; set; }
             public String DecodedTextValue { get; set; }
             public int WaitTime { get; set; }
@@ -39,7 +38,6 @@ namespace RuneReader
 
             public BarcodeResult()
             {
-                //Regions = new System.Windows.Rect[0];
                 DetectedText = String.Empty;
                 DecodedTextValue = String.Empty;
                 BarcodeFound = false;
@@ -314,29 +312,13 @@ namespace RuneReader
         public static BarcodeResult DecodeBarcode(Mat imageMat)
         {
             BarcodeResult result = new BarcodeResult();
-
-            // Preprocessing with OpenCvSharp (e.g., grayscale, thresholding, etc.)
-
-      //      Mat grayMat = new Mat();
-            //Cv2.CvtColor(imageMat, grayMat, ColorConversionCodes.BGR2GRAY);
-      
-
-
-            // Optional: Additional preprocessing steps like thresholding or blurring can be done here
-
-            // Decode barcode using ZXing with OpenCV bindings
-
-            // Convert Mat to Bitmap for ZXing
-            // Bitmap bitmap = OpenCvSharp.Extensions.BitmapConverter.ToBitmap(grayMat);
+            
             // Decode barcode using ZXing
-
             ZXing.Result decodeResult = null;
 
             var luminanceSource = new RuneReader.Classes.OpenCV.OpenCvLuminanceSource(imageMat);
 
-
-
-             decodeResult = BarcodeReaderEngine.Decode(luminanceSource);
+            decodeResult = BarcodeReaderEngine.Decode(luminanceSource);
 
             if (decodeResult != null && ValidateWithCheckDigit(decodeResult.Text))
             {
@@ -384,13 +366,9 @@ namespace RuneReader
                 Cv2.BitwiseNot(srcGray, srcGray);
                 Cv2.Threshold(srcGray, srcGray, thresholdValue, maxValue, ThresholdTypes.Binary);
                 Cv2.BitwiseNot(srcGray, srcGray);
-                // Cv2.ImShow("test", binary);
 
                 var luminanceSource = new Classes.OpenCV.OpenCvLuminanceSource(srcGray);
-                //    Cv2.ImShow("image", binary);
-
                 var decodeResult = BarcodeReaderEngine.Decode(luminanceSource);
-                
 
                 if (decodeResult != null)
                 {

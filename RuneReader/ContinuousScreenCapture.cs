@@ -20,10 +20,6 @@ namespace RuneReader
         public delegate void UpdateFirstImageDelegate(Mat image);
         public event UpdateFirstImageDelegate UpdateFirstImage;
 
-        //public delegate void UpdateSecondImageDelegate(Bitmap image);
-        //public event UpdateSecondImageDelegate UpdateSecondImage;
-
-
         private System.Windows.Rect _captureRegion;
         public System.Windows.Rect CaptureRegion
         {
