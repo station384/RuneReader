@@ -1,11 +1,8 @@
 ﻿using ScreenCapture.NET;
 using System;
 using System.Collections.Generic;
-using System.Drawing;
-using System.Drawing.Imaging;
 using System.Linq;
 using System.Windows;
-using HPPH;
 using System.Threading.Tasks;
 using System.Windows.Controls;
 using OpenCvSharp;
@@ -17,34 +14,8 @@ using System.Runtime.InteropServices;
 namespace RuneReader
 {
 
-
-    public static class ImageExtension
-    {
-        public static Bitmap ToBitmap(this IImage image) => image.AsRefImage<ColorBGRA>().ToBitmap();
-        public static Bitmap ToBitmap(this Image<ColorBGRA> image) => image.AsRefImage<ColorBGRA>().ToBitmap();
-
-        public static unsafe Bitmap ToBitmap(this RefImage<ColorBGRA> image)
-        {
-            Bitmap output = new(image.Width, image.Height, PixelFormat.Format32bppArgb);
-            System.Drawing.Rectangle rect = new(0, 0, image.Width, image.Height);
-            BitmapData bmpData = output.LockBits(rect, ImageLockMode.ReadWrite, output.PixelFormat);
-
-            nint ptr = bmpData.Scan0;
-            foreach (var row in image.Rows)
-            {
-                row.CopyTo(new Span<ColorBGRA>((void*)ptr, bmpData.Stride));
-                ptr += bmpData.Stride;
-            }
-
-            output.UnlockBits(bmpData);
-            return output;
-        }
-    }
-
     public class CaptureScreen
     {
-        private bool isCapturing;
-        private readonly int captureX, captureY, captureWidth, captureHeight;
         IScreenCaptureService screenCaptureService;
         IEnumerable<GraphicsCard> graphicsCards;
         IEnumerable<Display> displays;
@@ -57,33 +28,42 @@ namespace RuneReader
 
 
         private volatile Mat _CapturedImageFirst;
-        public  Mat CapturedImageFirst { get
+        public Mat CapturedImageFirst
+        {
+            get
             {
                 return _CapturedImageFirst;
-            } 
+            }
             private set
             {
+                // We have to manage the memory for the Mat images.  so its up to us to make sure we detroy the prior one
+                // before setting the new one.
                 if (_CapturedImageFirst != null)
                 {
                     if (!_CapturedImageFirst.IsDisposed) _CapturedImageFirst.Dispose();
-                  //  GC.Collect();
                 }
                 _CapturedImageFirst = value;
 
-            } }
+            }
+        }
+
         private volatile Mat _CapturedFullScreen;
-        private  Mat CapturedFullScreen { get 
-            { 
-                return _CapturedFullScreen; 
-            }  
-            set {
-                    if (_CapturedFullScreen != null)
-                    {   
-                       if (!_CapturedFullScreen.IsDisposed) _CapturedFullScreen.Dispose();
-                  //     GC.Collect();
-                    }
-                    _CapturedFullScreen = value;
-                } 
+        private Mat CapturedFullScreen
+        {
+            get
+            {
+                return _CapturedFullScreen;
+            }
+            set
+            {
+                // We have to manage the memory for the Mat images.  so its up to us to make sure we detroy the prior one
+                // before setting the new one.
+                if (_CapturedFullScreen != null)
+                {
+                    if (!_CapturedFullScreen.IsDisposed) _CapturedFullScreen.Dispose();
+                }
+                _CapturedFullScreen = value;
+            }
         }
 
 
@@ -103,7 +83,7 @@ namespace RuneReader
 
 
 
-     
+
         public CaptureScreen(System.Windows.Rect Regions, int? downscaleLevel)
         {
             // Create a screen-capture service
@@ -128,53 +108,62 @@ namespace RuneReader
             {
                 capZone1 = screenCapture.RegisterCaptureZone((int)_captureRegion.X, (int)_captureRegion.Y, (int)_captureRegion.Width, (int)_captureRegion.Height, downscaleLevel: 0);
                 capZone1.Updated += CapZone1_Updated;
+                // We only want to update the zone when we trigger it.  no need for extra CPU cycles
+                capZone1.AutoUpdate = false;
             }
 
             if (capZoneFullScreen == null)
             {
                 capZoneFullScreen = screenCapture.RegisterCaptureZone((int)0, (int)0, (int)_maxWidth, (int)_maxHeight, downscaleLevel: 0);
                 capZoneFullScreen.Updated += CapZoneFullScreen_Updated;
+                // We only want to update the zone when we trigger it.  no need for extra CPU cycles
                 capZoneFullScreen.AutoUpdate = false;
             }
+            _CapturedImageFirst = new Mat();
+            _CapturedFullScreen = new Mat();
+            capZone1.RequestUpdate();
         }
 
 
-
+        // Holders just to keep track if events have fired.
         private bool _fullscreenUpdated = false;
         private bool _firstImageUpdated = false;
+
+        /// <summary>
+        /// Triggers a refresh of the screen grab and stores the image in CapturedImageFirst
+        /// </summary>
+        /// <returns>
+        /// True otherwise exception
+        /// </returns>
         public async Task<bool> GrabScreen()
         {
             // Capture the screen
-            // This should be done in a loop on a seperate thread as CaptureScreen blocks if the screen is not updated (still image).
             _firstImageUpdated = false;
+            capZone1.RequestUpdate();
             screenCapture.CaptureScreen();
+            // Doo dee doo dee doo...  lets wait for the image to be updated.
             while (!_firstImageUpdated)
             {
                 await Task.Delay(1);
             }
             _firstImageUpdated = false;
             return true;
-            // Do something with the captured image - e.g. access all pixels (same could be done with topLeft)
-
-
         }
 
         private void CapZoneFullScreen_Updated(object? sender, EventArgs e)
         {
-
             byte[]? pixelData = null;
             using (capZoneFullScreen.Lock())
             {
                 pixelData = capZoneFullScreen.RawBuffer.ToArray();
             }
-            
+
             CapturedFullScreen = Mat.FromPixelData(capZoneFullScreen.Height, capZoneFullScreen.Width, MatType.CV_8UC4, pixelData);
             _fullscreenUpdated = true;
         }
 
         private void CapZone1_Updated(object? sender, EventArgs e)
         {
-
             byte[]? pixelData = null;
             using (capZoneFullScreen.Lock())
             {
@@ -185,6 +174,12 @@ namespace RuneReader
             _firstImageUpdated = true;
         }
 
+        /// <summary>
+        /// Note :  YOU MUST DISPOSE OF THE RETURNED MAT
+        /// </summary>
+        /// <returns>
+        /// Mat OpenCV
+        /// </returns>
         public async Task<Mat> GrabFullScreens()
         {
             Mat result = null;
@@ -197,7 +192,6 @@ namespace RuneReader
             }
             _fullscreenUpdated = false; ;
             return result = CapturedFullScreen.Clone();
-
         }
 
 

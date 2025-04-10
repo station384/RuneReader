@@ -25,25 +25,38 @@ namespace RuneReader
 
 
         private System.Windows.Rect _captureRegion;
-        public System.Windows.Rect CaptureRegion { 
-                get {
-                    return _captureRegion;
-                    //    screenCapture.CaptureRegion;// _captureRegion;
-                }
-                set
-                {
-                    screenCapture.CaptureRegion = value;
-                    _captureRegion = screenCapture.CaptureRegion;
-                }
+        public System.Windows.Rect CaptureRegion
+        {
+            get
+            {
+                return _captureRegion;
+                //    screenCapture.CaptureRegion;// _captureRegion;
             }
-        public bool IsCapturing {get { return isCapturing; }}
-        
+            set
+            {
+                screenCapture.CaptureRegion = value;
+                _captureRegion = screenCapture.CaptureRegion;
+            }
+        }
+        public  bool IsCapturing { get { return isCapturing; } }
+
+        private Thread CreateCaptureThread()
+        {
+            return  new Thread(CaptureLoop)
+            {
+                IsBackground = false // Set the thread as a background thread
+,
+                Priority = ThreadPriority.AboveNormal
+            };
+
+        }
         public ContinuousScreenCapture(int interval, Dispatcher uiDispatcher, CaptureScreen captureScreen)
         {
             this.captureInterval = interval;
             this.uiDispatcher = uiDispatcher;
             this.screenCapture = captureScreen;
             this._captureRegion = captureScreen.CaptureRegion;
+            captureThread = CreateCaptureThread();
         }
 
         public int CaptureInterval
@@ -67,14 +80,13 @@ namespace RuneReader
         public void StartCapture()
         {
             if (isCapturing == false)
-            { 
-            isCapturing = true;
-                captureThread = new Thread(CaptureLoop)
+            {
+                isCapturing = true;
+                if (captureThread.ThreadState == System.Threading.ThreadState.Stopped)
                 {
-                    IsBackground = false // Set the thread as a background thread
-                    , Priority = ThreadPriority.AboveNormal
-                };
-            captureThread.Start();
+                    captureThread = CreateCaptureThread();
+                }
+                captureThread.Start();
             }
         }
 
@@ -84,17 +96,15 @@ namespace RuneReader
             {
 
                 isCapturing = false;
-                if (captureThread != null && captureThread.IsAlive)
-                {
-                   // captureThread.Join(); // Wait for the thread to finish
-                }
+               
             }
         }
 
         private async void CaptureLoop()
         {
             if (screenCapture == null)
-            { throw new Exception("screenCapture cannot be NULL"); 
+            {
+                throw new Exception("screenCapture cannot be NULL");
             }
 
             while (isCapturing)
@@ -119,9 +129,10 @@ namespace RuneReader
                 {
                     sleepTime = captureInterval;
                 }
-    
+
                 Thread.Sleep(sleepTime);
             }
+            Debug.WriteLine("Capturing Stopped");
         }
     }
 }
