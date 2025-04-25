@@ -334,7 +334,7 @@ namespace RuneReader
             } else
             {
                 result.DecodedTextValue = "";
-                result.DetectedText = "";
+                result.DetectedText = "brr";
                 result.WaitTime = 0;
                 result.BarcodeFound = false;
                 result.HasTarget = false;

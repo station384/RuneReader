@@ -28,6 +28,8 @@ namespace RuneReader
 
 
         private volatile Mat _CapturedImageFirst;
+        private volatile Mat _CapturedFullScreen;
+
         public Mat CapturedImageFirst
         {
             get
@@ -47,12 +49,12 @@ namespace RuneReader
             }
         }
 
-        private volatile Mat _CapturedFullScreen;
-        private Mat CapturedFullScreen
+
+        public  Mat CapturedFullScreen
         {
             get
             {
-                return _CapturedFullScreen;
+                return  _CapturedFullScreen;
             }
             set
             {
@@ -61,6 +63,7 @@ namespace RuneReader
                 if (_CapturedFullScreen != null)
                 {
                     if (!_CapturedFullScreen.IsDisposed) _CapturedFullScreen.Dispose();
+                    GC.Collect();
                 }
                 _CapturedFullScreen = value;
             }
@@ -171,6 +174,7 @@ namespace RuneReader
             }
 
             CapturedImageFirst = Mat.FromPixelData(capZone1.Height, capZone1.Width, MatType.CV_8UC4, pixelData);
+     
             _firstImageUpdated = true;
         }
 
@@ -180,18 +184,15 @@ namespace RuneReader
         /// <returns>
         /// Mat OpenCV
         /// </returns>
-        public async Task<Mat> GrabFullScreens()
+        public async Task GrabFullScreens()
         {
-            Mat result = null;
-
             _fullscreenUpdated = false;
             capZoneFullScreen.RequestUpdate();
             while (_fullscreenUpdated == false)
             {
                 await Task.Delay(1);
             }
-            _fullscreenUpdated = false; ;
-            return result = CapturedFullScreen.Clone();
+            _fullscreenUpdated = false;            
         }
 
 

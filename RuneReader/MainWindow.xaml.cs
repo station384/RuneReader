@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Drawing;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Threading.Tasks;
@@ -13,15 +12,11 @@ using OpenCvSharp.WpfExtensions;
 using System.Windows.Controls;
 using RuneReader.Properties;
 using System.Windows.Threading;
-using System.Linq;
 using MahApps.Metro.Controls;
-using System.Runtime.CompilerServices;
 using static RuneReader.BarcodeDecode;
-using System.Threading;
-using ZXing;
 using RuneReader.Classes;
 using RuneReader.Classes.Utilities;
-using System.Timers;
+
 
 
 
@@ -30,7 +25,8 @@ namespace RuneReader
 
     public partial class MainWindow : MetroWindow
     {
-        public static UserSettings AppSettings { get; private set; }
+        private static UserSettings _AppSettings = new UserSettings();
+        public static UserSettings AppSettings { get { return _AppSettings; } private set { _AppSettings = value; } }
 
         private volatile Stack<KeyCommand> KeyCommandStack = new Stack<KeyCommand>();
 
@@ -101,11 +97,12 @@ namespace RuneReader
         private IntPtr HookCallbackActionKey(int nCode, IntPtr wParam, IntPtr lParam)
         {
 
-
+            nint result = 0;
             if (nCode >= 0)
             {
                 int vkCode = Marshal.ReadInt32(lParam);
                 Key key = KeyInterop.KeyFromVirtualKey(vkCode);
+
                 // We don't want to send key repeats if the app is not in focus
                 if (!WindowsAPICalls.IsCurrentWindowWithTitle("World of Warcraft"))
                 {
@@ -114,6 +111,7 @@ namespace RuneReader
                     // Let the key event go thru so the new focused app can handle it
                     keyProcessingFirst = false;
                     activationKeyPressed = false;
+                    result = WindowsAPICalls.CallNextHookEx(_hookID, nCode, wParam, lParam); // Doesn't lock explorer but does not consume the event.
                 }
                 else
                 {
@@ -164,11 +162,14 @@ namespace RuneReader
                         AltPressed = false;
                     }
 
-
+                    result =  WindowsAPICalls.CallNextHookEx(0, nCode, wParam, lParam); // Doesn't lock explorer but does not consume the event.
                 }
             }
 
-            return WindowsAPICalls.CallNextHookEx(_hookID, nCode, wParam, lParam); // Doesn't lock explorer but does not consume the event.
+          //  var result = WindowsAPICalls.CallNextHookEx(_hookID, nCode, wParam, lParam); // Doesn't lock explorer but does not consume the event.
+          //  var result = WindowsAPICalls.CallNextHookEx(_hookID, nCode, wParam, lParam); // Doesn't lock explorer but does not consume the event.
+
+            return result;
 
         }
 
@@ -339,6 +340,7 @@ namespace RuneReader
             if (KeyCommandStack.Count == 0 || ProcessingKey == true) return;
             ProcessingKey = true;
             KeyCommand currentKey = KeyCommandStack.Pop();
+      
 
             if (_wowWindowHandle != nint.Zero)
             {
@@ -385,14 +387,15 @@ namespace RuneReader
                 if (currentKey.Ctrl) WindowsAPICalls.PostMessage(_wowWindowHandle, WindowsAPICalls.WM_KEYUP, WindowsAPICalls.VK_CONTROL, 0); //&& CtrlPressed == true
                 if (currentKey.Alt) WindowsAPICalls.PostMessage(_wowWindowHandle, WindowsAPICalls.WM_KEYUP, WindowsAPICalls.VK_MENU, 0); //&& AltPressed == true
 
+
+
                 //Add the keypress delay while monitoring that the activationkey is still pressed (allows interrupting the delay)
-                DateTime currentMS = DateTime.Now.Add(new TimeSpan(Random.Shared.Next() % 5 + CurrentKeyDownDelayMS) * 1000);
-                while ((currentMS >= DateTime.Now) && activationKeyPressed == true)
+                // Note:  There are 10000 ticks in a millisecond
+                DateTime currentMS = DateTime.Now.Add(new TimeSpan((Random.Shared.Next() % 5 + CurrentKeyDownDelayMS) * 10000) );
+                while ((currentMS >= DateTime.Now) && activationKeyPressed == true )//&& currentKey.MaxWaitTime >= 350)
                 {
-                    await Task.Delay(1);
+                    await Task.Delay(16);  // 1 frame when running at 60FPS
                 }
-
-
 
                 if (_keyPressMode)
                 {
@@ -401,6 +404,7 @@ namespace RuneReader
                     currentKey.MaxWaitTime = 5000;
                     currentMS = DateTime.Now.AddMilliseconds(currentKey.MaxWaitTime);
                     DateTime MaxWaitTime = DateTime.Now.AddSeconds(8);
+          
 
                     while ((currentMS >= DateTime.Now && currentKey.MaxWaitTime >= 350) && activationKeyPressed == true)
                     {
@@ -412,6 +416,7 @@ namespace RuneReader
                         }
                     }
                 }
+  
 
             // If where not watching for when things time out, we insert a hard delay
             // This is no longer need as were putting a hard pause above
@@ -442,16 +447,10 @@ namespace RuneReader
             {
                 return;
             }
-
+            _timer.Stop();
             var keyToSendFirst = string.Empty;
-            var keyToSendSecond = string.Empty;
-            int vkCode = 0;
             DateTime currentD = DateTime.Now;
 
-
-
-            keyToSendFirst = string.Empty;
-            vkCode = 0;
 
             #region WaitFor a Key to show up
 
@@ -459,9 +458,9 @@ namespace RuneReader
             // lets just hang out here till we have a key
             currentD = DateTime.Now;
             keyToSendFirst = _currentKeyToSend;
-            while (keyToSendFirst == "" && button_Start.IsEnabled == false && activationKeyPressed == true)
+            while (String.IsNullOrEmpty(keyToSendFirst) && button_Start.IsEnabled == false && activationKeyPressed == true)
             {
-                await Task.Delay(1);
+                await Task.Delay(16);
                 keyToSendFirst = _currentKeyToSend;
                 if (currentD.AddMilliseconds(5000) < DateTime.Now)
                 {
@@ -470,7 +469,7 @@ namespace RuneReader
             }
 
 
-            if (!VirtualKeyCodeMapper.HasKey(keyToSendFirst))
+            if ( VirtualKeyCodeMapper.HasKey(keyToSendFirst) == false)
             {
                 goto allDone;
             }
@@ -480,7 +479,7 @@ namespace RuneReader
 
             KeyCommandStack.Push(new KeyCommand(keyToSendFirst, CurrentImageRegions.FirstImageRegions.WaitTime, CurrentImageRegions.FirstImageRegions.HasTarget));
             await ProcessKey();
-
+            _timer.Start();
         allDone:
             ImageCapBorder.BorderBrush = System.Windows.Media.Brushes.Black;
         }
@@ -572,7 +571,7 @@ namespace RuneReader
 
             //This timer handles sending of the key commands
             _timer = new System.Windows.Threading.DispatcherTimer(DispatcherPriority.Normal);
-            _timer.Interval = TimeSpan.FromMilliseconds(10);
+            _timer.Interval = TimeSpan.FromMilliseconds(100);
             _timer.Tick += mainTimerTick;
             _timer.Stop();
 
@@ -592,7 +591,9 @@ namespace RuneReader
         {
             if (!BarCodeFound & screenCapture.IsCapturing)
             {
+                _TimerBarcodeMonitor.Stop();
                 await AttemptToFindBarcode();
+                _TimerBarcodeMonitor.Start();
             }
         }
 
@@ -603,7 +604,12 @@ namespace RuneReader
 
         private async Task AttemptToFindBarcode()
         {
-            Mat image = (await captureScreen.GrabFullScreens()).Clone();
+     // There is a memory leak here somewhere.  not sure where or how as I'm hitting all the disposes.   
+     // But for now I think I willl leave this as this is executed so infrequetly it matters very little and it seem
+     // it settles in after a few executions.  Its very confusing why this occuring.
+
+            await captureScreen.GrabFullScreens();
+            Mat image = captureScreen.CapturedFullScreen.Clone();
 
             try
             {
