@@ -447,7 +447,7 @@ namespace RuneReader
             {
                 return;
             }
-            _timer.Stop();
+           // _timer.Stop();
             var keyToSendFirst = string.Empty;
             DateTime currentD = DateTime.Now;
 
@@ -479,7 +479,7 @@ namespace RuneReader
 
             KeyCommandStack.Push(new KeyCommand(keyToSendFirst, CurrentImageRegions.FirstImageRegions.WaitTime, CurrentImageRegions.FirstImageRegions.HasTarget));
             await ProcessKey();
-            _timer.Start();
+          //  _timer.Start();
         allDone:
             ImageCapBorder.BorderBrush = System.Windows.Media.Brushes.Black;
         }
