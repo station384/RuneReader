@@ -399,17 +399,28 @@ namespace RuneReader
 
                 if (_keyPressMode)
                 {
+
                     await Task.Delay(CurrentCaptureRateMS == 0 ? 2 : CurrentCaptureRateMS / 2); // Try and wait for a capture refresh
                     currentMS = DateTime.Now;
                     currentKey.MaxWaitTime = 5000;
                     currentMS = DateTime.Now.AddMilliseconds(currentKey.MaxWaitTime);
                     DateTime MaxWaitTime = DateTime.Now.AddSeconds(8);
-          
+                    var anticipateWait = currentKey.MaxWaitTime;
+                    var curpressTest1 = _currentKeyToSend;
 
-                    while ((currentMS >= DateTime.Now && currentKey.MaxWaitTime >= 350) && activationKeyPressed == true)
+                    // Wait time may be out of sync here.  this resync the wait time.
+                    while ((currentMS >= DateTime.Now && currentKey.MaxWaitTime >= 5000) && activationKeyPressed == true && currentKey.MaxWaitTime  > 0)
                     {
                         await Task.Delay(1);
                         currentKey.MaxWaitTime = CurrentImageRegions.FirstImageRegions.WaitTime;
+                    }
+
+                    while (currentMS >= DateTime.Now && currentKey.MaxWaitTime >= Math.Min(300,anticipateWait / 3 ) && activationKeyPressed == true )
+                    {
+                     
+                        await Task.Delay(1);
+                        currentKey.MaxWaitTime = CurrentImageRegions.FirstImageRegions.WaitTime;
+                  
                         if (DateTime.Now > MaxWaitTime)
                         {
                             goto alldone;
@@ -571,7 +582,7 @@ namespace RuneReader
 
             //This timer handles sending of the key commands
             _timer = new System.Windows.Threading.DispatcherTimer(DispatcherPriority.Normal);
-            _timer.Interval = TimeSpan.FromMilliseconds(100);
+            _timer.Interval = TimeSpan.FromMilliseconds(1);
             _timer.Tick += mainTimerTick;
             _timer.Stop();
 
