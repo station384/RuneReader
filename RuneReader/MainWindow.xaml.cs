@@ -391,12 +391,12 @@ namespace RuneReader
 
                 //Add the keypress delay while monitoring that the activationkey is still pressed (allows interrupting the delay)
                 // Note:  There are 10000 ticks in a millisecond
-                DateTime currentMS = DateTime.Now.Add(new TimeSpan((Random.Shared.Next() % 5 + CurrentKeyDownDelayMS) * 10000) );
-                while ((currentMS >= DateTime.Now ) && activationKeyPressed == true )//&& currentKey.MaxWaitTime >= 350)
-                {
-                    await Task.Delay(16);  // 1 frame when running at 60FPS
-                }
-                currentMS = DateTime.Now.Add(new TimeSpan((100) * 10000));
+                //DateTime currentMS = DateTime.Now.Add(new TimeSpan((Random.Shared.Next() % 5 + CurrentKeyDownDelayMS) * 10000) );
+                //while ((currentMS >= DateTime.Now ) && activationKeyPressed == true )//&& currentKey.MaxWaitTime >= 350)
+                //{
+                //    await Task.Delay(16);  // 1 frame when running at 60FPS
+                //}
+                DateTime currentMS = DateTime.Now.Add(new TimeSpan((100) * 10000));
                 // This is here to get rid of the double push.   There are times where the next item has a 0 wait and  so it will push the key multiple times.  we don't want that.
                 while ((CurrentImageRegions.FirstImageRegions.WaitTime >= 100 || currentMS >= DateTime.Now) && activationKeyPressed == true) 
                 {
