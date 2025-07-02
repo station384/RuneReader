@@ -113,6 +113,7 @@ namespace RuneReader
                 capZone1.Updated += CapZone1_Updated;
                 // We only want to update the zone when we trigger it.  no need for extra CPU cycles
                 capZone1.AutoUpdate = false;
+        
             }
 
             if (capZoneFullScreen == null)

@@ -222,6 +222,12 @@ namespace RuneReader
             Cv2.BitwiseNot(srcGray, srcGray);
 
 
+    
+
+
+
+
+
             var barcodeResult = BarcodeDecode.DecodeBarcode(srcGray);
             if (barcodeResult.BarcodeFound)
             {
@@ -303,7 +309,7 @@ namespace RuneReader
             regions = new System.Windows.Rect { X = (double)x, Y = (double)y, Width = width, Height = height };
 
             captureScreen = new CaptureScreen(regions, 0);
-
+           
             // Create an instance of ContinuousScreenCapture with the CaptureScreen object
             screenCapture = new ContinuousScreenCapture(
                 CurrentCaptureRateMS,
@@ -396,9 +402,10 @@ namespace RuneReader
                 //{
                 //    await Task.Delay(16);  // 1 frame when running at 60FPS
                 //}
-                DateTime currentMS = DateTime.Now.Add(new TimeSpan((100) * 10000));
+                DateTime currentMS = DateTime.Now.Add(new TimeSpan((CurrentKeyDownDelayMS) * 10000));
                 // This is here to get rid of the double push.   There are times where the next item has a 0 wait and  so it will push the key multiple times.  we don't want that.
-                while ((CurrentImageRegions.FirstImageRegions.WaitTime >= 100 || currentMS >= DateTime.Now) && activationKeyPressed == true) 
+
+                while ((CurrentImageRegions.FirstImageRegions.WaitTime >= 30 || currentMS >= DateTime.Now) && activationKeyPressed == true)
                 {
                     await Task.Delay(16);  // 1 frame when running at 60FPS
                 }
@@ -413,22 +420,24 @@ namespace RuneReader
                     currentMS = DateTime.Now.AddMilliseconds(currentKey.MaxWaitTime);
                     DateTime MaxWaitTime = DateTime.Now.AddSeconds(8);
                     var anticipateWait = currentKey.MaxWaitTime;
-                    var curpressTest1 = _currentKeyToSend;
+      
 
                     // Wait time may be out of sync here.  this resync the wait time.
-                    while ((currentMS >= DateTime.Now && currentKey.MaxWaitTime >= 5000) && activationKeyPressed == true && currentKey.MaxWaitTime  > 0)
+ 
+                    while ((currentMS >= DateTime.Now && currentKey.MaxWaitTime >= 5000) &&  activationKeyPressed == true )
                     {
-                        await Task.Delay(1);
+                        await Task.Delay(16);
                         currentKey.MaxWaitTime = CurrentImageRegions.FirstImageRegions.WaitTime;
                     }
-
-                    while (currentMS >= DateTime.Now && currentKey.MaxWaitTime >= Math.Min(300,anticipateWait / 3 ) && activationKeyPressed == true )
+                
+                    
+                    while (currentMS >= DateTime.Now && currentKey.MaxWaitTime >=  anticipateWait  && currentKey.MaxWaitTime > 0 && activationKeyPressed == true)
                     {
-                     
-                        await Task.Delay(1);
+
+                        await Task.Delay(16);
                         currentKey.MaxWaitTime = CurrentImageRegions.FirstImageRegions.WaitTime;
-                  
-                        if (DateTime.Now > MaxWaitTime)
+                     
+                        if (currentKey.MaxWaitTime <= 100) //--(DateTime.Now > MaxWaitTime)
                         {
                             goto alldone;
                         }
@@ -512,9 +521,9 @@ namespace RuneReader
             AppSettings = SettingsManager.LoadSettings();
 
             magnifier = new MagnifierWindow();
-            magnifier.Left = AppSettings.CapX > SystemParameters.PrimaryScreenWidth ? 100 : AppSettings.CapX;
-            magnifier.Left = AppSettings.CapX < 0 ? 0 : AppSettings.CapX;
-            magnifier.Top = AppSettings.CapY > SystemParameters.PrimaryScreenHeight ? 100 : AppSettings.CapY;
+            magnifier.Left = AppSettings.CapX > SystemParameters.PrimaryScreenWidth ? 100 : Math.Abs(AppSettings.CapX);
+            magnifier.Left = AppSettings.CapX < 0 ? 0 : Math.Abs(AppSettings.CapX);
+            magnifier.Top = AppSettings.CapY > SystemParameters.PrimaryScreenHeight ? 100 : Math.Abs(AppSettings.CapY);
             magnifier.Width = AppSettings.CapWidth;
             magnifier.Height = AppSettings.CapHeight;
             magnifier.ShowInTaskbar = false;
