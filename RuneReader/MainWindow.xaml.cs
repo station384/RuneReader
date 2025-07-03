@@ -203,10 +203,7 @@ namespace RuneReader
             var origWidth = image.Width;
             var origHeight = image.Height;
             var CurrentKeyToSend = string.Empty;
-            double xMin = 0;
-            double yMin = 0;
-            double xMax = 0;
-            double yMax = 0;
+
             int Rscale = ((int)(CurrentR * ((CurrentR * Threshold) / CurrentR)));
             int Gscale = ((int)(CurrentG * ((CurrentG * Threshold) / CurrentG)));
             int Bscale = ((int)(CurrentB * ((CurrentB * Threshold) / CurrentB)));
@@ -226,6 +223,7 @@ namespace RuneReader
             Cv2.BitwiseNot(srcGray, srcGray);
             Cv2.Threshold(srcGray, srcGray, thresholdValue, maxValue, ThresholdTypes.Binary);
             Cv2.BitwiseNot(srcGray, srcGray);
+            
 
 
     
@@ -237,7 +235,7 @@ namespace RuneReader
             var barcodeResult = BarcodeDecode.DecodeBarcode(srcGray);
             if (barcodeResult.BarcodeFound)
             {
-
+                
                 result = new ProcessImageResult
                 {
                     CurrentKeyToSend = "",
@@ -269,7 +267,6 @@ namespace RuneReader
                 BarCodeFound = false;
             }
 
-
             // Push the new image out the the first image,  this has the markers and delays
             if (BarCodeFound)
                 OutImageSource = BitmapSourceConverter.ToBitmapSource(srcGray);
@@ -279,11 +276,7 @@ namespace RuneReader
 
             DisplayControl.Source = OutImageSource;
 
-            // Push the image that doesn't have delays out to the second display.   This image is what is OCRed on.
-            if (BarCodeFound)
-                OutImageSource = BitmapSourceConverter.ToBitmapSource(srcGray);
-            else
-                OutImageSource = BitmapSourceConverter.ToBitmapSource(CVMat);
+
 
 
             // Update the label
@@ -306,13 +299,17 @@ namespace RuneReader
                 y = capRegion.Top,
                 width = capRegion.Width,
                 height = capRegion.Height;
-
+            
 
 
 
             // Initialize CaptureScreen with the dispatcher and the UI update action
             OpenCvSharp.Rect regions = new OpenCvSharp.Rect { X = x, Y = y, Width = width, Height = height };
-
+            if (regions.X+regions.Width > _maxWidth || regions.Y + regions.Height > _maxHeight) {
+                regions = new OpenCvSharp.Rect(0, 0, 10, 10);
+                      
+            }
+            
             captureScreen = new CaptureScreen(regions, 0);
            
             // Create an instance of ContinuousScreenCapture with the CaptureScreen object
@@ -711,7 +708,7 @@ namespace RuneReader
             {
                 if (!screenCapture.IsCapturing)
                 {
-                    Magnifier_LocationChanged(sender, e);
+                  //  Magnifier_LocationChanged(sender, e);
 
                     _currentKeyToSend = "";
 
@@ -805,38 +802,6 @@ namespace RuneReader
 
         }
 
-        private void Magnifier_SizeChanged(object sender, SizeChangedEventArgs e)
-        {
-            //if (Initalizing) return;
-            //if (screenCapture == null) return;
-            //var source = PresentationSource.FromVisual(this);
-            //if (source?.CompositionTarget != null)
-            //{
-            //    var dpiX = source.CompositionTarget.TransformToDevice.M11;
-            //    var dpiY = source.CompositionTarget.TransformToDevice.M22;
-
-            //    // Get the window's current location
-            //    var left = magnifier.CurrrentLocationValue.X;
-            //    var top = magnifier.CurrrentLocationValue.Y;
-            //    var width = magnifier.CurrrentLocationValue.Width;
-            //    var height = magnifier.CurrrentLocationValue.Height;
-
-            //    // Adjust for DPI scaling
-            //    var scaledLeft = (left * dpiX) + 1;
-            //    var scaledTop = (top * dpiY) + 1;
-            //    var scaledWidth = (width * dpiX) - 1;
-            //    var scaledHeight = (height * dpiY) - 1;
-
-            //    scaledWidth = scaledWidth < 0 ? 1 : scaledWidth;
-            //    scaledHeight = scaledHeight < 0 ? 1 : scaledHeight;
-
-
-
-            //    screenCapture.CaptureRegion = new System.Windows.Rect(scaledLeft + 1, scaledTop + 1, scaledWidth - 1, scaledHeight - 1);
-
-
-            //}
-        }
 
         // Method to open the MagnifierWindow
         private void OpenMagnifierWindow()
@@ -847,32 +812,32 @@ namespace RuneReader
         private void Window_Closed(object sender, EventArgs e)
         {
 
-            //AppSettings.CapX = magnifier.Left;
-            //AppSettings.CapY = magnifier.Top;
-            //AppSettings.CapWidth = magnifier.Width;
-            //AppSettings.CapHeight = magnifier.Height;
-            //AppSettings.AppStartX = this.Left;
-            //AppSettings.AppStartY = this.Top;
+            AppSettings.CapX = capRegion.Left;
+            AppSettings.CapY = capRegion.Top;
+            AppSettings.CapWidth = capRegion.Width;
+            AppSettings.CapHeight = capRegion.Height;
+            AppSettings.AppStartX = this.Left;
+            AppSettings.AppStartY = this.Top;
 
 
-            //SettingsManager.SaveSettings(AppSettings);
+            SettingsManager.SaveSettings(AppSettings);
 
-            //_timer.Stop();
-            //_TimerWowWindowMonitor.Stop();
-
-
-            //if (screenCapture.IsCapturing)
-            //{
-            //    screenCapture.StopCapture();
-            //}
+            _timer.Stop();
+            _TimerWowWindowMonitor.Stop();
 
 
-            //if (_hookID != IntPtr.Zero)
-            //{
-            //    // Make sure we stop trapping the keyboard
-            //    WindowsAPICalls.UnhookWindowsHookEx(_hookID);
-            //    _hookID = IntPtr.Zero;
-            //}
+            if (screenCapture.IsCapturing)
+            {
+                screenCapture.StopCapture();
+            }
+
+
+            if (_hookID != IntPtr.Zero)
+            {
+                // Make sure we stop trapping the keyboard
+                WindowsAPICalls.UnhookWindowsHookEx(_hookID);
+                _hookID = IntPtr.Zero;
+            }
 
 
             //if (_MouseHookID != IntPtr.Zero)

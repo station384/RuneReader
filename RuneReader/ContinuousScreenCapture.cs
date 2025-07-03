@@ -1,10 +1,7 @@
 ﻿using OpenCvSharp;
-using ScreenCapture.NET;
 using System;
 using System.Diagnostics;
-using System.Drawing;
 using System.Threading;
-using System.Windows;
 using System.Windows.Threading;
 
 namespace RuneReader

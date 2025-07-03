@@ -1,16 +1,8 @@
-﻿using ControlzEx.Standard;
+﻿
 using OpenCvSharp;
-using SharpGen.Runtime;
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
-using System.Drawing;
-using System.Linq;
-using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
-using System.Windows;
-using System.Windows.Documents;
+
 using ZXing;
 using ZXing.Common;
 
@@ -432,13 +424,30 @@ namespace RuneReader
                     int paddingW = 0;
                     int paddingH = 0;
 
+                    var rac = new OpenCvSharp.Rect(0, 0, 0, 0);
 
-                    var rac = new OpenCvSharp.Rect (
-                        minX - (Math.Max(1, maxX - minX + 1)/2),
-                        minY - (Math.Max(1, maxY - minY + 1)/2),
+                    if (decodeResult.BarcodeFormat == BarcodeFormat.QR_CODE)
+                    {
+                            rac = new OpenCvSharp.Rect(
+                            minX - (Math.Max(1, maxX - minX + 1) / 2),
+                            minY - (Math.Max(1, maxY - minY + 1) / 2),
+                             Math.Max(1, maxX - minX + 1) * 2,
+                             Math.Max(1, maxY - minY + 1) * 2
+                        );
+                    }
+                    if (decodeResult.BarcodeFormat == BarcodeFormat.CODE_39)
+                    {
+                        rac = new OpenCvSharp.Rect(
+                        minX - (Math.Max(1, maxX - minX + 1) / 2),
+                        minY - (Math.Max(1, maxY - minY + 1) / 2),
                          Math.Max(1, maxX - minX + 1) * 2,
-                         Math.Max(1, maxY - minY + 1) * 2
-                    );
+                         Math.Max(1, maxY - minY + 1) * 2 );
+                        // pad 40 pixels on each side too help the decoder find the start and to bars.
+                        rac.Width = rac.Width - (rac.Width/ 2)+40;
+                        rac.X = rac.X + (rac.Width / 2)-40;
+
+                        rac.Height = rac.Height +  5;
+                    }
 
                     // the screenID should be the actual screenID the barcode is found on,  but that code is not implmeneted 
                     // yet so just report it as 1, the value is irealavent right now it just has to be above -1
