@@ -9,6 +9,7 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Windows;
 using System.Windows.Documents;
 using ZXing;
 using ZXing.Common;
@@ -410,31 +411,33 @@ namespace RuneReader
                 //       Cv2.ImShow("Peek", srcGray);
                 var luminanceSource = new Classes.OpenCV.OpenCvLuminanceSource(srcGray);
                 var decodeResult = BarcodeReaderEngine.Decode(luminanceSource);
-               
+
                 if (decodeResult != null)
                 {
                    
-                    float minX = float.MaxValue;
-                    float minY = float.MaxValue;
-                    float maxX = float.MinValue;
-                    float maxY = float.MinValue;
+                    int minX = int.MaxValue;
+                    int minY = int.MaxValue;
+                    int maxX = int.MinValue;
+                    int maxY = int.MinValue;
 
                     foreach (var point in decodeResult.ResultPoints)
                     {
-                        if (point.X < minX) minX = point.X;
-                        if (point.Y < minY) minY = point.Y;
-                        if (point.X > maxX) maxX = point.X;
-                        if (point.Y > maxY) maxY = point.Y;
+                        if (point.X < minX) minX = (int)point.X;
+                        if (point.Y < minY) minY = (int)point.Y;
+                        if (point.X > maxX) maxX = (int)point.X;
+                        if (point.Y > maxY) maxY = (int)point.Y;
                     }
 
                     // Have to pad out the values as the region that is reported is not always exact but close enuf
-                    int paddingW = 20;
-                    int paddingH = 20;
-                    var rac = new System.Drawing.Rectangle(
-                        (int)(minX - paddingW),
-                        (int)(minY - paddingH),
-                        (int)((maxX - minX) + 2 * paddingW),
-                        (int)((maxY - minY) + 2 * paddingH)
+                    int paddingW = 0;
+                    int paddingH = 0;
+
+
+                    var rac = new OpenCvSharp.Rect (
+                        minX - (Math.Max(1, maxX - minX + 1)/2),
+                        minY - (Math.Max(1, maxY - minY + 1)/2),
+                         Math.Max(1, maxX - minX + 1) * 2,
+                         Math.Max(1, maxY - minY + 1) * 2
                     );
 
                     // the screenID should be the actual screenID the barcode is found on,  but that code is not implmeneted 

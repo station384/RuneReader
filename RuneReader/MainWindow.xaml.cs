@@ -1,21 +1,24 @@
-﻿using System;
+﻿using MahApps.Metro.Controls;
+using OpenCvSharp;
+using OpenCvSharp.WpfExtensions;
+using RuneReader.Classes;
+using RuneReader.Classes.Utilities;
+using RuneReader.Properties;
+using ScreenCapture.NET;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Drawing;
 using System.IO;
+using System.Linq;
 using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media.Imaging;
-using OpenCvSharp;
-using OpenCvSharp.WpfExtensions;
-using System.Windows.Controls;
-using RuneReader.Properties;
 using System.Windows.Threading;
-using MahApps.Metro.Controls;
 using static RuneReader.BarcodeDecode;
-using RuneReader.Classes;
-using RuneReader.Classes.Utilities;
 
 
 
@@ -49,7 +52,8 @@ namespace RuneReader
 
 
 
-        private MagnifierWindow magnifier;
+        //private MagnifierWindow magnifier;
+        private  OpenCvSharp.Rect capRegion;
         private volatile ImageRegions CurrentImageRegions = new ImageRegions();
         private DispatcherTimer _timer;
         private DispatcherTimer _TimerWowWindowMonitor; // This timer is here just incase the game closes and is reopened, this will catch the new window ID.
@@ -73,6 +77,8 @@ namespace RuneReader
         private volatile bool ProcessingKey = false;
 
         private bool Initalizing = true;  // To prevent events from firing as the xaml defaults are applied
+        private int _maxHeight = 0;
+        private int _maxWidth = 0;
 
 
 
@@ -296,17 +302,16 @@ namespace RuneReader
         private void StartCaptureProcess()
         {
             // Define the area of the screen you want to capture
-            int x = (int)magnifier.Left,
-                y = (int)magnifier.Top,
-                width = (int)magnifier.Width,
-                height = (int)magnifier.Height;
+            int x = capRegion.Left,
+                y = capRegion.Top,
+                width = capRegion.Width,
+                height = capRegion.Height;
 
 
 
 
             // Initialize CaptureScreen with the dispatcher and the UI update action
-            System.Windows.Rect regions = new System.Windows.Rect();
-            regions = new System.Windows.Rect { X = (double)x, Y = (double)y, Width = width, Height = height };
+            OpenCvSharp.Rect regions = new OpenCvSharp.Rect { X = x, Y = y, Width = width, Height = height };
 
             captureScreen = new CaptureScreen(regions, 0);
            
@@ -520,15 +525,34 @@ namespace RuneReader
             mainWindowDispatcher = this.Dispatcher;
             AppSettings = SettingsManager.LoadSettings();
 
-            magnifier = new MagnifierWindow();
-            magnifier.Left = AppSettings.CapX > SystemParameters.PrimaryScreenWidth ? 100 : Math.Abs(AppSettings.CapX);
-            magnifier.Left = AppSettings.CapX < 0 ? 0 : Math.Abs(AppSettings.CapX);
-            magnifier.Top = AppSettings.CapY > SystemParameters.PrimaryScreenHeight ? 100 : Math.Abs(AppSettings.CapY);
-            magnifier.Width = AppSettings.CapWidth;
-            magnifier.Height = AppSettings.CapHeight;
-            magnifier.ShowInTaskbar = false;
-            magnifier.SizeChanged += Magnifier_SizeChanged;
-            magnifier.LocationChanged += Magnifier_LocationChanged;
+            //magnifier = new MagnifierWindow();
+            //magnifier.Left = AppSettings.CapX > SystemParameters.PrimaryScreenWidth ? 100 : Math.Abs(AppSettings.CapX);
+            //magnifier.Left = AppSettings.CapX < 0 ? 0 : Math.Abs(AppSettings.CapX);
+            //magnifier.Top = AppSettings.CapY > SystemParameters.PrimaryScreenHeight ? 100 : Math.Abs(AppSettings.CapY);
+            //magnifier.Width = AppSettings.CapWidth;
+            //magnifier.Height = AppSettings.CapHeight;
+            //magnifier.ShowInTaskbar = false;
+            //magnifier.SizeChanged += Magnifier_SizeChanged;
+            //magnifier.LocationChanged += Magnifier_LocationChanged;
+
+            //Get Screen Metrics
+            var screenCaptureService = new DX11ScreenCaptureService();
+            var graphicsCards = screenCaptureService.GetGraphicsCards();
+
+            var displays = screenCaptureService.GetDisplays(graphicsCards.First());
+            //Todo: query the displays and store them local.
+            _maxHeight = displays.First().Height;
+            _maxWidth = displays.First().Width;
+            screenCaptureService.Dispose();
+
+            capRegion.Left = (int)(AppSettings.CapX > _maxWidth ? 100 : Math.Abs(AppSettings.CapX));
+            capRegion.Left = (int)(AppSettings.CapX < 0 ? 0 : Math.Abs(AppSettings.CapX));
+            capRegion.Top = (int)(AppSettings.CapY > _maxHeight ? 100 : Math.Abs(AppSettings.CapY));
+            capRegion.Width = (int)AppSettings.CapWidth;
+            capRegion.Height = (int)AppSettings.CapHeight;
+
+
+
 
             cbPetAttackKey.SelectedValue = cbPetAttackKey.Items[AppSettings.PetKey];
             if (AppSettings.PetKeyEnables == true)
@@ -588,7 +612,7 @@ namespace RuneReader
 
             StartCaptureProcess();
 
-            magnifier.Visibility = Visibility.Hidden;
+           // magnifier.Visibility = Visibility.Hidden;
 
             //This timer watches for the wow window
             _TimerWowWindowMonitor = new System.Windows.Threading.DispatcherTimer(DispatcherPriority.Background);
@@ -643,19 +667,15 @@ namespace RuneReader
                 var r = DecodeFind(ref image);
                 if (r.screenID >= 1)
                 {
-                    var source = PresentationSource.FromVisual(this);
-                    if (source?.CompositionTarget != null)
-                    {
-                        var dpiX = source.CompositionTarget.TransformToDevice.M11;
-                        var dpiY = source.CompositionTarget.TransformToDevice.M22;
 
                         // Get the window's current location
-                        magnifier.Left = r.X / dpiX;
-                        magnifier.Top = r.Y / dpiY;
-                        magnifier.Width = r.Width / dpiX;
-                        magnifier.Height = r.Height / dpiY;
+                        capRegion.Left = r.X;// / dpiX;
+                        capRegion.Top = r.Y;// / dpiY;
+                        capRegion.Width = r.Width;// / dpiX;
+                        capRegion.Height = r.Height;// / dpiY;
 
-                    }
+                    screenCapture.CaptureRegion = capRegion;//(scaledLeft + 1, scaledTop + 1, scaledWidth - 1, scaledHeight - 1);
+
                 }
             }
             finally
@@ -744,125 +764,125 @@ namespace RuneReader
 
         private void bToggleMagBorder_Click(object sender, RoutedEventArgs e)
         {
-            if (magnifier.Visibility == Visibility.Visible)
-            {
-                magnifier.Visibility = Visibility.Hidden;
-            }
-            else
-            {
-                magnifier.Visibility = Visibility.Visible;
-            }
+            //if (magnifier.Visibility == Visibility.Visible)
+            //{
+            //    magnifier.Visibility = Visibility.Hidden;
+            //}
+            //else
+            //{
+            //    magnifier.Visibility = Visibility.Visible;
+            //}
         }
 
         private void Magnifier_LocationChanged(object? sender, EventArgs e)
         {
-            if (Initalizing) return;
-            //            if (screenCapture == null) return;
-            //            screenCapture.CaptureRegion = magnifier.CurrrentLocationValue;
-            if (screenCapture == null) return;
-            var source = PresentationSource.FromVisual(this);
-            if (source?.CompositionTarget != null)
-            {
-                var dpiX = source.CompositionTarget.TransformToDevice.M11;
-                var dpiY = source.CompositionTarget.TransformToDevice.M22;
+            //if (Initalizing) return;
+            ////            if (screenCapture == null) return;
+            ////            screenCapture.CaptureRegion = magnifier.CurrrentLocationValue;
+            //if (screenCapture == null) return;
+            //var source = PresentationSource.FromVisual(this);
+            //if (source?.CompositionTarget != null)
+            //{
+            //    var dpiX = source.CompositionTarget.TransformToDevice.M11;
+            //    var dpiY = source.CompositionTarget.TransformToDevice.M22;
 
-                // Get the window's current location
-                var left = magnifier.CurrrentLocationValue.X;
-                var top = magnifier.CurrrentLocationValue.Y;
-                var width = magnifier.CurrrentLocationValue.Width;
-                var height = magnifier.CurrrentLocationValue.Height;
+            //    // Get the window's current location
+            //    var left = magnifier.CurrrentLocationValue.X;
+            //    var top = magnifier.CurrrentLocationValue.Y;
+            //    var width = magnifier.CurrrentLocationValue.Width;
+            //    var height = magnifier.CurrrentLocationValue.Height;
 
-                // Adjust for DPI scaling
-                var scaledLeft = left * dpiX + 1;
-                var scaledTop = top * dpiY + 1;
-                var scaledWidth = width * dpiX - 1;
-                var scaledHeight = height * dpiY - 1;
-                //     if (screenCapture.CaptureRegion != null ) 
-                screenCapture.CaptureRegion = new System.Windows.Rect(scaledLeft + 1, scaledTop + 1, scaledWidth - 1, scaledHeight - 1);
-                //screenCapture.CaptureRegion = magnifier.CurrrentLocationValue;
+            //    // Adjust for DPI scaling
+            //    var scaledLeft = left * dpiX + 1;
+            //    var scaledTop = top * dpiY + 1;
+            //    var scaledWidth = width * dpiX - 1;
+            //    var scaledHeight = height * dpiY - 1;
+            //    //     if (screenCapture.CaptureRegion != null ) 
+            //    screenCapture.CaptureRegion = new System.Windows.Rect(scaledLeft + 1, scaledTop + 1, scaledWidth - 1, scaledHeight - 1);
+            //    //screenCapture.CaptureRegion = magnifier.CurrrentLocationValue;
 
-            }
+            //}
 
         }
 
         private void Magnifier_SizeChanged(object sender, SizeChangedEventArgs e)
         {
-            if (Initalizing) return;
-            if (screenCapture == null) return;
-            var source = PresentationSource.FromVisual(this);
-            if (source?.CompositionTarget != null)
-            {
-                var dpiX = source.CompositionTarget.TransformToDevice.M11;
-                var dpiY = source.CompositionTarget.TransformToDevice.M22;
+            //if (Initalizing) return;
+            //if (screenCapture == null) return;
+            //var source = PresentationSource.FromVisual(this);
+            //if (source?.CompositionTarget != null)
+            //{
+            //    var dpiX = source.CompositionTarget.TransformToDevice.M11;
+            //    var dpiY = source.CompositionTarget.TransformToDevice.M22;
 
-                // Get the window's current location
-                var left = magnifier.CurrrentLocationValue.X;
-                var top = magnifier.CurrrentLocationValue.Y;
-                var width = magnifier.CurrrentLocationValue.Width;
-                var height = magnifier.CurrrentLocationValue.Height;
+            //    // Get the window's current location
+            //    var left = magnifier.CurrrentLocationValue.X;
+            //    var top = magnifier.CurrrentLocationValue.Y;
+            //    var width = magnifier.CurrrentLocationValue.Width;
+            //    var height = magnifier.CurrrentLocationValue.Height;
 
-                // Adjust for DPI scaling
-                var scaledLeft = (left * dpiX) + 1;
-                var scaledTop = (top * dpiY) + 1;
-                var scaledWidth = (width * dpiX) - 1;
-                var scaledHeight = (height * dpiY) - 1;
+            //    // Adjust for DPI scaling
+            //    var scaledLeft = (left * dpiX) + 1;
+            //    var scaledTop = (top * dpiY) + 1;
+            //    var scaledWidth = (width * dpiX) - 1;
+            //    var scaledHeight = (height * dpiY) - 1;
 
-                scaledWidth = scaledWidth < 0 ? 1 : scaledWidth;
-                scaledHeight = scaledHeight < 0 ? 1 : scaledHeight;
-
-
-
-                screenCapture.CaptureRegion = new System.Windows.Rect(scaledLeft + 1, scaledTop + 1, scaledWidth - 1, scaledHeight - 1);
+            //    scaledWidth = scaledWidth < 0 ? 1 : scaledWidth;
+            //    scaledHeight = scaledHeight < 0 ? 1 : scaledHeight;
 
 
-            }
+
+            //    screenCapture.CaptureRegion = new System.Windows.Rect(scaledLeft + 1, scaledTop + 1, scaledWidth - 1, scaledHeight - 1);
+
+
+            //}
         }
 
         // Method to open the MagnifierWindow
         private void OpenMagnifierWindow()
         {
-            magnifier.Show();
+            //magnifier.Show();
         }
 
         private void Window_Closed(object sender, EventArgs e)
         {
 
-            AppSettings.CapX = magnifier.Left;
-            AppSettings.CapY = magnifier.Top;
-            AppSettings.CapWidth = magnifier.Width;
-            AppSettings.CapHeight = magnifier.Height;
-            AppSettings.AppStartX = this.Left;
-            AppSettings.AppStartY = this.Top;
+            //AppSettings.CapX = magnifier.Left;
+            //AppSettings.CapY = magnifier.Top;
+            //AppSettings.CapWidth = magnifier.Width;
+            //AppSettings.CapHeight = magnifier.Height;
+            //AppSettings.AppStartX = this.Left;
+            //AppSettings.AppStartY = this.Top;
 
 
-            SettingsManager.SaveSettings(AppSettings);
+            //SettingsManager.SaveSettings(AppSettings);
 
-            _timer.Stop();
-            _TimerWowWindowMonitor.Stop();
-
-
-            if (screenCapture.IsCapturing)
-            {
-                screenCapture.StopCapture();
-            }
+            //_timer.Stop();
+            //_TimerWowWindowMonitor.Stop();
 
 
-            if (_hookID != IntPtr.Zero)
-            {
-                // Make sure we stop trapping the keyboard
-                WindowsAPICalls.UnhookWindowsHookEx(_hookID);
-                _hookID = IntPtr.Zero;
-            }
+            //if (screenCapture.IsCapturing)
+            //{
+            //    screenCapture.StopCapture();
+            //}
 
 
-            if (_MouseHookID != IntPtr.Zero)
-            {
+            //if (_hookID != IntPtr.Zero)
+            //{
+            //    // Make sure we stop trapping the keyboard
+            //    WindowsAPICalls.UnhookWindowsHookEx(_hookID);
+            //    _hookID = IntPtr.Zero;
+            //}
 
-                // Make sure we stop trapping the mouse if its active
-                WindowsAPICalls.UnhookWindowsHookEx(_MouseHookID);
-                _MouseHookID = IntPtr.Zero;
-            }
-            magnifier.Close();
+
+            //if (_MouseHookID != IntPtr.Zero)
+            //{
+
+            //    // Make sure we stop trapping the mouse if its active
+            //    WindowsAPICalls.UnhookWindowsHookEx(_MouseHookID);
+            //    _MouseHookID = IntPtr.Zero;
+            //}
+            //magnifier.Close();
 
 
 
@@ -956,10 +976,10 @@ namespace RuneReader
             AppSettings.CapWidth = 100;
             AppSettings.CapHeight = 100;
 
-            magnifier.Left = AppSettings.CapX > SystemParameters.PrimaryScreenWidth ? 100 : AppSettings.CapX;
-            magnifier.Top = AppSettings.CapY > SystemParameters.PrimaryScreenHeight ? 100 : AppSettings.CapY;
-            magnifier.Width = AppSettings.CapWidth;
-            magnifier.Height = AppSettings.CapHeight;
+            //magnifier.Left = AppSettings.CapX > SystemParameters.PrimaryScreenWidth ? 100 : AppSettings.CapX;
+            //magnifier.Top = AppSettings.CapY > SystemParameters.PrimaryScreenHeight ? 100 : AppSettings.CapY;
+            //magnifier.Width = AppSettings.CapWidth;
+            //magnifier.Height = AppSettings.CapHeight;
         }
 
         private void cbPushRelease_Checked(object sender, RoutedEventArgs e)

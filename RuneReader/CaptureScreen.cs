@@ -8,6 +8,7 @@ using System.Windows.Controls;
 using OpenCvSharp;
 using System.Windows.Media.Media3D;
 using System.Runtime.InteropServices;
+using System.Drawing;
 
 
 
@@ -19,7 +20,7 @@ namespace RuneReader
         IScreenCaptureService screenCaptureService;
         IEnumerable<GraphicsCard> graphicsCards;
         IEnumerable<Display> displays;
-        private System.Windows.Rect _captureRegion = new System.Windows.Rect();
+        private OpenCvSharp.Rect _captureRegion = new OpenCvSharp.Rect(0,0,0,0);
         private int _maxHeight;
         private int _maxWidth;
         IScreenCapture screenCapture;
@@ -70,15 +71,29 @@ namespace RuneReader
         }
 
 
-        public System.Windows.Rect CaptureRegion
+        public OpenCvSharp.Rect CaptureRegion
         {
             get => _captureRegion; set
             {
                 if (_captureRegion == value) return;
+                value.X = Math.Clamp(value.X,0,_maxWidth);
+                value.Y = Math.Clamp(value.Y, 0, _maxHeight);
+                value.Height = Math.Clamp(value.Height,0,_maxHeight);
+                value.Width = Math.Clamp(value.Width,0,_maxWidth);
                 _captureRegion.X = (value.X >= 0 && value.X <= _maxWidth) ? value.X : 0;
                 _captureRegion.Y = (value.Y >= 0 && value.Y <= _maxHeight) ? value.Y : 0;
-                _captureRegion.Width = (value.Width >= 0 && value.Width <= _maxWidth) ? value.Width : 0;
-                _captureRegion.Height = (value.Height >= 0 && value.Height <= _maxHeight) ? value.Height : 0;
+                if (value.Width + value.X > _maxWidth)
+                {
+                    _captureRegion.X = _maxWidth - value.Width;
+                }
+                if (value.Height + value.Y > _maxHeight)
+                {
+                    _captureRegion.Y = _maxHeight - value.Height;
+                }
+
+
+                _captureRegion.Width = (value.Width >= 0 && value.Width <= _maxWidth) ? value.Width : _maxWidth;
+                _captureRegion.Height = (value.Height >= 0 && value.Height <= _maxHeight) ? value.Height : _maxHeight;
                 screenCapture.UpdateCaptureZone(capZone1, (int)_captureRegion.X, (int)_captureRegion.Y, (int)_captureRegion.Width, (int)_captureRegion.Height, downscaleLevel: 0);
             }
         }
@@ -87,7 +102,7 @@ namespace RuneReader
 
 
 
-        public CaptureScreen(System.Windows.Rect Regions, int? downscaleLevel)
+        public CaptureScreen(OpenCvSharp.Rect Regions, int? downscaleLevel)
         {
             // Create a screen-capture service
             if (screenCaptureService == null)
@@ -109,6 +124,10 @@ namespace RuneReader
             _captureRegion = Regions;
             if (capZone1 == null)
             {
+                var clampedX = (_captureRegion.X >= 0 && _captureRegion.X <= _maxWidth) ? _captureRegion.X : 0;
+                var clampedY = (_captureRegion.Y >= 0 && _captureRegion.Y <= _maxHeight) ? _captureRegion.Y : 0;
+                var clampedWidth = (_captureRegion.Width >= 0 && _captureRegion.Width <= _maxWidth) ? _captureRegion.Width : _maxWidth;
+                var clampedHeight = (_captureRegion.Height >= 0 && _captureRegion.Height <= _maxHeight) ? _captureRegion.Height : _maxHeight;
                 capZone1 = screenCapture.RegisterCaptureZone((int)_captureRegion.X, (int)_captureRegion.Y, (int)_captureRegion.Width, (int)_captureRegion.Height, downscaleLevel: 0);
                 capZone1.Updated += CapZone1_Updated;
                 // We only want to update the zone when we trigger it.  no need for extra CPU cycles

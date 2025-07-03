@@ -1,4 +1,5 @@
 ﻿using OpenCvSharp;
+using ScreenCapture.NET;
 using System;
 using System.Diagnostics;
 using System.Drawing;
@@ -20,8 +21,8 @@ namespace RuneReader
         public delegate void UpdateFirstImageDelegate(Mat image);
         public event UpdateFirstImageDelegate UpdateFirstImage;
 
-        private System.Windows.Rect _captureRegion;
-        public System.Windows.Rect CaptureRegion
+        private OpenCvSharp.Rect _captureRegion;
+        public OpenCvSharp.Rect CaptureRegion
         {
             get
             {
@@ -106,6 +107,7 @@ namespace RuneReader
             while (isCapturing)
             {
                 var results = await screenCapture.GrabScreen();
+                
                 Mat capturedImage = screenCapture.CapturedImageFirst; // Implement this to capture the screen
                 try
                 {
