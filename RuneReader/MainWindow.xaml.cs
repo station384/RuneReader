@@ -368,6 +368,13 @@ namespace RuneReader
                 // Tranlate the char to the virtual Key Code
                 var vkCode = VirtualKeyCodeMapper.GetVirtualKeyCode(currentKey.Key);
 
+                // Wows Default Key behavior is to activate as soon as the key is pressed.   So lets make sure we do not press anything till we have a 0 wait..
+                // Pre-pressing is built into the addon calc  so we don't have to worry about command queuing here.
+                while (CurrentImageRegions.FirstImageRegions.WaitTime != 0 && activationKeyPressed == true)
+                {
+                    await Task.Delay(16);
+                }
+
                 // command is tied to CTRL or ALT So have to press them
                 if (currentKey.Ctrl)
                     WindowsAPICalls.PostMessage(_wowWindowHandle, WindowsAPICalls.WM_KEYDOWN, WindowsAPICalls.VK_CONTROL, 0);
@@ -399,13 +406,10 @@ namespace RuneReader
 
                 //Add the keypress delay while monitoring that the activationkey is still pressed (allows interrupting the delay)
                 // Note:  There are 10000 ticks in a millisecond
-                //DateTime currentMS = DateTime.Now.Add(new TimeSpan((Random.Shared.Next() % 5 + CurrentKeyDownDelayMS) * 10000) );
-                //while ((currentMS >= DateTime.Now ) && activationKeyPressed == true )//&& currentKey.MaxWaitTime >= 350)
-                //{
-                //    await Task.Delay(16);  // 1 frame when running at 60FPS
-                //}
                 DateTime currentMS = DateTime.Now.Add(new TimeSpan((CurrentKeyDownDelayMS) * 10000));
+
                 // This is here to get rid of the double push.   There are times where the next item has a 0 wait and  so it will push the key multiple times.  we don't want that.
+                await Task.Delay(500); // hardcode .5 second delay after pressing key.   
 
                 while ((CurrentImageRegions.FirstImageRegions.WaitTime >= 30 || currentMS >= DateTime.Now) && activationKeyPressed == true)
                 {
@@ -415,7 +419,6 @@ namespace RuneReader
 
                 if (_keyPressMode)
                 {
-
                     await Task.Delay(CurrentCaptureRateMS == 0 ? 2 : CurrentCaptureRateMS / 2); // Try and wait for a capture refresh
                     currentMS = DateTime.Now;
                     currentKey.MaxWaitTime = 5000;
@@ -425,7 +428,6 @@ namespace RuneReader
       
 
                     // Wait time may be out of sync here.  this resync the wait time.
- 
                     while ((currentMS >= DateTime.Now && currentKey.MaxWaitTime >= 5000) &&  activationKeyPressed == true )
                     {
                         await Task.Delay(16);
@@ -439,7 +441,7 @@ namespace RuneReader
                         await Task.Delay(16);
                         currentKey.MaxWaitTime = CurrentImageRegions.FirstImageRegions.WaitTime;
                      
-                        if (currentKey.MaxWaitTime <= 100) //--(DateTime.Now > MaxWaitTime)
+                        if (currentKey.MaxWaitTime <= 0) //--(DateTime.Now > MaxWaitTime)
                         {
                             goto alldone;
                         }

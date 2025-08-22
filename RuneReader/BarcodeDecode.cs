@@ -68,7 +68,19 @@ namespace RuneReader
             }
         }
 
-
+        public static int FromBase36(string input)
+        {
+            const string chars = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+            int num = 0;
+            foreach (char c in input)
+            {
+                int digit = chars.IndexOf(char.ToUpperInvariant(c));
+                if (digit < 0)
+                    throw new ArgumentException("Invalid Base36 character: " + c);
+                num = num * 36 + digit;
+            }
+            return num;
+        }
         // Calculate check digit (returns 0-9)
         public static int CalculateCheckDigit(string input)
         {
