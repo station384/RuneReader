@@ -2,87 +2,89 @@
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <TargetFramework>net7.0-windows</TargetFramework>
+    <TargetFramework>net8.0-windows7.0</TargetFramework>
     <Nullable>enable</Nullable>
     <UseWPF>true</UseWPF>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-	<GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+	<GenerateAssemblyInfo>True</GenerateAssemblyInfo>
     <GenerateTargetFrameworkAttribute>false</GenerateTargetFrameworkAttribute>
     <StartupObject>RuneReader.App</StartupObject>
-    <ApplicationIcon>Derp.ico</ApplicationIcon>
-    <PlatformTarget>AnyCPU</PlatformTarget>  
+    <ApplicationIcon>Icons\RuneReader_Icon.ico</ApplicationIcon>
+    <PlatformTarget>x64</PlatformTarget>
+
+	  <!-- Enable ReadyToRun compilation -->
+
+	  <SignAssembly>False</SignAssembly>
+	  <DelaySign>False</DelaySign>
+
   </PropertyGroup>
 
+	<PropertyGroup>
+		<SignManifests>true</SignManifests>
+		<ManifestCertificateThumbprint>06cb8534ee63d4af060dc0d1b3d8830b4e44d170</ManifestCertificateThumbprint>
+		<Title>Rune Reader</Title>
+		<Version>$(VersionPrefix)</Version>
+		<AssemblyVersion></AssemblyVersion>
+		<AssemblyOriginatorKeyFile></AssemblyOriginatorKeyFile>
+		<!-- Optionally, remove these if not needed:
+  <ManifestCertificateFile>path\to\YourCertificate.pfx</ManifestCertificateFile>
+  <ManifestCertificatePassword>YourPasswordHere</ManifestCertificatePassword>
+  -->
+	</PropertyGroup>
+	
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
     <Optimize>False</Optimize>
+    <DebugType>full</DebugType>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
     <Optimize>True</Optimize>
+    <DebugType>full</DebugType>
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Remove="ScreenCapture.net\ScreenCapture.NET.DX9\**" />
-    <Compile Remove="ScreenCapture.net\ScreenCapture.NET.X11\**" />
-    <EmbeddedResource Remove="ScreenCapture.net\ScreenCapture.NET.DX9\**" />
-    <EmbeddedResource Remove="ScreenCapture.net\ScreenCapture.NET.X11\**" />
-    <None Remove="ScreenCapture.net\ScreenCapture.NET.DX9\**" />
-    <None Remove="ScreenCapture.net\ScreenCapture.NET.X11\**" />
-    <Page Remove="ScreenCapture.net\ScreenCapture.NET.DX9\**" />
-    <Page Remove="ScreenCapture.net\ScreenCapture.NET.X11\**" />
-
+    <Compile Remove="HelikiProfiles\**" />
+    <Compile Remove="PlaterProfiles\**" />
+    <Compile Remove="RuneReaderFontInstall\**" />
+    <Compile Remove="RuneReaderHekiliRecast\**" />
+    <EmbeddedResource Remove="HelikiProfiles\**" />
+    <EmbeddedResource Remove="PlaterProfiles\**" />
+    <EmbeddedResource Remove="RuneReaderFontInstall\**" />
+    <EmbeddedResource Remove="RuneReaderHekiliRecast\**" />
+    <None Remove="HelikiProfiles\**" />
+    <None Remove="PlaterProfiles\**" />
+    <None Remove="RuneReaderFontInstall\**" />
+    <None Remove="RuneReaderHekiliRecast\**" />
+    <Page Remove="HelikiProfiles\**" />
+    <Page Remove="PlaterProfiles\**" />
+    <Page Remove="RuneReaderFontInstall\**" />
+    <Page Remove="RuneReaderHekiliRecast\**" />
   </ItemGroup>
 
   <ItemGroup>
-    <None Remove="tessdata\Config.cfg" />
-    <None Remove="tessdata\en1.traineddata" />
-    <None Remove="tessdata\en3.traineddata" />
-    <None Remove="tessdata\en3.user-words" />
-    <None Remove="tessdata\wow.traineddata" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Content Include="C:\Users\stati\.nuget\packages\tesseract\5.2.0\build\\..\x64\leptonica-1.82.0.dll">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="C:\Users\stati\.nuget\packages\tesseract\5.2.0\build\\..\x64\tesseract50.dll">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="Derp.ico" />
-    <Content Include="tessdata\Config.cfg">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
-    <Content Include="tessdata\en3.traineddata">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
-    <Content Include="tessdata\en3.user-words">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
+    <Content Include="Icons\RuneReader_Icon.ico" />
   </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="MahApps.Metro" Version="2.4.10" />
-    <PackageReference Include="OpenCvSharp4" Version="4.9.0.20240103" />
-    <PackageReference Include="OpenCvSharp4.Extensions" Version="4.9.0.20240103" />
-    <PackageReference Include="OpenCvSharp4.Windows" Version="4.9.0.20240103" />
-    <PackageReference Include="OpenCvSharp4.WpfExtensions" Version="4.9.0.20240103" />
-    <PackageReference Include="PixiEditor.ColorPicker" Version="3.4.1" />
-    <PackageReference Include="Tesseract" Version="5.2.0" />
-    <PackageReference Include="Tesseract.Drawing" Version="5.2.0" />
-    <PackageReference Include="Vortice.Direct3D11" Version="3.3.4" />
-    <PackageReference Include="Vortice.DXGI" Version="3.3.4" />
-    <PackageReference Include="Vortice.Mathematics" Version="1.7.6" />
-    <PackageReference Include="ZXing.Net" Version="0.16.9" />
+    <PackageReference Include="OpenCvSharp4" Version="4.10.0.20241108" />
+    <PackageReference Include="OpenCvSharp4.Extensions" Version="4.10.0.20241108" />
+    <PackageReference Include="OpenCvSharp4.Windows" Version="4.10.0.20241108" />
+    <PackageReference Include="OpenCvSharp4.WpfExtensions" Version="4.10.0.20241108" />
+    <PackageReference Include="ScreenCapture.NET.DX11" Version="3.0.0" />
+    <PackageReference Include="ZXing.Net" Version="0.16.10" />
   </ItemGroup>
 
   <ItemGroup>
     <None Include="..\.editorconfig" Link=".editorconfig" />
-    <None Include="C:\Users\stati\.nuget\packages\tesseract\5.2.0\build\\..\x86\tesseract50.dll">
-      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
-    </None>
   </ItemGroup>
 
   <ItemGroup>
+    <Compile Update="Properties\Resources.Designer.cs">
+      <DesignTime>True</DesignTime>
+      <AutoGen>True</AutoGen>
+      <DependentUpon>Resources.resx</DependentUpon>
+    </Compile>
     <Compile Update="Properties\Settings.Designer.cs">
       <DesignTimeSharedInput>True</DesignTimeSharedInput>
       <AutoGen>True</AutoGen>
@@ -163,24 +165,9 @@
     <None Update="CustomFontLoader\Libs\LibStub\LibStub.lua">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="HelikiProfiles\DH-Havoc.txt">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Update="HelikiProfiles\Druid-Balance-T31.txt">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Update="HelikiProfiles\Paladin-Ret.txt">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Update="PlaterProfiles\Station.txt">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
     <None Update="Properties\Settings.settings">
       <Generator>SettingsSingleFileGenerator</Generator>
       <LastGenOutput>Settings.Designer.cs</LastGenOutput>
-    </None>
-    <None Update="tessdata\eng.traineddata">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
   </ItemGroup>
 
@@ -205,7 +192,15 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Folder Include="OpenCV\" />
     <Folder Include="Properties\PublishProfiles\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Update="Properties\Resources.resx">
+      <Generator>ResXFileCodeGenerator</Generator>
+      <LastGenOutput>Resources.Designer.cs</LastGenOutput>
+    </EmbeddedResource>
   </ItemGroup>
 
 </Project>

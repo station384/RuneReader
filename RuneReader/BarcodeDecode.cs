@@ -1,12 +1,8 @@
-﻿using OpenCvSharp;
+﻿
+using OpenCvSharp;
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
-using System.Drawing;
-using System.Linq;
-using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
+
 using ZXing;
 using ZXing.Common;
 
@@ -16,300 +12,478 @@ namespace RuneReader
     public class BarcodeDecode
     {
         //  private static BarcodeReaderGeneric BarcodeReaderEngine = new BarcodeReaderGeneric();
+        
+        public class BarcodeFindResult
+        {
+            public int screenID { get; set; }
+            public int X { get; set; }
+            public int Y { get; set; }
+            public int Width { get; set; }
+            public int Height { get; set; }
+        }
+
         public class BarcodeResult
         {
+            public byte mode { get; set; }
             public bool BarcodeFound { get; set; }
-
             public String DetectedText { get; set; }
             public String DecodedTextValue { get; set; }
             public int WaitTime { get; set; }
             public bool InCombat { get; set; }
             public bool HasTarget { get; set; }
+            public int GCD { get; set; }
+            public int Latency { get; set; }
+            public int Delay { get; set; }
+            public int SpellID { get; set; }
+            public string KeyValue { get; set; }
+            public byte BitValue { get; set; }
 
             public BarcodeResult()
             {
-                //Regions = new System.Windows.Rect[0];
+                mode = 0;
                 DetectedText = String.Empty;
                 DecodedTextValue = String.Empty;
                 BarcodeFound = false;
                 WaitTime = 0;
+                KeyValue = "";
+                BitValue = 0;
+                SpellID = 0;
+                Delay = 0;
+                Latency = 0;
+
+
             }
         }
+
+        public class BarcodeResultV2 : BarcodeResult
+        {
+            public int Mode { get; set; }
+            public int CastTime { get; set; }
+            public int CoolDown { get; set; }
+            public int Targets { get; set; }
+
+            public BarcodeResultV2()
+            {
+                Mode = 0;
+            }
+        }
+
+        public static int FromBase36(string input)
+        {
+            const string chars = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+            int num = 0;
+            foreach (char c in input)
+            {
+                int digit = chars.IndexOf(char.ToUpperInvariant(c));
+                if (digit < 0)
+                    throw new ArgumentException("Invalid Base36 character: " + c);
+                num = num * 36 + digit;
+            }
+            return num;
+        }
+        // Calculate check digit (returns 0-9)
+        public static int CalculateCheckDigit(string input)
+        {
+            int sum = 0;
+            for (int i = 0; i < input.Length; i++)
+            {
+                if (!char.IsDigit(input[i]))
+                    throw new ArgumentException("Input contains non-numeric characters.");
+
+                int digit = input[i] - '0';
+                int weight = (i % 2 == 0) ? 3 : 1;  // Match Lua's odd/even weighting
+                sum += digit * weight;
+            }
+            return (10 - (sum % 10)) % 10;
+        }
+
+        public static int CalculateCheckDigitASCII(string input)
+        {
+            int sum = 0;
+            for (int i = 0; i < input.Length; i++)
+            {
+                int asciiValue = (int)input[i]; // Get byte value of character (0–255)
+
+                int weight = (i % 2 == 0) ? 3 : 1;
+                sum += asciiValue * weight;
+            }
+
+            return (10 - (sum % 10)) % 10;
+        }
+
+        // Validate full string with check digit
+        public static bool ValidateWithCheckDigit(string input)
+        {
+            if (string.IsNullOrEmpty(input) || input.Length < 2)
+                return false;
+
+            string basePart = input.Substring(0, input.Length - 1);
+            char checkChar = input[input.Length - 1];
+
+            if (!char.IsDigit(checkChar))
+                return false;
+
+            int expected = checkChar - '0';
+            int actual = CalculateCheckDigit(basePart);
+
+            return expected == actual;
+        }
+
+        public static bool ValidateWithCheckDigitASCII(string input)
+        {
+            if (string.IsNullOrEmpty(input) || input.Length < 2)
+                return false;
+
+            string basePart = input.Substring(0, input.Length - 1);
+            char checkChar = input[input.Length - 1];
+
+            if (!char.IsDigit(checkChar))
+                return false;
+
+            int expected = checkChar - '0';
+            int actual = CalculateCheckDigit(basePart);
+
+            return expected == actual;
+        }
+
+        private static byte DecodeMode (string input)
+        {
+            byte result = 0;
+            string holder = string.Empty;
+            if (input.Length >= 1)
+            {
+                holder = input.Substring(0, 1);
+
+            }
+            byte.TryParse(holder, out result);
+            return result;
+        }
+
+    // Optimized DecodeTextValue using a Dictionary for fast lookup and reduced code size
+    private static readonly Dictionary<int, string> TextValueMap = new()
+    {
+        // 1-9
+        [1] = "1",
+        [2] = "2",
+        [3] = "3",
+        [4] = "4",
+        [5] = "5",
+        [6] = "6",
+        [7] = "7",
+        [8] = "8",
+        [9] = "9",
+        // 10-12
+        [10] = "0",
+        [11] = "-",
+        [12] = "=",
+        // CF1-CF12 (21-32)
+        [21] = "CF1",
+        [22] = "CF2",
+        [23] = "CF3",
+        [24] = "CF4",
+        [25] = "CF5",
+        [26] = "CF6",
+        [27] = "CF7",
+        [28] = "CF8",
+        [29] = "CF9",
+        [30] = "CF10",
+        [31] = "CF11",
+        [32] = "CF12",
+        // AF1-AF12 (41-52)
+        [41] = "AF1",
+        [42] = "AF2",
+        [43] = "AF3",
+        [44] = "AF4",
+        [45] = "AF5",
+        [46] = "AF6",
+        [47] = "AF7",
+        [48] = "AF8",
+        [49] = "AF9",
+        [50] = "AF10",
+        [51] = "AF11",
+        [52] = "AF12",
+        // F1-F12 (61-72)
+        [61] = "F1",
+        [62] = "F2",
+        [63] = "F3",
+        [64] = "F4",
+        [65] = "F5",
+        [66] = "F6",
+        [67] = "F7",
+        [68] = "F8",
+        [69] = "F9",
+        [70] = "F10",
+        [71] = "F11",
+        [72] = "F12"
+    };
 
         private static string DecodeTextValue(string s)
         {
-            string result = string.Empty;
-            string segment = string.Empty;
-            if (s.Length >= 5)
-            {
-                segment = s.Substring(0, 2);
-                int tInt = 0;
-                if (int.TryParse(segment, out tInt))
-                {
-                    switch (tInt)
-                    {
-                        case 1:
-                            result = "1";
-                            break;
-                        case 2:
-                            result = "2";
-                            break;
-                        case 3:
-                            result = "3";
-                            break;
-                        case 4:
-                            result = "4";
-                            break;
-                        case 5:
-                            result = "5";
-                            break;
-                        case 6:
-                            result = "6";
-                            break;
-                        case 7:
-                            result = "7";
-                            break;
-                        case 8:
-                            result = "8";
-                            break;
-                        case 9:
-                            result = "9";
-                            break;
-                        case 10:
-                            result = "0";
-                            break;
-                        case 11:
-                            result = "-";
-                            break;
-                        case 12:
-                            result = "=";
-                            break;
-
-                        case 21:
-                            result = "CF1";
-                            break;
-                        case 22:
-                            result = "CF2";
-                            break;
-                        case 23:
-                            result = "CF3";
-                            break;
-                        case 24:
-                            result = "CF4";
-                            break;
-                        case 25:
-                            result = "CF5";
-                            break;
-                        case 26:
-                            result = "CF6";
-                            break;
-                        case 27:
-                            result = "CF7";
-                            break;
-                        case 28:
-                            result = "CF8";
-                            break;
-                        case 29:
-                            result = "CF9";
-                            break;
-                        case 30:
-                            result = "CF10";
-                            break;
-                        case 31:
-                            result = "CF11";
-                            break;
-                        case 32:
-                            result = "CF12";
-                            break;
-
-                        case 41:
-                            result = "AF1";
-                            break;
-                        case 42:
-                            result = "AF2";
-                            break;
-                        case 43:
-                            result = "AF3";
-                            break;
-                        case 44:
-                            result = "AF4";
-                            break;
-                        case 45:
-                            result = "AF5";
-                            break;
-                        case 46:
-                            result = "AF6";
-                            break;
-                        case 47:
-                            result = "AF7";
-                            break;
-                        case 48:
-                            result = "AF8";
-                            break;
-                        case 49:
-                            result = "AF9";
-                            break;
-                        case 50:
-                            result = "AF10";
-                            break;
-                        case 51:
-                            result = "AF11";
-                            break;
-                        case 52:
-                            result = "AF12";
-                            break;
-
-
-                        case 61:
-                            result = "F1";
-                            break;
-                        case 62:
-                            result = "F2";
-                            break;
-                        case 63:
-                            result = "F3";
-                            break;
-                        case 64:
-                            result = "F4";
-                            break;
-                        case 65:
-                            result = "F5";
-                            break;
-                        case 66:
-                            result = "F6";
-                            break;
-                        case 67:
-                            result = "F7";
-                            break;
-                        case 68:
-                            result = "F8";
-                            break;
-                        case 69:
-                            result = "F9";
-                            break;
-                        case 70:
-                            result = "F10";
-                            break;
-                        case 71:
-                            result = "F11";
-                            break;
-                        case 72:
-                            result = "F12";
-                            break;
-
-
-                        default:
-                            result = string.Empty;
-                            break;
-                    }
-                };
-
-            }
-
-
-
-            return result;
+            if (s.Length < 1) return string.Empty;
+            if (int.TryParse(s, out int tInt) && TextValueMap.TryGetValue(tInt, out var result))
+                return result;
+            return string.Empty;
         }
+
 
         private static int DecodeWaitValue(string s)
         {
-            int result = 0;
-            string segment = string.Empty;
-            if (s.Length >= 5)
-            {
-                segment = s.Substring(2, 3);
-                if (int.TryParse(segment + "00", out result))
-                {
-                    //     result = result;
-                    //result = result ;
-                };
-            }
+            if (string.IsNullOrEmpty(s)) return 0; // Handle null or empty string scenario
 
-            return result;
+            if (!int.TryParse(s, out var result))
+                return 0; // Return 0 if parsing fails
+
+            return result * 10;
         }
 
-        private static byte DecodeConditionsBits(string s)
+        //private static byte DecodeConditionsBits(string s)
+        //{
+        //    byte result = 0;
+        //    string segment = string.Empty;
+
+        //        if (byte.TryParse(s,  out result))
+        //        {
+               
+
+        //            }
+        //    ;
+
+        //    return result;
+        //}
+        private static byte DecodeConditionsBits(ReadOnlySpan<char> s)
         {
-            byte result = 0;
-            string segment = string.Empty;
-            if (s.Length >= 6)
-            {
-                segment = s.Substring(5, 1);
-                if (byte.TryParse(segment, out result))
-                {
-                    //     result = result;
-                    //result = result ;
-                };
-
-            }
+            if (s.IsEmpty || !byte.TryParse(s, out var result)) return default; // Handle empty string or parsing failure scenarios
 
             return result;
         }
+        // make this static,  no need to create the objects more than once.
+        private static readonly DecodingOptions hints = new DecodingOptions
+        {
+            PureBarcode = false, // the capture should be just the barcode and no extras
+            PossibleFormats = new List<BarcodeFormat> {  BarcodeFormat.QR_CODE, BarcodeFormat.CODE_39},
+            
+            TryHarder = true,
+            TryInverted = false,
+            AssumeCode39CheckDigit =false,
+            UseCode39ExtendedMode = false
+        };
+
+        // make this static,  no need to create the objects more than once.
+        private static readonly BarcodeReaderGeneric BarcodeReaderEngine = new BarcodeReaderGeneric()
+        {
+            AutoRotate = false,
+            Options = hints
+        };
 
         public static BarcodeResult DecodeBarcode(Mat imageMat)
         {
             BarcodeResult result = new BarcodeResult();
-
-            // Preprocessing with OpenCvSharp (e.g., grayscale, thresholding, etc.)
-
-      //      Mat grayMat = new Mat();
-            //Cv2.CvtColor(imageMat, grayMat, ColorConversionCodes.BGR2GRAY);
-      
-
-
-            // Optional: Additional preprocessing steps like thresholding or blurring can be done here
-
-            // Decode barcode using ZXing with OpenCV bindings
-
-            // Convert Mat to Bitmap for ZXing
-            // Bitmap bitmap = OpenCvSharp.Extensions.BitmapConverter.ToBitmap(grayMat);
+            
             // Decode barcode using ZXing
-
             ZXing.Result decodeResult = null;
 
-            var hints = new DecodingOptions
+            var luminanceSource = new RuneReader.Classes.OpenCV.OpenCvLuminanceSource(imageMat);
+
+            decodeResult = BarcodeReaderEngine.Decode(luminanceSource);
+
+            if (decodeResult != null)//&& ValidateWithCheckDigit(decodeResult.Text))
             {
-                PureBarcode = true,
-                 
-                PossibleFormats = new List<BarcodeFormat> { BarcodeFormat.CODE_39},
-                TryHarder = true
-            };
-            hints.Hints[DecodeHintType.ASSUME_CODE_39_CHECK_DIGIT] = false;
-            hints.Hints[DecodeHintType.TRY_HARDER] = false;
-            hints.Hints[DecodeHintType.USE_CODE_39_EXTENDED_MODE] = false;
-            //hints.Hints[DecodeHintType.ALLOWED_LENGTHS] = 255;
+                if (decodeResult.Text.StartsWith('1'))  //QR Encoded format
+                {
+                    var items = decodeResult.Text.Split('/');
+                    if (items != null)
+                    {
+                        foreach (var item in items)
+                        {
+                            if (item.StartsWith('1') || item.StartsWith('0'))
+                            {
+                                if (byte.TryParse(item, out var ti))
+                                {
+                                    result.mode = ti;
+                                }
 
-            var BarcodeReaderEngine =  new BarcodeReaderGeneric()
-            {
-                AutoRotate = false,
-                TryInverted = false,
-                Options = hints
-            };
-            BarcodeReaderEngine.AutoRotate = false;
-            //BarcodeReaderEngine.TryInverted = true;
+                            }
+                            if (item.StartsWith('B')) //Bit Encoded Values
+                            {
+                             //   var conditions = DecodeConditionsBits(item.Substring(1));
+                                if (int.TryParse(item.Substring(1), out var ti))
+                                {
+                                    result.HasTarget = (ti & (1 << 0)) != 0;
+                                    result.InCombat = (ti & (1 << 1)) != 0;
+                                }
+                            }
+                            if (item.StartsWith('W')) //Bit Encoded Values
+                            {
+                                if (int.TryParse(item.Substring(1), out var ti))
+                                {
+                                    result.WaitTime = ti;
+                                }
+                            }
+                            if (item.StartsWith('K')) //Bit Encoded Values
+                            {
+                                result.DecodedTextValue = DecodeTextValue(item.Substring(1));
+                            }
+                            if (item.StartsWith('D')) //Bit Encoded Values
+                            {
+                                if (int.TryParse(item.Substring(1), out var ti))
+                                {
+                                    result.Delay = ti;
+
+                                }
+                            }
+                            if (item.StartsWith('G')) //Bit Encoded Values
+                            {
+                                if (int.TryParse(item.Substring(1), out var ti))
+                                {
+                                    result.GCD = ti;
+                                }
+                            }
+                            if (item.StartsWith('A')) //Bit Encoded Values
+                            {
+                                if (int.TryParse(item.Substring(1), out var ti))
+                                {
+                                    result.SpellID = ti;
+                                }
+                            }
+                            if (item.StartsWith('L')) //Bit Encoded Values
+                            {
+                                if (int.TryParse(item.Substring(1), out var ti))
+                                {
+                                    result.Latency = ti;
+                                }
+                            }
 
 
-                 //    Cv2.ImShow("WithDelays", imageMat);
-            var luminanceSource = new OpenCvLuminanceSource(imageMat);
-            // var binarizer = new ZXing.Common.HybridBinarizer(luminanceSource);
-            //  var binaryBitmap = new BinaryBitmap(binarizer);
 
 
-             decodeResult = BarcodeReaderEngine.Decode(luminanceSource);
-            if (decodeResult != null)
-            {
-                result.BarcodeFound = true;
-                result.DetectedText = decodeResult.Text;
-                result.DecodedTextValue = DecodeTextValue(decodeResult.Text);
-                result.WaitTime = DecodeWaitValue(decodeResult.Text);
-                // Bit0 hasTarget Bit1 inCombat Bit3 NotUsed
-                var conditions = DecodeConditionsBits(decodeResult.Text);
-                result.HasTarget = (conditions & (1 << 0)) != 0;
-                result.InCombat = (conditions & (1 << 1)) != 0;
 
+                        }
+                        result.BarcodeFound = true;
+                    }
+
+                }
+                else
+                {
+                    result.mode = DecodeMode(decodeResult.Text);
+                    result.BarcodeFound = true;
+                    result.DetectedText = decodeResult.Text;
+                    result.DecodedTextValue = DecodeTextValue(decodeResult.Text);
+                    result.WaitTime = DecodeWaitValue(decodeResult.Text);
+                    // Bit0 hasTarget Bit1 inCombat Bit3 NotUsed
+                    var conditions = DecodeConditionsBits(decodeResult.Text);
+                    result.HasTarget = (conditions & (1 << 0)) != 0;
+                    result.InCombat = (conditions & (1 << 1)) != 0;
+                }
             }
+            else
+            {
+                result.DecodedTextValue = "";
+                result.DetectedText = "brr";
+                result.WaitTime = 0;
+                result.BarcodeFound = false;
+                result.HasTarget = false;
+                result.InCombat = false;
+            }
+
             return result;
         }
 
+        public static BarcodeFindResult DecodeFind(ref Mat imageMat) 
+        {
+            var result = new BarcodeFindResult();
+
+            // Convert the image to grayscale.
+            Mat srcGray = imageMat.Clone();
+            try
+            {
+                Cv2.CvtColor(srcGray, srcGray, ColorConversionCodes.BGR2GRAY);
+
+                // Create a Mat to hold the binary (thresholded) image.
+
+                // Set a fixed threshold value.
+                // We invert the image here becase the barcode is blended with grey and we want the Blacks to pop out
+                // So with iverting blacks become whites and its becomes easier to filter for white values.
+                // But we cant detect a barcode that is inverted so we have to invert it back.  the result is pure black and white barcode
+                // which is easier to detect and won't get messed up by ZXings binaryizer.
+                double thresholdValue = 220;
+                double maxValue = 255;
+                Cv2.BitwiseNot(srcGray, srcGray);
+                Cv2.Threshold(srcGray, srcGray, thresholdValue, maxValue, ThresholdTypes.Binary);
+                Cv2.BitwiseNot(srcGray, srcGray);
+
+
+                //       Cv2.ImShow("Peek", srcGray);
+                var luminanceSource = new Classes.OpenCV.OpenCvLuminanceSource(srcGray);
+                var decodeResult = BarcodeReaderEngine.Decode(luminanceSource);
+
+                if (decodeResult != null)
+                {
+                   
+                    int minX = int.MaxValue;
+                    int minY = int.MaxValue;
+                    int maxX = int.MinValue;
+                    int maxY = int.MinValue;
+
+                    foreach (var point in decodeResult.ResultPoints)
+                    {
+                        if (point.X < minX) minX = (int)point.X;
+                        if (point.Y < minY) minY = (int)point.Y;
+                        if (point.X > maxX) maxX = (int)point.X;
+                        if (point.Y > maxY) maxY = (int)point.Y;
+                    }
+
+                    // Have to pad out the values as the region that is reported is not always exact but close enuf
+                    int paddingW = 0;
+                    int paddingH = 0;
+
+                    var rac = new OpenCvSharp.Rect(0, 0, 0, 0);
+
+                    if (decodeResult.BarcodeFormat == BarcodeFormat.QR_CODE)
+                    {
+                            rac = new OpenCvSharp.Rect(
+                            minX - (Math.Max(1, maxX - minX + 1) / 2),
+                            minY - (Math.Max(1, maxY - minY + 1) / 2),
+                             Math.Max(1, maxX - minX + 1) * 2,
+                             Math.Max(1, maxY - minY + 1) * 2
+                        );
+                    }
+                    if (decodeResult.BarcodeFormat == BarcodeFormat.CODE_39)
+                    {
+                        rac = new OpenCvSharp.Rect(
+                        minX - (Math.Max(1, maxX - minX + 1) / 2),
+                        minY - (Math.Max(1, maxY - minY + 1) / 2),
+                         Math.Max(1, maxX - minX + 1) * 2,
+                         Math.Max(1, maxY - minY + 1) * 2 );
+                        // pad 40 pixels on each side too help the decoder find the start and to bars.
+                        rac.Width = rac.Width - (rac.Width/ 2)+40;
+                        rac.X = rac.X + (rac.Width / 2)-40;
+
+                        rac.Height = rac.Height +  5;
+                    }
+
+                    // the screenID should be the actual screenID the barcode is found on,  but that code is not implmeneted 
+                    // yet so just report it as 1, the value is irealavent right now it just has to be above -1
+                    result.screenID = 1;
+                    result.X = rac.X ;
+                    result.Y = rac.Y ;
+                    result.Width = rac.Width ;
+                    result.Height = rac.Height ;
+                }
+                else
+                {
+                    // this should be null to follow the pattern.  but don't feel like putting the check code.
+                    result.screenID = -1;
+                    result.X = 0;
+                    result.Y = 0;
+                    result.Width = 100;
+                    result.Height = 100;
+                }
+            }
+            finally 
+            {
+                srcGray.Dispose();
+            }
+            return result;
+        }
     }
 }

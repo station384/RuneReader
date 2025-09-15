@@ -1,7 +1,7 @@
 ﻿
 namespace RuneReader
 {
-
+    using RuneReader.Classes.Utilities;
     using System;
     using System.Runtime.InteropServices;
 
