@@ -225,13 +225,6 @@ namespace RuneReader
             Cv2.BitwiseNot(srcGray, srcGray);
             
 
-
-    
-
-
-
-
-
             var barcodeResult = BarcodeDecode.DecodeBarcode(srcGray);
             if (barcodeResult.BarcodeFound)
             {
@@ -409,7 +402,7 @@ namespace RuneReader
                 DateTime currentMS = DateTime.Now.Add(new TimeSpan((CurrentKeyDownDelayMS) * 10000));
 
                 // This is here to get rid of the double push.   There are times where the next item has a 0 wait and  so it will push the key multiple times.  we don't want that.
-                await Task.Delay(500); // hardcode .5 second delay after pressing key.   
+                await Task.Delay(50); // hardcode .5 second delay after pressing key.   
 
                 while ((CurrentImageRegions.FirstImageRegions.WaitTime >= 30 || currentMS >= DateTime.Now) && activationKeyPressed == true)
                 {
@@ -524,15 +517,6 @@ namespace RuneReader
             mainWindowDispatcher = this.Dispatcher;
             AppSettings = SettingsManager.LoadSettings();
 
-            //magnifier = new MagnifierWindow();
-            //magnifier.Left = AppSettings.CapX > SystemParameters.PrimaryScreenWidth ? 100 : Math.Abs(AppSettings.CapX);
-            //magnifier.Left = AppSettings.CapX < 0 ? 0 : Math.Abs(AppSettings.CapX);
-            //magnifier.Top = AppSettings.CapY > SystemParameters.PrimaryScreenHeight ? 100 : Math.Abs(AppSettings.CapY);
-            //magnifier.Width = AppSettings.CapWidth;
-            //magnifier.Height = AppSettings.CapHeight;
-            //magnifier.ShowInTaskbar = false;
-            //magnifier.SizeChanged += Magnifier_SizeChanged;
-            //magnifier.LocationChanged += Magnifier_LocationChanged;
 
             //Get Screen Metrics
             var screenCaptureService = new DX11ScreenCaptureService();
@@ -599,7 +583,6 @@ namespace RuneReader
                 }
             }
 
-            OpenMagnifierWindow();
 
             this.Left = AppSettings.AppStartX;
             this.Top = AppSettings.AppStartY;
@@ -611,7 +594,6 @@ namespace RuneReader
 
             StartCaptureProcess();
 
-           // magnifier.Visibility = Visibility.Hidden;
 
             //This timer watches for the wow window
             _TimerWowWindowMonitor = new System.Windows.Threading.DispatcherTimer(DispatcherPriority.Background);
@@ -632,7 +614,6 @@ namespace RuneReader
             _TimerBarcodeMonitor.Stop();
 
 
-            //_timer.IsEnabled = false ;
 
 
         }
@@ -710,7 +691,6 @@ namespace RuneReader
             {
                 if (!screenCapture.IsCapturing)
                 {
-                  //  Magnifier_LocationChanged(sender, e);
 
                     _currentKeyToSend = "";
 
@@ -761,48 +741,8 @@ namespace RuneReader
             }
         }
 
-        private void bToggleMagBorder_Click(object sender, RoutedEventArgs e)
-        {
-            //if (magnifier.Visibility == Visibility.Visible)
-            //{
-            //    magnifier.Visibility = Visibility.Hidden;
-            //}
-            //else
-            //{
-            //    magnifier.Visibility = Visibility.Visible;
-            //}
-        }
 
-        private void Magnifier_LocationChanged(object? sender, EventArgs e)
-        {
-            //if (Initalizing) return;
-            ////            if (screenCapture == null) return;
-            ////            screenCapture.CaptureRegion = magnifier.CurrrentLocationValue;
-            //if (screenCapture == null) return;
-            //var source = PresentationSource.FromVisual(this);
-            //if (source?.CompositionTarget != null)
-            //{
-            //    var dpiX = source.CompositionTarget.TransformToDevice.M11;
-            //    var dpiY = source.CompositionTarget.TransformToDevice.M22;
 
-            //    // Get the window's current location
-            //    var left = magnifier.CurrrentLocationValue.X;
-            //    var top = magnifier.CurrrentLocationValue.Y;
-            //    var width = magnifier.CurrrentLocationValue.Width;
-            //    var height = magnifier.CurrrentLocationValue.Height;
-
-            //    // Adjust for DPI scaling
-            //    var scaledLeft = left * dpiX + 1;
-            //    var scaledTop = top * dpiY + 1;
-            //    var scaledWidth = width * dpiX - 1;
-            //    var scaledHeight = height * dpiY - 1;
-            //    //     if (screenCapture.CaptureRegion != null ) 
-            //    screenCapture.CaptureRegion = new System.Windows.Rect(scaledLeft + 1, scaledTop + 1, scaledWidth - 1, scaledHeight - 1);
-            //    //screenCapture.CaptureRegion = magnifier.CurrrentLocationValue;
-
-            //}
-
-        }
 
 
         // Method to open the MagnifierWindow
