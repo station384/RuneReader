@@ -1,4 +1,4 @@
-# Rune Reader for Hekili Priority Helper
+# RuneReader
 Rune Reader is an accessibility aid for World of Warcraft (WoW). 
 Its primary goal is to provide assistance to gamers who may face challenges in gameplay due to various accessibility issues.
 Rune Reader can utilize various Rotation Helpers to assist players in executing the suggested command.
