@@ -1,3 +1,8 @@
+> [!NOTE]
+> This will be shut down with the release of Midnight 12.0 (Pre-Patch)
+> 
+> Due to the changes in the Addons in WoW it will not allow this assist to function.
+
 # RuneReader
 Rune Reader is an accessibility aid for World of Warcraft (WoW). 
 Its primary goal is to provide assistance to gamers who may face challenges in gameplay due to various accessibility issues.
@@ -9,10 +14,10 @@ This is used in conjunction with the addon https://github.com/station384/RuneRea
 
 Current Helpers Supported
 -------------
-* [Hekili Priority helper](https://github.com/Hekili/hekili)
-* [ConRO](https://github.com/Vae2009/ConRO)
-* [MaxDPS](https://github.com/kaminaris/MaxDps)
-* Wow Combat Assist (Built into Wow Now)
+* [Hekili Priority helper](https://github.com/Hekili/hekili)  (Shutdown after 12.0 Prepatch)
+* [ConRO](https://github.com/Vae2009/ConRO) (Will not function after 12.0 Prepatch)
+* [MaxDPS](https://github.com/kaminaris/MaxDps) (Will not function after 12.0 Prepatch)
+* Wow Combat Assist (Built into Wow Now) (Can't read the data after 12.0 Prepatch)
 
 
 Project Notes
