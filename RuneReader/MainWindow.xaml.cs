@@ -686,9 +686,9 @@ namespace RuneReader
         private void StartButton_Click(object sender, RoutedEventArgs e)
         {
             // Start the continuous capturing
-            _wowWindowHandle = WindowsAPICalls.FindWowWindow("World of Warcraft"); //WindowsAPICalls.FindWindow(null, "World of Warcraft");
-            if (_wowWindowHandle != IntPtr.Zero)
-            {
+            //_wowWindowHandle = WindowsAPICalls.FindWowWindow("World of Warcraft"); //WindowsAPICalls.FindWindow(null, "World of Warcraft");
+            //if (_wowWindowHandle != IntPtr.Zero)
+            //{
                 if (!screenCapture.IsCapturing)
                 {
 
@@ -704,7 +704,7 @@ namespace RuneReader
                     _timer.Start();
 
                 }
-            }
+         //   }
 
         }
 
