@@ -12,7 +12,7 @@ This is used in conjunction with the addon https://github.com/station384/RuneRea
 > [!NOTE]
 > This is the code repository for a personal project.  Compiled releases will not be made available here at this time.
 > 
-> This uses the [RuneReader](https://github.com/station384/RuneReader) Software.
+> This uses the [RuneReader Recast](https://github.com/station384/RuneReaderRecast) addon.
 
 Current Helpers Supported
 -------------
