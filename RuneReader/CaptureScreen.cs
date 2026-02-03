@@ -93,10 +93,7 @@ namespace RuneReader
                 screenCapture.UpdateCaptureZone(capZone1, (int)_captureRegion.X, (int)_captureRegion.Y, (int)_captureRegion.Width, (int)_captureRegion.Height, downscaleLevel: 0);
             }
         }
-
-
-
-
+        
 
         public CaptureScreen(OpenCvSharp.Rect Regions, int? downscaleLevel)
         {

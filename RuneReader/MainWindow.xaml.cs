@@ -233,11 +233,11 @@ namespace RuneReader
                 {
                     CurrentKeyToSend = "",
                     HasTarget = barcodeResult.HasTarget,
-                    WaitTime = barcodeResult.WaitTime,
+                    WaitTime = barcodeResult.WaitTime + barcodeResult.Delay,
                     regions = new DetectionRegions
                     {
                         HasTarget = barcodeResult.HasTarget,
-                        WaitTime = barcodeResult.WaitTime,
+                        WaitTime = barcodeResult.WaitTime + barcodeResult.Delay,
                         BottomCenter = (barcodeResult.WaitTime <= 500),
                         BottomLeft = (barcodeResult.WaitTime <= 300),
                         TopLeft = (barcodeResult.WaitTime <= 0),
@@ -402,39 +402,38 @@ namespace RuneReader
                 DateTime currentMS = DateTime.Now.Add(new TimeSpan((CurrentKeyDownDelayMS) * 10000));
 
                 // This is here to get rid of the double push.   There are times where the next item has a 0 wait and  so it will push the key multiple times.  we don't want that.
-                await Task.Delay(50); // hardcode .5 second delay after pressing key.   
+                await Task.Delay(100); // hardcode .5 second delay after pressing key.   
 
-                while ((CurrentImageRegions.FirstImageRegions.WaitTime >= 30 || currentMS >= DateTime.Now) && activationKeyPressed == true)
-                {
-                    await Task.Delay(16);  // 1 frame when running at 60FPS
-                }
+                //while ((CurrentImageRegions.FirstImageRegions.WaitTime >= 150 || currentMS >= DateTime.Now) && activationKeyPressed == true)
+                //{
+                //    await Task.Delay(3);  // 1 frame when running at 60FPS
+                //}
 
 
                 if (_keyPressMode)
                 {
                     await Task.Delay(CurrentCaptureRateMS == 0 ? 2 : CurrentCaptureRateMS / 2); // Try and wait for a capture refresh
                     currentMS = DateTime.Now;
-                    currentKey.MaxWaitTime = 5000;
+                    currentKey.MaxWaitTime = 6000;
                     currentMS = DateTime.Now.AddMilliseconds(currentKey.MaxWaitTime);
                     DateTime MaxWaitTime = DateTime.Now.AddSeconds(8);
                     var anticipateWait = currentKey.MaxWaitTime;
-      
+
 
                     // Wait time may be out of sync here.  this resync the wait time.
-                    while ((currentMS >= DateTime.Now && currentKey.MaxWaitTime >= 5000) &&  activationKeyPressed == true )
+                    while ((currentMS >= DateTime.Now && currentKey.MaxWaitTime >= 5000)  && activationKeyPressed == true)
                     {
                         await Task.Delay(16);
                         currentKey.MaxWaitTime = CurrentImageRegions.FirstImageRegions.WaitTime;
                     }
-                
-                    
-                    while (currentMS >= DateTime.Now && currentKey.MaxWaitTime >=  anticipateWait  && currentKey.MaxWaitTime > 0 && activationKeyPressed == true)
-                    {
 
-                        await Task.Delay(16);
+
+                    while (currentMS >= DateTime.Now && currentKey.MaxWaitTime >=  anticipateWait && activationKeyPressed == true)
+                    {
+                         Task.Delay(16);
                         currentKey.MaxWaitTime = CurrentImageRegions.FirstImageRegions.WaitTime;
                      
-                        if (currentKey.MaxWaitTime <= 0) //--(DateTime.Now > MaxWaitTime)
+                        if (currentKey.MaxWaitTime <= 250) //--(DateTime.Now > MaxWaitTime)
                         {
                             goto alldone;
                         }
@@ -442,13 +441,13 @@ namespace RuneReader
                 }
   
 
-            // If where not watching for when things time out, we insert a hard delay
-            // This is no longer need as were putting a hard pause above
-            //if (!_keyPressMode)
-            //{
-            //   await Task.Delay(Random.Shared.Next() % 5 + CurrentKeyDownDelayMS);//.ConfigureAwait(true);
-            //}
-            alldone:
+                // If where not watching for when things time out, we insert a hard delay
+                // This is no longer need as were putting a hard pause above
+                //if (!_keyPressMode)
+                //{
+                //   await Task.Delay(Random.Shared.Next() % 5 + CurrentKeyDownDelayMS);//.ConfigureAwait(true);
+                //}
+                alldone:
                 WindowsAPICalls.PostMessage(_wowWindowHandle, WindowsAPICalls.WM_KEYUP, vkCode, 0);
                 ProcessingKey = false;
             }
@@ -471,7 +470,6 @@ namespace RuneReader
             {
                 return;
             }
-           // _timer.Stop();
             var keyToSendFirst = string.Empty;
             DateTime currentD = DateTime.Now;
 
@@ -484,9 +482,9 @@ namespace RuneReader
             keyToSendFirst = _currentKeyToSend;
             while (String.IsNullOrEmpty(keyToSendFirst) && button_Start.IsEnabled == false && activationKeyPressed == true)
             {
-                await Task.Delay(16);
+                await Task.Delay(5);
                 keyToSendFirst = _currentKeyToSend;
-                if (currentD.AddMilliseconds(5000) < DateTime.Now)
+                if (currentD.AddMilliseconds(15000) < DateTime.Now)
                 {
                     goto allDone;
                 }
@@ -622,9 +620,9 @@ namespace RuneReader
         {
             if (!BarCodeFound & screenCapture.IsCapturing)
             {
-                _TimerBarcodeMonitor.Stop();
+               // _TimerBarcodeMonitor.Stop();
                 await AttemptToFindBarcode();
-                _TimerBarcodeMonitor.Start();
+               // _TimerBarcodeMonitor.Start();
             }
         }
 

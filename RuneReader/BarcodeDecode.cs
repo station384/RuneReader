@@ -288,8 +288,8 @@ namespace RuneReader
 
             if (decodeResult != null)//&& ValidateWithCheckDigit(decodeResult.Text))
             {
-                if (decodeResult.Text.StartsWith('1'))  //QR Encoded format
-                {
+                //if (decodeResult.Text.StartsWith('1'))  //QR Encoded format
+                //{
                     var items = decodeResult.Text.Split('/');
                     if (items != null)
                     {
@@ -361,19 +361,19 @@ namespace RuneReader
                         result.BarcodeFound = true;
                     }
 
-                }
-                else
-                {
-                    result.mode = DecodeMode(decodeResult.Text);
-                    result.BarcodeFound = true;
-                    result.DetectedText = decodeResult.Text;
-                    result.DecodedTextValue = DecodeTextValue(decodeResult.Text);
-                    result.WaitTime = DecodeWaitValue(decodeResult.Text);
-                    // Bit0 hasTarget Bit1 inCombat Bit3 NotUsed
-                    var conditions = DecodeConditionsBits(decodeResult.Text);
-                    result.HasTarget = (conditions & (1 << 0)) != 0;
-                    result.InCombat = (conditions & (1 << 1)) != 0;
-                }
+                //}
+                //else
+                //{
+                //    result.mode = DecodeMode(decodeResult.Text);
+                //    result.BarcodeFound = true;
+                //    result.DetectedText = decodeResult.Text;
+                //    result.DecodedTextValue = DecodeTextValue(decodeResult.Text);
+                //    result.WaitTime = DecodeWaitValue(decodeResult.Text);
+                //    // Bit0 hasTarget Bit1 inCombat Bit3 NotUsed
+                //    var conditions = DecodeConditionsBits(decodeResult.Text);
+                //    result.HasTarget = (conditions & (1 << 0)) != 0;
+                //    result.InCombat = (conditions & (1 << 1)) != 0;
+                //}
             }
             else
             {
