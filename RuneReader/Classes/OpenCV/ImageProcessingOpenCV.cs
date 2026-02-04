@@ -1,9 +1,6 @@
-﻿using Microsoft.Windows.Themes;
-using OpenCvSharp;
-using SharpGen.Runtime;
+﻿using OpenCvSharp;
 using System;
-using System.Runtime.Intrinsics;
-using System.Security.Cryptography;
+
 
 namespace RuneReader.Classes.OpenCV
 {

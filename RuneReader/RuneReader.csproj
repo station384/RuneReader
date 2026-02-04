@@ -1,23 +1,34 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
-  <PropertyGroup>
-    <OutputType>WinExe</OutputType>
-    <TargetFramework>net8.0-windows</TargetFramework>
-    <Nullable>enable</Nullable>
-    <UseWPF>true</UseWPF>
-    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-	<GenerateAssemblyInfo>True</GenerateAssemblyInfo>
-    <GenerateTargetFrameworkAttribute>false</GenerateTargetFrameworkAttribute>
-    <StartupObject>RuneReader.App</StartupObject>
-    <ApplicationIcon>Icons\RuneReader_Icon.ico</ApplicationIcon>
-    <PlatformTarget>x64</PlatformTarget>
+    <PropertyGroup>
+        <OutputType>WinExe</OutputType>
+        <TargetFrameworks>net8.0;net8.0-windows</TargetFrameworks>
+        <Nullable>enable</Nullable>
+        <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+        <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+        <ApplicationIcon>Icons\RuneReader_Icon.ico</ApplicationIcon>
+    </PropertyGroup>
+    <!-- Avalonia (cross-platform) -->
 
-	  <!-- Enable ReadyToRun compilation -->
+<!--  <PropertyGroup>-->
+<!--    <OutputType>WinExe</OutputType>-->
+<!--    <TargetFramework>net8.0-windows</TargetFramework>-->
+<!--    <Nullable>enable</Nullable>-->
+<!--    <UseWPF>true</UseWPF>-->
+<!--    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>-->
+<!--	<GenerateAssemblyInfo>True</GenerateAssemblyInfo>-->
+<!--    <GenerateTargetFrameworkAttribute>false</GenerateTargetFrameworkAttribute>-->
+<!--    <StartupObject>RuneReader.App</StartupObject>-->
+<!--    <ApplicationIcon>Icons\RuneReader_Icon.ico</ApplicationIcon>-->
+<!--    <PlatformTarget>x64</PlatformTarget>-->
 
-	  <SignAssembly>False</SignAssembly>
-	  <DelaySign>False</DelaySign>
+<!--	  &lt;!&ndash; Enable ReadyToRun compilation &ndash;&gt;-->
 
-  </PropertyGroup>
+<!--	  <SignAssembly>False</SignAssembly>-->
+<!--	  <DelaySign>False</DelaySign>-->
+<!--	  <Platforms>AnyCPU;x64</Platforms>-->
+
+<!--  </PropertyGroup>-->
 
 	<PropertyGroup>
 		<SignManifests>true</SignManifests>
@@ -37,25 +48,40 @@
     <DebugType>full</DebugType>
     <PlatformTarget>AnyCPU</PlatformTarget>
   </PropertyGroup>
+	
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <Optimize>False</Optimize>
+    <DebugType>full</DebugType>
+    <PlatformTarget>AnyCPU</PlatformTarget>
+  </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
     <Optimize>True</Optimize>
     <DebugType>full</DebugType>
   </PropertyGroup>
 
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <Optimize>True</Optimize>
+    <DebugType>full</DebugType>
+  </PropertyGroup>
+
   <ItemGroup>
+    <Compile Remove="Classes\NativeBitmap\**" />
     <Compile Remove="HelikiProfiles\**" />
     <Compile Remove="PlaterProfiles\**" />
     <Compile Remove="RuneReaderFontInstall\**" />
     <Compile Remove="RuneReaderHekiliRecast\**" />
+    <EmbeddedResource Remove="Classes\NativeBitmap\**" />
     <EmbeddedResource Remove="HelikiProfiles\**" />
     <EmbeddedResource Remove="PlaterProfiles\**" />
     <EmbeddedResource Remove="RuneReaderFontInstall\**" />
     <EmbeddedResource Remove="RuneReaderHekiliRecast\**" />
+    <None Remove="Classes\NativeBitmap\**" />
     <None Remove="HelikiProfiles\**" />
     <None Remove="PlaterProfiles\**" />
     <None Remove="RuneReaderFontInstall\**" />
     <None Remove="RuneReaderHekiliRecast\**" />
+    <Page Remove="Classes\NativeBitmap\**" />
     <Page Remove="HelikiProfiles\**" />
     <Page Remove="PlaterProfiles\**" />
     <Page Remove="RuneReaderFontInstall\**" />
@@ -63,20 +89,38 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Content Include="Icons\RuneReader_Icon.ico" />
+    <Compile Remove="Classes\ImageExtension.cs" />
+    <Compile Remove="DetectHDR.cs" />
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="MahApps.Metro" Version="2.4.10" />
-    <PackageReference Include="OpenCvSharp4" Version="4.10.0.20241108" />
-    <PackageReference Include="OpenCvSharp4.Extensions" Version="4.10.0.20241108" />
-    <PackageReference Include="OpenCvSharp4.Windows" Version="4.10.0.20241108" />
-    <PackageReference Include="OpenCvSharp4.WpfExtensions" Version="4.10.0.20241108" />
-    <PackageReference Include="ScreenCapture.NET.DX11" Version="3.0.0" />
-    <PackageReference Include="ScreenCapture.NET.X11" Version="3.0.0" />
-    <PackageReference Include="ZXing.Net" Version="0.16.10" />
+    <Content Include="Icons\RuneReader_Icon.ico" />
   </ItemGroup>
 
+    <ItemGroup>
+        <PackageReference Include="Avalonia.Desktop" Version="11.3.11" />
+        <PackageReference Include="Avalonia.Themes.Fluent" Version="11.3.11" />
+        <PackageReference Include="Avalonia.Fonts.Inter" Version="11.3.11" />
+        <PackageReference Include="Avalonia.Diagnostics" Version="11.3.11">
+            <IncludeAssets Condition="'$(Configuration)' != 'Debug'">None</IncludeAssets>
+            <PrivateAssets Condition="'$(Configuration)' != 'Debug'">All</PrivateAssets>
+        </PackageReference>
+        <PackageReference Include="MessageBox.Avalonia" Version="3.3.1.1" />
+        <PackageReference Include="OpenCvSharp4" Version="4.11.0.20250507" />
+        <PackageReference Include="OpenCvSharp4.Extensions" Version="4.11.0.20250507" />
+        <PackageReference Include="OpenCvSharp4.Windows" Version="4.11.0.20250507" />
+        <PackageReference Include="OpenCvSharp4.WpfExtensions" Version="4.11.0.20250507" />
+        <PackageReference Include="ScreenCapture.NET.DX11" Version="3.0.0" />
+        <PackageReference Include="ScreenCapture.NET.X11" Version="3.0.0" />
+        <PackageReference Include="System.Configuration.ConfigurationManager" Version="10.0.2" />
+        <PackageReference Include="ZXing.Net" Version="0.16.11" />
+    </ItemGroup>
+    <!-- Windows-only bits -->
+    <ItemGroup Condition="'$(TargetFramework)' == 'net8.0-windows'">
+        <!-- keep Win32 hook/capture deps here -->
+    </ItemGroup>
+    
+  
   <ItemGroup>
     <None Include="..\.editorconfig" Link=".editorconfig" />
   </ItemGroup>

@@ -1,32 +1,41 @@
-﻿using MahApps.Metro.Controls;
+﻿//using MahApps.Metro.Controls;
+using Avalonia;
+using Avalonia.Threading;
+using Avalonia.Controls;
+
 using OpenCvSharp;
-using OpenCvSharp.WpfExtensions;
+//using OpenCvSharp.WpfExtensions;
 using RuneReader.Classes;
 using RuneReader.Classes.Utilities;
-using RuneReader.Properties;
 using ScreenCapture.NET;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Drawing;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Threading.Tasks;
-using System.Windows;
-using System.Windows.Controls;
-using System.Windows.Input;
-using System.Windows.Media.Imaging;
-using System.Windows.Threading;
-using static RuneReader.BarcodeDecode;
+using Avalonia.Markup.Xaml;
+using Avalonia.Win32.Input;
+using OpenCvSharp.WpfExtensions;
+
+// using System.Windows;
+// using System.Windows.Controls;
+// using System.Windows.Input;
+// using System.Windows.Media.Imaging;
+ 
+#if WINDOWS
+ using Avalonia.Win32.Input;
+#endif
+
+ using static RuneReader.BarcodeDecode;
+ using Window = Avalonia.Controls.Window;
 
 
-
-
-namespace RuneReader
+ namespace RuneReader
 {
 
-    public partial class MainWindow : MetroWindow
+    public partial class MainWindow : Window
     {
         private static UserSettings _AppSettings = new UserSettings();
         public static UserSettings AppSettings { get { return _AppSettings; } private set { _AppSettings = value; } }
@@ -197,7 +206,7 @@ namespace RuneReader
         /// <param name="DisplayControl">Image used for OCR refence to USER no delays</param>
         /// <param name="Threshold">0.0 -> 1.0 How much variance of color are we going to call the same</param>
         /// <returns>ProcessImageResult</returns>
-        private ProcessImageResult ProcessImageOpenCV(ref Mat image, ref System.Windows.Controls.Label lKeyVal, ref Label lWait, ref System.Windows.Controls.Image DisplayControl, double Threshold)
+        private ProcessImageResult ProcessImageOpenCV(ref Mat image, ref Avalonia.Controls.Label lKeyVal, ref Label lWait, ref Avalonia.Controls.Image DisplayControl, double Threshold)
         {
 
             var origWidth = image.Width;
@@ -507,12 +516,14 @@ namespace RuneReader
         }
 
 
-
+        private void InitializeComponent()
+            => AvaloniaXamlLoader.Load(this);
+       
         public MainWindow()
         {
             InitializeComponent();
             Initalizing = false;
-            mainWindowDispatcher = this.Dispatcher;
+            mainWindowDispatcher = Dispatcher.UIThread;
             AppSettings = SettingsManager.LoadSettings();
 
 
@@ -594,19 +605,19 @@ namespace RuneReader
 
 
             //This timer watches for the wow window
-            _TimerWowWindowMonitor = new System.Windows.Threading.DispatcherTimer(DispatcherPriority.Background);
+            _TimerWowWindowMonitor = new Avalonia.Threading.DispatcherTimer(DispatcherPriority.Background);
             _TimerWowWindowMonitor.Interval = TimeSpan.FromSeconds(5);
             _TimerWowWindowMonitor.Tick += _TimerWowWindowMonitor_Tick;
             _TimerWowWindowMonitor.Stop();
 
             //This timer handles sending of the key commands
-            _timer = new System.Windows.Threading.DispatcherTimer(DispatcherPriority.Normal);
+            _timer = new Avalonia.Threading.DispatcherTimer(DispatcherPriority.Normal);
             _timer.Interval = TimeSpan.FromMilliseconds(1);
             _timer.Tick += mainTimerTick;
             _timer.Stop();
 
             //This timer will run every 5 seconds to try and find the barcode.
-            _TimerBarcodeMonitor = new System.Windows.Threading.DispatcherTimer(DispatcherPriority.Background);
+            _TimerBarcodeMonitor = new Avalonia.Threading.DispatcherTimer(DispatcherPriority.Background);
             _TimerBarcodeMonitor.Interval = TimeSpan.FromSeconds(5);
             _TimerBarcodeMonitor.Tick += _TimerBarcodeMonitor_Tick; ;
             _TimerBarcodeMonitor.Stop();
@@ -666,7 +677,7 @@ namespace RuneReader
 
 
         #region UI Event handlers
-        private void buClickKeepMagOnTop(object sender, RoutedEventArgs e)
+        private void buClickKeepMagOnTop(object sender, Avalonia.Interactivity.RoutedEventArgs e)
         {
             if (cbStayOnTop.IsChecked == true)
             {
@@ -681,7 +692,7 @@ namespace RuneReader
             }
         }
 
-        private void StartButton_Click(object sender, RoutedEventArgs e)
+        private void StartButton_Click(object sender, Avalonia.Interactivity.RoutedEventArgs e)
         {
             // Start the continuous capturing
             //_wowWindowHandle = WindowsAPICalls.FindWowWindow("World of Warcraft"); //WindowsAPICalls.FindWindow(null, "World of Warcraft");
@@ -702,11 +713,11 @@ namespace RuneReader
                     _timer.Start();
 
                 }
-         //   }
+                //   }
 
         }
 
-        private void StopButton_Click(object sender, RoutedEventArgs e)
+        private void StopButton_Click(object sender, Avalonia.Interactivity.RoutedEventArgs e)
         {
             // ... When you want to stop capturing:
             if (screenCapture.IsCapturing)
@@ -726,7 +737,7 @@ namespace RuneReader
             }
         }
 
-        private void Capture_Click(object sender, RoutedEventArgs e)
+        private void Capture_Click(object sender, Avalonia.Interactivity.RoutedEventArgs e)
         {
             var filePath = ".\\captures\\Cap" + DateTime.Now.ToBinary().ToString() + ".tif";
 
@@ -793,7 +804,7 @@ namespace RuneReader
 
         }
 
-        private void sliderCaptureRateMS_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+        private void sliderCaptureRateMS_ValueChanged(object sender,  RoutedPropertyChangedEventArgs<double> e)
         {
             if (Initalizing) return;
             AppSettings.CaptureRateMS = (int)sliderCaptureRateMS.Value;
@@ -848,19 +859,19 @@ namespace RuneReader
             }
         }
 
-        private void tbKeyRateMS_TextChanged(object sender, System.Windows.Controls.TextChangedEventArgs e)
+        private void tbKeyRateMS_TextChanged(object sender, Avalonia.Controls.TextChangedEventArgs e)
         {
             if (Initalizing) return;
-            sliderKeyRateMS.Value = int.Parse(((System.Windows.Controls.TextBox)e.Source).Text.ToString());
+            sliderKeyRateMS.Value = int.Parse(((Avalonia.Controls.TextBox)e.Source).Text.ToString());
         }
 
-        private void tbCaptureRateMS_TextChanged(object sender, System.Windows.Controls.TextChangedEventArgs e)
+        private void tbCaptureRateMS_TextChanged(object sender, Avalonia.Controls.TextChangedEventArgs e)
         {
             if (Initalizing) return;
-            sliderCaptureRateMS.Value = int.Parse(((System.Windows.Controls.TextBox)e.Source).Text.ToString());
+            sliderCaptureRateMS.Value = int.Parse(((Avalonia.Controls.TextBox)e.Source).Text.ToString());
         }
 
-        private void tbWowGamme_TextChanged(object sender, System.Windows.Controls.TextChangedEventArgs e)
+        private void tbWowGamme_TextChanged(object sender, Avalonia.Controls.TextChangedEventArgs e)
         {
             if (Initalizing) return;
             //  sliderWowGamma.Value = int.Parse(((System.Windows.Controls.TextBox)e.Source).Text.ToString());
@@ -868,13 +879,13 @@ namespace RuneReader
 
 
 
-        private void cbActivationKey_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+        private void cbActivationKey_SelectionChanged(object sender, Avalonia.Controls.SelectionChangedEventArgs e)
         {
             if (Initalizing) return;
             AppSettings.ActivationKey = ((ComboBoxItem)cbActivationKey.SelectedItem).Content.ToString();
         }
 
-        private void bResetMagPosition_Click(object sender, RoutedEventArgs e)
+        private void bResetMagPosition_Click(object sender, Avalonia.Interactivity.RoutedEventArgs e)
         {
             AppSettings.CapX = 50;
             AppSettings.CapY = 50;
@@ -887,14 +898,14 @@ namespace RuneReader
             //magnifier.Height = AppSettings.CapHeight;
         }
 
-        private void cbPushRelease_Checked(object sender, RoutedEventArgs e)
+        private void cbPushRelease_Checked(object sender, Avalonia.Interactivity.RoutedEventArgs e)
         {
             if (Initalizing) return;
             _keyPressMode = true;
             AppSettings.PushAndRelease = _keyPressMode;
         }
 
-        private void cbPushRelease_Unchecked(object sender, RoutedEventArgs e)
+        private void cbPushRelease_Unchecked(object sender, Avalonia.Interactivity.RoutedEventArgs e)
         {
             if (Initalizing) return;
             _keyPressMode = false;
@@ -914,21 +925,21 @@ namespace RuneReader
             }
         }
 
-        private void cbPetKeyEnabled_Checked(object sender, RoutedEventArgs e)
+        private void cbPetKeyEnabled_Checked(object sender, Avalonia.Interactivity.RoutedEventArgs e)
         {
             lPet.IsEnabled = true;
             cbPetAttackKey.IsEnabled = true;
             AppSettings.PetKeyEnables = lPet.IsEnabled;
         }
 
-        private void cbPetKeyEnabled_Unchecked(object sender, RoutedEventArgs e)
+        private void cbPetKeyEnabled_Unchecked(object sender, Avalonia.Interactivity.RoutedEventArgs e)
         {
             lPet.IsEnabled = false;
             cbPetAttackKey.IsEnabled = false;
             AppSettings.PetKeyEnables = lPet.IsEnabled;
         }
 
-        private void cbIgnoreTargetInfo_Click(object sender, RoutedEventArgs e)
+        private void cbIgnoreTargetInfo_Click(object sender, Avalonia.Interactivity.RoutedEventArgs e)
         {
             if (cbIgnoreTargetInfo.IsChecked == null)
             {
@@ -948,7 +959,7 @@ namespace RuneReader
 
         }
 
-        private async void bFindBarcode_Click(object sender, RoutedEventArgs e)
+        private async void bFindBarcode_Click(object sender, Avalonia.Interactivity.RoutedEventArgs e)
         {
             await AttemptToFindBarcode();
         }
