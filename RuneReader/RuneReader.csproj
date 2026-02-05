@@ -66,18 +66,22 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <AvaloniaXaml Remove="OpenCV\**" />
     <Compile Remove="Classes\NativeBitmap\**" />
     <Compile Remove="HelikiProfiles\**" />
+    <Compile Remove="OpenCV\**" />
     <Compile Remove="PlaterProfiles\**" />
     <Compile Remove="RuneReaderFontInstall\**" />
     <Compile Remove="RuneReaderHekiliRecast\**" />
     <EmbeddedResource Remove="Classes\NativeBitmap\**" />
     <EmbeddedResource Remove="HelikiProfiles\**" />
+    <EmbeddedResource Remove="OpenCV\**" />
     <EmbeddedResource Remove="PlaterProfiles\**" />
     <EmbeddedResource Remove="RuneReaderFontInstall\**" />
     <EmbeddedResource Remove="RuneReaderHekiliRecast\**" />
     <None Remove="Classes\NativeBitmap\**" />
     <None Remove="HelikiProfiles\**" />
+    <None Remove="OpenCV\**" />
     <None Remove="PlaterProfiles\**" />
     <None Remove="RuneReaderFontInstall\**" />
     <None Remove="RuneReaderHekiliRecast\**" />
@@ -238,7 +242,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="OpenCV\" />
     <Folder Include="Properties\PublishProfiles\" />
   </ItemGroup>
 
