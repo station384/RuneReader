@@ -102,6 +102,7 @@
   </ItemGroup>
 
     <ItemGroup>
+        <PackageReference Include="Avalonia" Version="11.3.11" />
         <PackageReference Include="Avalonia.Desktop" Version="11.3.11" />
         <PackageReference Include="Avalonia.Themes.Fluent" Version="11.3.11" />
         <PackageReference Include="Avalonia.Fonts.Inter" Version="11.3.11" />
@@ -112,8 +113,8 @@
         <PackageReference Include="MessageBox.Avalonia" Version="3.3.1.1" />
         <PackageReference Include="OpenCvSharp4" Version="4.11.0.20250507" />
         <PackageReference Include="OpenCvSharp4.Extensions" Version="4.11.0.20250507" />
+        <PackageReference Include="OpenCvSharp4.official.runtime.linux-x64" Version="4.11.0.20250507" />
         <PackageReference Include="OpenCvSharp4.Windows" Version="4.11.0.20250507" />
-        <PackageReference Include="OpenCvSharp4.WpfExtensions" Version="4.11.0.20250507" />
         <PackageReference Include="ScreenCapture.NET.DX11" Version="3.0.0" />
         <PackageReference Include="ScreenCapture.NET.X11" Version="3.0.0" />
         <PackageReference Include="System.Configuration.ConfigurationManager" Version="10.0.2" />
