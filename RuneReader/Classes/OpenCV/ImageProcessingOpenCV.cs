@@ -1,7 +1,6 @@
 ﻿using OpenCvSharp;
 using System;
 
-
 namespace RuneReader.Classes.OpenCV
 {
     internal class ImageProcessingOpenCV

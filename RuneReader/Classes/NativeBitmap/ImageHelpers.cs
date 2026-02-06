@@ -5,7 +5,6 @@ using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Runtime.InteropServices;
 using System.IO;
-using System.Windows.Media.Imaging;
 
 namespace RuneReader.Classes.NativeBitmap
 {

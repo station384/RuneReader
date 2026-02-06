@@ -1,36 +1,37 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
-    <PropertyGroup>
-        <OutputType>WinExe</OutputType>
-        <TargetFrameworks>net8.0;net8.0-windows</TargetFrameworks>
-        <Nullable>enable</Nullable>
-        <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-        <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
-        <ApplicationIcon>Icons\RuneReader_Icon.ico</ApplicationIcon>
-    </PropertyGroup>
-    <!-- Avalonia (cross-platform) -->
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+	<GenerateAssemblyInfo>True</GenerateAssemblyInfo>
+    <GenerateTargetFrameworkAttribute>false</GenerateTargetFrameworkAttribute>
+    <!-- Avalonia uses Program.Main as the entrypoint -->
+    <ApplicationIcon>Icons\RuneReader_Icon.ico</ApplicationIcon>
+    <PlatformTarget>x64</PlatformTarget>
 
-<!--  <PropertyGroup>-->
-<!--    <OutputType>WinExe</OutputType>-->
-<!--    <TargetFramework>net8.0-windows</TargetFramework>-->
-<!--    <Nullable>enable</Nullable>-->
-<!--    <UseWPF>true</UseWPF>-->
-<!--    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>-->
-<!--	<GenerateAssemblyInfo>True</GenerateAssemblyInfo>-->
-<!--    <GenerateTargetFrameworkAttribute>false</GenerateTargetFrameworkAttribute>-->
-<!--    <StartupObject>RuneReader.App</StartupObject>-->
-<!--    <ApplicationIcon>Icons\RuneReader_Icon.ico</ApplicationIcon>-->
-<!--    <PlatformTarget>x64</PlatformTarget>-->
+    <!-- Avalonia -->
+    <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
 
-<!--	  &lt;!&ndash; Enable ReadyToRun compilation &ndash;&gt;-->
+	  <!-- Enable ReadyToRun compilation -->
 
-<!--	  <SignAssembly>False</SignAssembly>-->
-<!--	  <DelaySign>False</DelaySign>-->
-<!--	  <Platforms>AnyCPU;x64</Platforms>-->
+	  <SignAssembly>False</SignAssembly>
+	  <DelaySign>False</DelaySign>
+	  <Platforms>x64</Platforms>
 
-<!--  </PropertyGroup>-->
+  </PropertyGroup>
 
-	<PropertyGroup>
+
+  <PropertyGroup Condition="'$(OS)'=='Windows_NT'">
+    <DefineConstants>$(DefineConstants);WINDOWS</DefineConstants>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(OS)'!='Windows_NT'">
+    <DefineConstants>$(DefineConstants);LINUX</DefineConstants>
+  </PropertyGroup>
+
+  <PropertyGroup>
 		<SignManifests>true</SignManifests>
 		<ManifestCertificateThumbprint>06cb8534ee63d4af060dc0d1b3d8830b4e44d170</ManifestCertificateThumbprint>
 		<Title>Rune Reader</Title>
@@ -46,13 +47,13 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
     <Optimize>False</Optimize>
     <DebugType>full</DebugType>
-    <PlatformTarget>AnyCPU</PlatformTarget>
+    <PlatformTarget>x64</PlatformTarget>
   </PropertyGroup>
 	
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <Optimize>False</Optimize>
     <DebugType>full</DebugType>
-    <PlatformTarget>AnyCPU</PlatformTarget>
+    <PlatformTarget>x64</PlatformTarget>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
@@ -65,67 +66,35 @@
     <DebugType>full</DebugType>
   </PropertyGroup>
 
+  <PropertyGroup Label="Avalonia">
+    <AvaloniaXamlReportImportance>Low</AvaloniaXamlReportImportance>
+    <AvaloniaXamlIlDebuggerLaunch>False</AvaloniaXamlIlDebuggerLaunch>
+    <AvaloniaXamlVerboseExceptions>False</AvaloniaXamlVerboseExceptions>
+    <Copyright>2026 Michael Sutton</Copyright>
+  </PropertyGroup>
   <ItemGroup>
-    <AvaloniaXaml Remove="OpenCV\**" />
-    <Compile Remove="Classes\NativeBitmap\**" />
-    <Compile Remove="HelikiProfiles\**" />
-    <Compile Remove="OpenCV\**" />
-    <Compile Remove="PlaterProfiles\**" />
-    <Compile Remove="RuneReaderFontInstall\**" />
-    <Compile Remove="RuneReaderHekiliRecast\**" />
-    <EmbeddedResource Remove="Classes\NativeBitmap\**" />
-    <EmbeddedResource Remove="HelikiProfiles\**" />
-    <EmbeddedResource Remove="OpenCV\**" />
-    <EmbeddedResource Remove="PlaterProfiles\**" />
-    <EmbeddedResource Remove="RuneReaderFontInstall\**" />
-    <EmbeddedResource Remove="RuneReaderHekiliRecast\**" />
-    <None Remove="Classes\NativeBitmap\**" />
-    <None Remove="HelikiProfiles\**" />
-    <None Remove="OpenCV\**" />
-    <None Remove="PlaterProfiles\**" />
-    <None Remove="RuneReaderFontInstall\**" />
-    <None Remove="RuneReaderHekiliRecast\**" />
-    <Page Remove="Classes\NativeBitmap\**" />
-    <Page Remove="HelikiProfiles\**" />
-    <Page Remove="PlaterProfiles\**" />
-    <Page Remove="RuneReaderFontInstall\**" />
-    <Page Remove="RuneReaderHekiliRecast\**" />
+    <PackageReference Include="OpenCvSharp4" Version="4.11.0.20250507" />
+    <PackageReference Include="OpenCvSharp4.Extensions" Version="4.11.0.20250507" />
+    <PackageReference Include="OpenCvSharp4.official.runtime.linux-x64" Version="4.11.0.20250507" />
+
+    <!-- Runtime/native bindings -->
+    <PackageReference Include="OpenCvSharp4.runtime.win" Version="4.11.0.20250507" Condition="'$(OS)'=='Windows_NT'" />
+    <PackageReference Include="OpenCvSharp4.unofficial.runtime.linux-x64" Version="4.10.0.20241108" Condition="'$(OS)'!='Windows_NT'" />
+
+    <!-- Screen capture -->
+    <PackageReference Include="ScreenCapture.NET.DX11" Version="3.0.0" Condition="'$(OS)'=='Windows_NT'" />
+    <PackageReference Include="ScreenCapture.NET.X11" Version="3.0.0" Condition="'$(OS)'!='Windows_NT'" />
+    <PackageReference Include="System.Configuration.ConfigurationManager" Version="10.0.2" />
+
+    <PackageReference Include="ZXing.Net" Version="0.16.11" />
+
+    <!-- Avalonia UI -->
+    <PackageReference Include="Avalonia" Version="11.3.11" />
+    <PackageReference Include="Avalonia.Desktop" Version="11.3.11" />
+    <PackageReference Include="Avalonia.Themes.Fluent" Version="11.3.11" />
+    <PackageReference Include="Avalonia.Fonts.Inter" Version="11.3.11" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Compile Remove="Classes\ImageExtension.cs" />
-    <Compile Remove="DetectHDR.cs" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Content Include="Icons\RuneReader_Icon.ico" />
-  </ItemGroup>
-
-    <ItemGroup>
-        <PackageReference Include="Avalonia" Version="11.3.11" />
-        <PackageReference Include="Avalonia.Desktop" Version="11.3.11" />
-        <PackageReference Include="Avalonia.Themes.Fluent" Version="11.3.11" />
-        <PackageReference Include="Avalonia.Fonts.Inter" Version="11.3.11" />
-        <PackageReference Include="Avalonia.Diagnostics" Version="11.3.11">
-            <IncludeAssets Condition="'$(Configuration)' != 'Debug'">None</IncludeAssets>
-            <PrivateAssets Condition="'$(Configuration)' != 'Debug'">All</PrivateAssets>
-        </PackageReference>
-        <PackageReference Include="MessageBox.Avalonia" Version="3.3.1.1" />
-        <PackageReference Include="OpenCvSharp4" Version="4.11.0.20250507" />
-        <PackageReference Include="OpenCvSharp4.Extensions" Version="4.11.0.20250507" />
-        <PackageReference Include="OpenCvSharp4.official.runtime.linux-x64" Version="4.11.0.20250507" />
-        <PackageReference Include="OpenCvSharp4.Windows" Version="4.11.0.20250507" />
-        <PackageReference Include="ScreenCapture.NET.DX11" Version="3.0.0" />
-        <PackageReference Include="ScreenCapture.NET.X11" Version="3.0.0" />
-        <PackageReference Include="System.Configuration.ConfigurationManager" Version="10.0.2" />
-        <PackageReference Include="ZXing.Net" Version="0.16.11" />
-    </ItemGroup>
-    <!-- Windows-only bits -->
-    <ItemGroup Condition="'$(TargetFramework)' == 'net8.0-windows'">
-        <!-- keep Win32 hook/capture deps here -->
-    </ItemGroup>
-    
-  
   <ItemGroup>
     <None Include="..\.editorconfig" Link=".editorconfig" />
   </ItemGroup>
@@ -147,102 +116,15 @@
     <None Update="captures\holder.txt">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="CustomFontLoader\core.lua">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Update="CustomFontLoader\CustomFontLoader.toc">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Update="CustomFontLoader\fonts.lua">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Update="CustomFontLoader\Fonts\PTSansNarrow.ttf">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Update="CustomFontLoader\Fonts\Ubuntu-Bold.ttf">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Update="CustomFontLoader\Fonts\Ubuntu-BoldItalic.ttf">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Update="CustomFontLoader\Fonts\Ubuntu-Italic.ttf">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Update="CustomFontLoader\Fonts\Ubuntu-Light.ttf">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Update="CustomFontLoader\Fonts\Ubuntu-LightItalic.ttf">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Update="CustomFontLoader\Fonts\Ubuntu-Medium.ttf">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Update="CustomFontLoader\Fonts\Ubuntu-MediumItalic.ttf">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Update="CustomFontLoader\Fonts\Ubuntu-Regular.ttf">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Update="CustomFontLoader\Fonts\ufonts.com_dejavu-serif.ttf">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Update="CustomFontLoader\Fonts\ufonts.com_friz-quadrata-tt.ttf">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Update="CustomFontLoader\Fonts\ufonts.com_mitra-lt-bold.ttf">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Update="CustomFontLoader\Fonts\ufonts.com_ocr-1-ssi.ttf">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Update="CustomFontLoader\Libs\CallbackHandler-1.0\CallbackHandler-1.0.lua">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Update="CustomFontLoader\Libs\CallbackHandler-1.0\LICENSE.txt">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Update="CustomFontLoader\Libs\Lib.xml">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Update="CustomFontLoader\Libs\LibSharedMedia-3.0\lib.xml">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Update="CustomFontLoader\Libs\LibSharedMedia-3.0\LibSharedMedia-3.0.lua">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Update="CustomFontLoader\Libs\LibSharedMedia-3.0\LICENSE.txt">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Update="CustomFontLoader\Libs\LibStub\LibStub.lua">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
     <None Update="Properties\Settings.settings">
       <Generator>SettingsSingleFileGenerator</Generator>
       <LastGenOutput>Settings.Designer.cs</LastGenOutput>
     </None>
   </ItemGroup>
 
-  <ItemGroup>
-    <Content Remove="C:\Users\stati\.nuget\packages\tesseract\5.2.0\build\\..\x86\leptonica-1.82.0.dll" />
-  </ItemGroup>
 
   <ItemGroup>
-    <Content Remove="C:\Users\stati\.nuget\packages\tesseract\5.2.0\build\\..\x86\tesseract50.dll" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <None Remove="C:\Users\stati\.nuget\packages\tesseract\5.2.0\build\\..\x86\leptonica-1.82.0.dll" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <None Remove="C:\Users\stati\.nuget\packages\tesseract\5.2.0\build\\..\x64\leptonica-1.82.0.dll" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <None Remove="C:\Users\stati\.nuget\packages\tesseract\5.2.0\build\\..\x64\tesseract50.dll" />
-  </ItemGroup>
-
-  <ItemGroup>
+    <Folder Include="Classes\NativeBitmap\" />
     <Folder Include="Properties\PublishProfiles\" />
   </ItemGroup>
 
@@ -251,6 +133,23 @@
       <Generator>ResXFileCodeGenerator</Generator>
       <LastGenOutput>Resources.Designer.cs</LastGenOutput>
     </EmbeddedResource>
+  </ItemGroup>
+
+  <!--<ItemGroup>
+    <AvaloniaXaml Include="**\*.axaml" />
+  </ItemGroup>-->
+
+  <ItemGroup>
+    <Compile Remove="Classes\ImageExtension.cs" />
+    <Compile Remove="Classes\NativeBitmap\ImageHelpers.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Remove="Icons\RuneReader_Icon.ico" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <AvaloniaResource Remove="Icons\RuneReader_Icon.ico" />
   </ItemGroup>
 
 </Project>

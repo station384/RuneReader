@@ -1,20 +1,41 @@
-using Avalonia;
 using System;
-namespace RuneReader
-{
-    {
-    // Initialization code. Don't use any Avalonia, third-party APIs or any
-    // SynchronizationContext-reliant code before AppMain is called: things aren't initialized
-    // yet and stuff might break.
-    [STAThread]
-    public static void Main(string[] args) => BuildAvaloniaApp()
-        .StartWithClassicDesktopLifetime(args);
+using System.Threading;
+using Avalonia;
 
-    // Avalonia configuration, don't remove; also used by visual designer.
-    public static AppBuilder BuildAvaloniaApp()
-        => AppBuilder.Configure<App>()
-            .UsePlatformDetect()
-            .WithInterFont()
-            .LogToTrace();
+namespace RuneReader;
+
+internal static class Program
+{
+    private static Mutex? _mutex;
+
+    [STAThread]
+    public static int Main(string[] args)
+    {
+        // Single-instance guard (matches old WPF behavior)
+        const string appName = "RuneReaderAvalonia";
+        _mutex = new Mutex(true, appName, out var createdNew);
+        if (!createdNew)
+        {
+            // Another instance is already running.
+            return 1;
+        }
+
+        try
+        {
+            BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
+            return 0;
+        }
+        finally
+        {
+            _mutex.ReleaseMutex();
+            _mutex.Dispose();
+            _mutex = null;
+        }
     }
+
+    public static AppBuilder BuildAvaloniaApp()
+        => AppBuilder
+            .Configure<App>()
+            .UsePlatformDetect()
+            .LogToTrace();
 }

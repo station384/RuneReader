@@ -1,11 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
-
+using System.Linq;
+using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
-using System.Windows;
-
+using System.Diagnostics;
 
 namespace RuneReader.Classes
 {
@@ -61,8 +61,7 @@ namespace RuneReader.Classes
             }
             catch (Exception ex)
             {
-               //todo: re add Reading error 
-                //MessageBox.Show("Error reading settings: " + ex.Message);
+                Debug.WriteLine("Error reading settings: " + ex);
             }
             // Return default settings if file doesn't exist or an error occurs.
             return new UserSettings();
@@ -80,8 +79,7 @@ namespace RuneReader.Classes
             }
             catch (Exception ex)
             {
-                //todo: re add Reading error
-                //MessageBox.Show("Error reading settings: " + ex.Message);
+                Debug.WriteLine("Error reading settings: " + ex);
             }
             // Return default settings if file doesn't exist or an error occurs.
             return new UserSettings();
@@ -106,8 +104,7 @@ namespace RuneReader.Classes
             }
             catch (Exception ex)
             {
-                //todo: re add Reading error
-                //MessageBox.Show("Error saving settings: " + ex.Message);
+                Debug.WriteLine("Error saving settings: " + ex);
             }
         }
 
@@ -127,8 +124,7 @@ namespace RuneReader.Classes
             }
             catch (Exception ex)
             {
-                //todo: re add Reading error
-                //MessageBox.Show("Error saving settings: " + ex.Message);
+                Debug.WriteLine("Error saving settings: " + ex);
             }
         }
     }
