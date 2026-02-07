@@ -32,27 +32,17 @@ public partial class MainWindow : Avalonia.Controls.Window
     private volatile Stack<KeyCommand> _keyCommandStack = new Stack<KeyCommand>();
 
     private volatile string _currentKeyToSend = string.Empty; // Default key to send, can be changed dynamically
+    private IntPtr _wowWindowHandle = IntPtr.Zero;
 
     private volatile bool _keyProcessingFirst = false;
     private volatile bool _activationKeyPressed = false;
-#if WINDOWS
-    private static IntPtr _hookId = IntPtr.Zero;
-    private static IntPtr _mouseHookId = IntPtr.Zero;
-    private WindowsApiCalls.WindowsMessageProc _proc;
-    private WindowsApiCalls.WindowsMessageProc _mouseProc;
-    private IntPtr _wowWindowHandle = IntPtr.Zero;
-#else
-        // Global low-level hooks are Windows-only.
-        private readonly object? _proc = null;
-        private readonly object? _mouseProc = null;
-#endif
     private CaptureScreen _captureScreen;
     private ContinuousScreenCapture _screenCapture;
 
 
     private bool _barCodeFound = false;
 
-
+    private IPlatformServices _platform;
 
 
     //private MagnifierWindow magnifier;
@@ -94,107 +84,12 @@ public partial class MainWindow : Avalonia.Controls.Window
 
     private bool _altPressed = false; 
     private bool _ctrlPressed = false;
-        
-#if WINDOWS
-    private IntPtr SetHookActionKey(WindowsApiCalls.WindowsMessageProc proc)
-    {
-        var result = IntPtr.Zero;
-        using Process curProcess = Process.GetCurrentProcess();
-        if (curProcess.MainModule == null) return result;
-        using ProcessModule curModule = curProcess.MainModule;
-        result = WindowsApiCalls.SetWindowsHookEx(WindowsApiCalls.WH_KEYBOARD_LL, proc, WindowsApiCalls.GetModuleHandle(curModule.ModuleName), 0);
+    private bool _shiftPressed = false;
+    private string _activationKey = "1";
 
-        return result;
-    }
+    private WindowsApiCalls.WindowsMessageProc _mouseProc;
 
 
-
-
-    private IntPtr HookCallbackActionKey(int nCode, IntPtr wParam, IntPtr lParam)
-    {
-
-        nint result = 0;
-        if (nCode >= 0)
-        {
-            int vkCode = Marshal.ReadInt32(lParam);
-
-            // We don't want to send key repeats if the app is not in focus
-            if (!WindowsApiCalls.IsCurrentWindowWithTitle("World of Warcraft"))
-            {
-                _timer.Stop();
-
-                // Let the key event go through so the new focused app can handle it
-                _keyProcessingFirst = false;
-                _activationKeyPressed = false;
-                result = WindowsApiCalls.CallNextHookEx(_hookId, nCode, wParam, lParam); // Doesn't lock explorer but does not consume the event.
-            }
-            else
-            {
-                var item = ActivationKeyCodeMapper.GetVirtualKeyCode(AppSettings.ActivationKey);
-                if (_keyProcessingFirst == false)
-                {
-                    if (wParam == (IntPtr)WindowsApiCalls.WM_KEYDOWN && vkCode == item)
-                    {
-                        // Find the window with the title "wow" only if we haven't already found it
-                        if (_wowWindowHandle == IntPtr.Zero)
-                        {
-                            _wowWindowHandle = WindowsApiCalls.FindWowWindow("World of Warcraft");
-                        }
-                        if (_wowWindowHandle != IntPtr.Zero)
-                        {
-                            _activationKeyPressed = true;
-                            _keyProcessingFirst = true;
-
-                            _timer.Start();
-
-                        }
-
-
-                    }
-                }
-                if (wParam == (IntPtr)WindowsApiCalls.WM_KEYUP && vkCode == item)
-                {
-                    _activationKeyPressed = false;
-                    _keyProcessingFirst = false;
-                    _timer.Stop();
-
-                }
-                if (wParam == (IntPtr)WindowsApiCalls.WM_KEYDOWN && vkCode == WindowsApiCalls.VK_CONTROL)
-                {
-                    _ctrlPressed = true;
-                }
-                if (wParam == (IntPtr)WindowsApiCalls.WM_KEYDOWN && vkCode == WindowsApiCalls.VK_MENU)
-                {
-                    _altPressed = true;
-                }
-
-                if (wParam == (IntPtr)WindowsApiCalls.WM_KEYUP && vkCode == WindowsApiCalls.VK_CONTROL)
-                {
-                    _ctrlPressed = false;
-                }
-                if (wParam == (IntPtr)WindowsApiCalls.WM_KEYUP && vkCode == WindowsApiCalls.VK_MENU)
-                {
-                    _altPressed = false;
-                }
-
-                result = WindowsApiCalls.CallNextHookEx(0, nCode, wParam, lParam); // Doesn't lock explorer but does not consume the event.
-            }
-        }
-
-        //  var result = WindowsAPICalls.CallNextHookEx(_hookID, nCode, wParam, lParam); // Doesn't lock explorer but does not consume the event.
-        //  var result = WindowsAPICalls.CallNextHookEx(_hookID, nCode, wParam, lParam); // Doesn't lock explorer but does not consume the event.
-
-        return result;
-
-    }
-
-#else
-        // Non-Windows builds: no global key hooks.
-        private void EnsureWindowsHookSetup()
-        {
-            // Intentionally empty.
-        }
-#endif
         
     private struct ProcessImageResult
     {
@@ -591,6 +486,29 @@ public partial class MainWindow : Avalonia.Controls.Window
 
 
 
+    private void InitializePlatform(string? activationKey)
+    {
+        if (_platform != null)
+        {
+            if (_platform.Hotkeys.isStarted())
+            {
+                _platform.Hotkeys.Stop();
+            }
+            _platform.Hotkeys.Dispose();
+        }
+        
+        _platform = PlatformFactory.Create(_activationKey);
+        //_platform.Hotkeys.ActivateKeyChanged += HotkeysOnActivateKeyChanged;
+        _platform.Hotkeys.ActivateKeyChangedAsync += HotkeysOnActivateKeyChangedAsync;
+        //_platform.Hotkeys.ShiftChanged += HotkeysOnShiftChanged;
+        _platform.Hotkeys.ShiftChangedAsync += HotkeysOnShiftChangedAsync;
+        //_platform.Hotkeys.CtrlChanged += HotkeysOnCtrlChanged;
+        _platform.Hotkeys.CtrlChangedAsync += HotkeysOnCtrlChangedAsync;
+        //_platform.Hotkeys.AltChanged += HotkeysOnAltChanged;
+        _platform.Hotkeys.AltChangedAsync += HotkeysOnAltChangedAsync;
+        
+        
+    }
 
 
 
@@ -672,13 +590,18 @@ public partial class MainWindow : Avalonia.Controls.Window
             if (((ComboBoxItem)x).Content.ToString() == AppSettings.ActivationKey)
             {
                 cbActivationKey.SelectedItem = x;
+                _activationKey =  AppSettings.ActivationKey;
             }
         }
 
 
         Position = new PixelPoint((int)AppSettings.AppStartX, (int)AppSettings.AppStartY);
 
-        _proc = HookCallbackActionKey;
+
+        InitializePlatform(_activationKey);
+
+
+//        _platform.Hotkeys.Start();
 
         _wowWindowHandle = WindowsApiCalls.FindWowWindow("World of Warcraft");
 
@@ -724,6 +647,78 @@ public partial class MainWindow : Avalonia.Controls.Window
     }
 
 
+
+    #region Key Event Handlers
+    private async void HotkeysOnActivateKeyChangedAsync(HotkeyActionResult obj)
+    {
+        
+        if (obj.KeyState == HotkeyState.PRESSED)
+            _activationKeyPressed = true;
+        if (obj.KeyState == HotkeyState.RELEASED)
+            _activationKeyPressed = false;
+    }
+
+
+    private void HotkeysOnActivateKeyChanged(HotkeyActionResult obj)
+    {
+        if (obj.KeyState == HotkeyState.PRESSED)
+            _activationKeyPressed = true;
+        if (obj.KeyState == HotkeyState.RELEASED)
+            _activationKeyPressed = false;
+    }
+
+    private async void HotkeysOnCtrlChangedAsync(HotkeyActionResult obj)
+    {
+        if (obj.KeyState == HotkeyState.PRESSED)
+            _ctrlPressed = true;
+        if (obj.KeyState == HotkeyState.RELEASED)
+            _ctrlPressed = false;
+    }
+
+    private void HotkeysOnCtrlChanged(HotkeyActionResult obj)
+    {
+        if (obj.KeyState == HotkeyState.PRESSED)
+            _ctrlPressed = true;
+        if (obj.KeyState == HotkeyState.RELEASED)
+            _ctrlPressed = false;
+    }
+
+    private async void HotkeysOnShiftChangedAsync(HotkeyActionResult obj)
+    {
+        if (obj.KeyState == HotkeyState.PRESSED)
+            _shiftPressed = true;
+        if (obj.KeyState == HotkeyState.RELEASED)
+            _shiftPressed = false;
+    }
+
+    private void HotkeysOnShiftChanged(HotkeyActionResult obj)
+    {
+        if (obj.KeyState == HotkeyState.PRESSED)
+            _shiftPressed = true;
+        if (obj.KeyState == HotkeyState.RELEASED)
+            _shiftPressed = false;
+    }    
+
+    private void HotkeysOnAltChangedAsync(HotkeyActionResult obj)
+    {
+        if (obj.KeyState == HotkeyState.PRESSED)
+            _altPressed = true;
+        if (obj.KeyState == HotkeyState.RELEASED)
+            _altPressed = false;
+    }
+
+    private void HotkeysOnAltChanged(HotkeyActionResult obj)
+    {
+        if (obj.KeyState == HotkeyState.PRESSED)
+            _altPressed = true;
+        if (obj.KeyState == HotkeyState.RELEASED)
+            _altPressed = false;
+    }
+    
+    #endregion
+
+    
+    
 
     private async void _TimerBarcodeMonitor_Tick(object? sender, EventArgs e)
     {
@@ -788,13 +783,7 @@ public partial class MainWindow : Avalonia.Controls.Window
         if (_screenCapture.IsCapturing)
         {
             _screenCapture.StopCapture();
-            if (_hookId != IntPtr.Zero)
-            {
-#if WINDOWS
-                WindowsApiCalls.UnhookWindowsHookEx(_hookId);
-                _hookId = IntPtr.Zero;
-#endif
-            }
+            _platform.Hotkeys.Stop();
             BStart.IsEnabled = true;
             BStop.IsEnabled = false;
             _timer.Stop();
@@ -891,6 +880,7 @@ public partial class MainWindow : Avalonia.Controls.Window
     {
         if (_initializing) return;
         AppSettings.ActivationKey = ((ComboBoxItem)cbActivationKey.SelectedItem).Content.ToString();
+        InitializePlatform(AppSettings.ActivationKey);
     }
 
     private void bResetMagPosition_Click(object? sender, RoutedEventArgs e)
@@ -1020,12 +1010,7 @@ public partial class MainWindow : Avalonia.Controls.Window
             _currentKeyToSend = "";
 
             _screenCapture.StartCapture();
-
-#if WINDOWS
-            _hookId = _hookId == IntPtr.Zero ? SetHookActionKey(_proc) : IntPtr.Zero;
-#else
-                    // No-op on non-Windows.
-#endif
+            _platform.Hotkeys.Start();
             BStart.IsEnabled = false;
             BStop.IsEnabled = true;
 #if WINDOWS
@@ -1043,6 +1028,8 @@ public partial class MainWindow : Avalonia.Controls.Window
         
         
     private bool _started;
+
+
     public MainWindow()
     {
         InitializeComponent();
@@ -1105,15 +1092,7 @@ public partial class MainWindow : Avalonia.Controls.Window
         }
 
 
-        if (_hookId != IntPtr.Zero)
-        {
-            // Make sure we stop trapping the keyboard
-#if WINDOWS
-            WindowsApiCalls.UnhookWindowsHookEx(_hookId);
-            _hookId = IntPtr.Zero;
-#endif
-        }
-
+        _platform.Hotkeys.Stop();
 
         //if (_MouseHookID != IntPtr.Zero)
         //{

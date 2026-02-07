@@ -21,8 +21,9 @@ public static class ActivationKeyCodeMapper
             
     };
 
-    public static int GetVirtualKeyCode(string key)
+    public static int GetVirtualKeyCode(string? key)
     {
+        if (string.IsNullOrEmpty(key)) return 0;
         if (KeyMappings.TryGetValue(key, out int vkCode))
         {
             return vkCode;

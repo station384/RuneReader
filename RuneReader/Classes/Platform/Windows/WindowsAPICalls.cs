@@ -63,6 +63,13 @@ internal abstract class WindowsApiCalls
     public static int WM_LBUTTONDOWN = 0x0201;
     public static int VK_CONTROL = 0x11;
     public static int VK_MENU = 0x12; // Alt key
+    public static int VK_LSHIFT = 0xA0;
+    public static int VK_RSHIFT = 0xA1;
+    public static int VK_LCONTROL = 0xA2;
+    public static int VK_RCONTROL = 0xA3;
+    public static int VK_LMENU = 0xA4;
+    public static int VK_RMENU = 0xA5;
+    public static int VK_SHIFT =  0x10;
 
     // Virtual-Key codes for numeric keys "1" to "0"
     public static int VK_1 = 0x31;

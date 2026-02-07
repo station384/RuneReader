@@ -4,8 +4,19 @@ namespace RuneReader.Classes.Platform;
 
 public interface IGlobalHotkeys : IDisposable
 {
-    event Action<int>? KeyDown;
-    event Action<int>? KeyUp;
-    void Start();
-    void Stop();
+    public event Action<HotkeyActionResult>? ActivateKeyChanged;
+
+    public event Action<HotkeyActionResult> CtrlChanged;
+    public event Action<HotkeyActionResult> AltChanged;
+    public event Action<HotkeyActionResult> ShiftChanged;
+    
+    public event Action<HotkeyActionResult>? ActivateKeyChangedAsync;
+
+    public event Action<HotkeyActionResult> CtrlChangedAsync;
+    public event Action<HotkeyActionResult> AltChangedAsync;
+    public event Action<HotkeyActionResult> ShiftChangedAsync;
+    public bool isStarted(); 
+    public void Start();
+    public void Stop();
+
 }
