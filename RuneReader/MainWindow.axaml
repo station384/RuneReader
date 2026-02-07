@@ -10,8 +10,7 @@
         CanResize="False"
         CanMinimize="True"
         CanMaximize="False"
-
-        Closed="Window_Closed">
+       >
 
   <StackPanel Orientation="Vertical" Margin="6" Spacing="6">
 
@@ -37,12 +36,14 @@
             <Button x:Name="BStop" Content="Stop" Click="StopButton_Click" IsEnabled="False" Width="60" />
           </StackPanel>
 
-          <StackPanel Orientation="Vertical" Width="300" Spacing="6" HorizontalAlignment="Center">
+          <StackPanel Orientation="Vertical" Width="300" Spacing="6" HorizontalAlignment="Center" IsVisible="False">
             <Button x:Name="BCapture" Content="Capture" Click="Capture_Click" IsVisible="False" Width="150" />
             <Button x:Name="BFindBarcode" Content="Find Barcode" Click="bFindBarcode_Click" Width="150" />
             <Button x:Name="BResetMagPosition" Content="Reset Selection" Click="bResetMagPosition_Click" Width="150" IsVisible="False" />
           </StackPanel>
 
+
+          
         </StackPanel>
       </StackPanel>
     </StackPanel>
@@ -51,7 +52,54 @@
       <CheckBox x:Name="CbStayOnTop" Content="Stay on top" IsChecked="False"  IsCheckedChanged="cbStayOnTop_IsCheckedChanged"  />
       <CheckBox x:Name="CbIgnoreTargetInfo" Content="Ignore player targeting" IsChecked="False" IsCheckedChanged="cbIgnoreTargetInfo_IsCheckedChanged"  />
     </StackPanel>
-
+    <Expander x:Name="ExGseExpander" Header="GSE Options" HorizontalAlignment="Center" Width="300">
+      <StackPanel Orientation="Vertical">
+        <CheckBox x:Name="CbUseGse" Content="Use GSE Mode" IsChecked="False" IsCheckedChanged="CbUseGse_OnIsCheckedChanged"> </CheckBox>
+        <StackPanel Orientation="Horizontal">
+          <StackPanel Orientation="Horizontal"  Spacing="8" Margin="5,5,5,5">
+          <TextBlock>ST Key</TextBlock>
+          <ComboBox x:Name="CbGseKeyBindSt" SelectionChanged="CbGseKeyBindSt_OnSelectionChanged">
+            <ComboBoxItem>N/A</ComboBoxItem>
+            <ComboBoxItem>`</ComboBoxItem>
+            <ComboBoxItem>'</ComboBoxItem>
+            <ComboBoxItem>;</ComboBoxItem>
+            <ComboBoxItem>1</ComboBoxItem>
+            <ComboBoxItem>2</ComboBoxItem>
+            <ComboBoxItem>3</ComboBoxItem>
+            <ComboBoxItem>4</ComboBoxItem>
+            <ComboBoxItem>5</ComboBoxItem>
+            <ComboBoxItem>6</ComboBoxItem>
+            <ComboBoxItem>7</ComboBoxItem>
+            <ComboBoxItem>8</ComboBoxItem>
+            <ComboBoxItem>9</ComboBoxItem>
+            <ComboBoxItem>-</ComboBoxItem>
+            <ComboBoxItem>=</ComboBoxItem>
+          </ComboBox>
+        </StackPanel>
+          <StackPanel Orientation="Horizontal"  Spacing="8" Margin="5,5,5,5">
+          <TextBlock>MT Key</TextBlock>
+          <ComboBox x:Name="CbGseKeyBindMt" SelectionChanged="CbGseKeyBindMt_OnSelectionChanged">
+            <ComboBoxItem>N/A</ComboBoxItem>
+            <ComboBoxItem>`</ComboBoxItem>
+            <ComboBoxItem>'</ComboBoxItem>
+            <ComboBoxItem>;</ComboBoxItem>
+            <ComboBoxItem>1</ComboBoxItem>
+            <ComboBoxItem>2</ComboBoxItem>
+            <ComboBoxItem>3</ComboBoxItem>
+            <ComboBoxItem>4</ComboBoxItem>
+            <ComboBoxItem>5</ComboBoxItem>
+            <ComboBoxItem>6</ComboBoxItem>
+            <ComboBoxItem>7</ComboBoxItem>
+            <ComboBoxItem>8</ComboBoxItem>
+            <ComboBoxItem>9</ComboBoxItem>
+            <ComboBoxItem>-</ComboBoxItem>
+            <ComboBoxItem>=</ComboBoxItem>
+          </ComboBox>
+        </StackPanel>
+        </StackPanel>
+      </StackPanel>
+    </Expander>
+    
     <Expander x:Name="Expander" Header="Advanced Options" HorizontalAlignment="Center" Width="300">
       <StackPanel Orientation="Vertical" Spacing="6">
 

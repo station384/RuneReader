@@ -33,17 +33,6 @@ namespace RuneReader
             {
                 return _capturedImageFirst;
             }
-            // private set
-            // {
-            //     // We have to manage the memory for the Mat images.  so its up to us to make sure we detroy the prior one
-            //     // before setting the new one.
-            //     if (_capturedImageFirst != null)
-            //     {
-            //         if (!_capturedImageFirst.IsDisposed) _capturedImageFirst.Dispose();
-            //     }
-            //     _capturedImageFirst = value;
-            //
-            // }
         }
 
 
@@ -51,22 +40,12 @@ namespace RuneReader
         {
             get
             {
+                if (_capturedFullScreen.IsDisposed)
+                {
+                    _capturedFullScreen = new Mat();
+                }
                 return  _capturedFullScreen;
             }
-            // set
-            // {
-            //     // We have to manage the memory for the Mat images.  so its up to us to make sure we destroy the prior one
-            //     // before setting the new one.
-            //     if (_capturedFullScreen != null)
-            //     {
-            //         if (!_capturedFullScreen.IsDisposed)
-            //         {
-            //             _capturedFullScreen.Dispose();
-            //             GC.Collect();
-            //         }
-            //     }
-            //     _capturedFullScreen = value;
-            // }
         }
 
 
@@ -114,8 +93,8 @@ namespace RuneReader
             // Get all available graphics cards
             _graphicsCards = _screenCaptureService.GetGraphicsCards();
 
-            // Get the displays from the graphics card(s) you are interested in
-            _displays = _screenCaptureService.GetDisplays(_graphicsCards.First());
+            // Get the displays from the graphics card(s) you are interested in (Return as list to avoid multiple enumerations
+            _displays = _screenCaptureService.GetDisplays(_graphicsCards.First()).ToList();
 
             // Create a screen-capture for all screens you want to capture
             _screenCapture = _screenCaptureService.GetScreenCapture(_displays.First());
@@ -134,7 +113,6 @@ namespace RuneReader
                 _capZone1.Updated += CapZone1_Updated;
                 // We only want to update the zone when we trigger it.  no need for extra CPU cycles
                 _capZone1.AutoUpdate = false;
-        
             }
 
             if (_capZoneFullScreen == null)
@@ -169,7 +147,7 @@ namespace RuneReader
             // Doo dee doo dee doo...  lets wait for the image to be updated.
             while (!_firstImageUpdated)
             {
-                await Task.Delay(1);
+                await Task.Delay(16);
             }
             _firstImageUpdated = false;
             return true;
@@ -177,14 +155,14 @@ namespace RuneReader
 
         private void CapZoneFullScreen_Updated(object? sender, EventArgs e)
         {
-            byte[]? pixelData = null;
+            Mat tMat;
             using (_capZoneFullScreen.Lock())
             {
-                pixelData = _capZoneFullScreen.RawBuffer.ToArray();
+                tMat = Mat.FromPixelData(_capZoneFullScreen.Height, _capZoneFullScreen.Width, MatType.CV_8UC4,  _capZoneFullScreen.RawBuffer.ToArray());
             }
-            var tMat = Mat.FromPixelData(_capZoneFullScreen.Height, _capZoneFullScreen.Width, MatType.CV_8UC4, pixelData);
-            if (_capturedFullScreen != null && _capturedFullScreen.Cols == tMat.Cols &&
-                _capturedFullScreen.Rows == tMat.Rows && _capturedFullScreen.Flags == tMat.Flags)
+            
+            if (!_capturedFullScreen.IsDisposed && (_capturedFullScreen.Cols == tMat.Cols &&
+                _capturedFullScreen.Rows == tMat.Rows && _capturedFullScreen.Flags == tMat.Flags))
             {
                 tMat.CopyTo(_capturedFullScreen);    
             }
@@ -192,26 +170,26 @@ namespace RuneReader
             {
                 _capturedFullScreen = tMat.Clone();
             }
+
             tMat.Dispose();
-            //CapturedFullScreen = 
             
             _fullscreenUpdated = true;
         }
 
         private void CapZone1_Updated(object? sender, EventArgs e)
         {
-            byte[]? pixelData = null;
+            Mat tMat;
             using (_capZoneFullScreen.Lock())
-            {
-                pixelData = _capZone1.RawBuffer.ToArray();
+            { 
+                tMat = Mat.FromPixelData(_capZone1.Height, _capZone1.Width, MatType.CV_8UC4, _capZone1.RawBuffer.ToArray());
             }
-            var tMat = Mat.FromPixelData(_capZone1.Height, _capZone1.Width, MatType.CV_8UC4, pixelData);
+        
             if (_capturedImageFirst.IsDisposed)
             {
                 _capturedImageFirst = tMat.Clone();
             }
             
-            if (_capturedImageFirst != null && _capturedImageFirst.Cols == tMat.Cols &&
+            if (_capturedImageFirst.Cols == tMat.Cols &&
                 _capturedImageFirst.Rows == tMat.Rows && _capturedImageFirst.Flags == tMat.Flags)
             {
                 tMat.CopyTo(_capturedImageFirst);    
@@ -237,9 +215,9 @@ namespace RuneReader
         {
             _fullscreenUpdated = false;
             _capZoneFullScreen.RequestUpdate();
-            while (_fullscreenUpdated == false)
+            while (!_fullscreenUpdated)
             {
-                await Task.Delay(1);
+                await Task.Delay(16);
             }
             _fullscreenUpdated = false;            
         }
