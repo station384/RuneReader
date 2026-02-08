@@ -48,7 +48,7 @@ public static class SettingsManager
 {
     // This will need to be updated I think for linux.
     private static readonly string SettingsFilePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "RuneReaderSettings.json");
-    private static readonly JsonSerializerOptions JsonSaveOptions = new JsonSerializerOptions { WriteIndented = true };
+    private static readonly JsonSerializerOptions JsonSaveOptions = new() { WriteIndented = true };
     public static async Task<UserSettings?> LoadSettingsAsync()
     {
         try
@@ -67,14 +67,14 @@ public static class SettingsManager
         return new UserSettings();
     }
 
-    public static UserSettings? LoadSettings()
+    public static UserSettings LoadSettings()
     {
         try
         {
             if (File.Exists(SettingsFilePath))
             {
                 using FileStream fs = File.OpenRead(SettingsFilePath);
-                return JsonSerializer.Deserialize<UserSettings>(fs);
+                return JsonSerializer.Deserialize<UserSettings>(fs)!;
             }
         }
         catch (Exception ex)

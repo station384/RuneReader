@@ -10,7 +10,7 @@ public static class PlatformFactory
     public static IPlatformServices Create(string? activationKey)
     {
 #if WINDOWS
-        return new WindowsPlatformServices(activationKey, null, null);
+        return new WindowsPlatformServices(activationKey);
 #elif LINUX
         return new LinuxPlatformServices();
 #else

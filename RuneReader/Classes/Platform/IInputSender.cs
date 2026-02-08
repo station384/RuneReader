@@ -1,6 +1,10 @@
 namespace RuneReader.Classes.Platform;
 
-public interface IInputSender
+public interface IInputSender 
 {
-    bool TrySendKey(string key);
+    bool TrySendKey(int key, bool pressed);
+    bool TrySendCtrlKey(bool pressed);
+    bool TrySendAltKey(bool pressed);
+    bool TrySendShiftKey(bool pressed);
+    
 }
