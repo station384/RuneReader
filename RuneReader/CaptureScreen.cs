@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using OpenCvSharp;
 
@@ -20,12 +21,12 @@ namespace RuneReader
         private readonly int _maxHeight;
         private readonly int _maxWidth;
         private readonly IScreenCapture _screenCapture;
-        private readonly ICaptureZone _capZone1 = null;
-        private readonly ICaptureZone _capZoneFullScreen = null;
+        private readonly ICaptureZone _capZone1;
+        private readonly ICaptureZone _capZoneFullScreen;
 
 
-        private volatile Mat _capturedImageFirst;
-        private volatile Mat _capturedFullScreen;
+        private Mat _capturedImageFirst;
+        private Mat _capturedFullScreen;
 
         public Mat CapturedImageFirst
         {
@@ -82,13 +83,7 @@ namespace RuneReader
             // Create a screen-capture service
             if (_screenCaptureService == null)
             {
-#if WINDOWS
                 _screenCaptureService = new DX11ScreenCaptureService();
-#elif LINUX
-                screenCaptureService = new X11ScreenCaptureService();
-#else
-                throw new PlatformNotSupportedException("Screen capture is only implemented for Windows (DX11) and Linux (X11) in this build.");
-#endif
             }
             // Get all available graphics cards
             _graphicsCards = _screenCaptureService.GetGraphicsCards();
@@ -153,13 +148,22 @@ namespace RuneReader
             return true;
         }
 
-        private void CapZoneFullScreen_Updated(object? sender, EventArgs e)
+        private unsafe void CapZoneFullScreen_Updated(object? sender, EventArgs e)
         {
             Mat tMat;
+
+            
             using (_capZoneFullScreen.Lock())
             {
-                tMat = Mat.FromPixelData(_capZoneFullScreen.Height, _capZoneFullScreen.Width, MatType.CV_8UC4,  _capZoneFullScreen.RawBuffer.ToArray());
+                int bytesPerPixel = _capZoneFullScreen.ColorFormat.BytesPerPixel;
+                int stride = _capZoneFullScreen.Width * bytesPerPixel;
+                ReadOnlySpan<byte> span = _capZoneFullScreen.RawBuffer;
+                fixed (byte* ptr = span)
+                {
+                    tMat = Mat.FromPixelData(_capZoneFullScreen.Height, _capZoneFullScreen.Width, MatType.CV_8UC4, (IntPtr)ptr, stride).Clone();
+                }
             }
+            
             
             if (!_capturedFullScreen.IsDisposed && (_capturedFullScreen.Cols == tMat.Cols &&
                 _capturedFullScreen.Rows == tMat.Rows && _capturedFullScreen.Flags == tMat.Flags))
@@ -176,14 +180,27 @@ namespace RuneReader
             _fullscreenUpdated = true;
         }
 
-        private void CapZone1_Updated(object? sender, EventArgs e)
+        private unsafe void CapZone1_Updated(object? sender, EventArgs e)
         {
             Mat tMat;
-            using (_capZoneFullScreen.Lock())
-            { 
-                tMat = Mat.FromPixelData(_capZone1.Height, _capZone1.Width, MatType.CV_8UC4, _capZone1.RawBuffer.ToArray());
+
+            // copy the data directly
+            using (_capZone1.Lock())
+            {
+                int bytesPerPixel = _capZone1.ColorFormat.BytesPerPixel;
+                int stride = _capZone1.Width * bytesPerPixel;
+                ReadOnlySpan<byte> span = _capZone1.RawBuffer;
+                fixed (byte* ptr = span)
+                {
+                    tMat = Mat.FromPixelData(_capZone1.Height, _capZone1.Width, MatType.CV_8UC4, (IntPtr)ptr, stride).Clone();
+                }
             }
-        
+            
+// This results in getting disposed errors.       
+            // Mat old = Interlocked.Exchange(ref _capturedImageFirst, tMat);
+            // if (old != null && !old.IsDisposed)
+            //     old.Dispose();
+            
             if (_capturedImageFirst.IsDisposed)
             {
                 _capturedImageFirst = tMat.Clone();
@@ -215,6 +232,7 @@ namespace RuneReader
         {
             _fullscreenUpdated = false;
             _capZoneFullScreen.RequestUpdate();
+            _screenCapture.CaptureScreen();
             while (!_fullscreenUpdated)
             {
                 await Task.Delay(16);
