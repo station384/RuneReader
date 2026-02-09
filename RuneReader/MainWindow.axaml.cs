@@ -220,8 +220,8 @@ public partial class MainWindow : Avalonia.Controls.Window
         {
             _platform.ScreenCapture.CaptureRegion = regions;
             _continuousScreenCaptureProcess = new ContinuousScreenCapture(
-                CurrentCaptureRateMs,
-                _platform.ScreenCapture
+                _platform.ScreenCapture,
+            CurrentCaptureRateMs
             );
         }
         
@@ -837,7 +837,7 @@ public partial class MainWindow : Avalonia.Controls.Window
         if (tbCaptureRateMS != null)
             tbCaptureRateMS.Text = ((int)sliderCaptureRateMS.Value).ToString();
         if (_continuousScreenCaptureProcess != null)
-            _continuousScreenCaptureProcess.CaptureInterval = (int)sliderCaptureRateMS.Value;
+            _continuousScreenCaptureProcess.CaptureIntervalMs = (int)sliderCaptureRateMS.Value;
 
     }
 
