@@ -1,21 +1,19 @@
+using System;
+
 namespace RuneReader.Classes.Platform.Windows
 {
-    public class WindowsPlatformServices
-        : IPlatformServices
+    public class WindowsPlatformServices(string? s) : IPlatformServices, IDisposable
     {
         private static readonly IForegroundWindow WindowHandler = new WindowsWindowFunctions();
-        public IGlobalHotkeys Hotkeys { get; }
-        public IInputSender Input { get; } 
-        public IForegroundWindow ForegroundWindow { get; } 
-        
-        public WindowsPlatformServices (string? s)
+        public IGlobalHotkeys Hotkeys { get; } = new WindowsGlobalHotkeys(s);
+        public IInputSender Input { get; } = new WindowsInputSender(WindowHandler);
+        public IForegroundWindow ForegroundWindow { get; } = WindowHandler;
+        public IScreenCaptureProvider ScreenCapture { get; } = new WindowsCaptureScreen();
+
+        public void Dispose()
         {
-            Hotkeys = new WindowsGlobalHotkeys(s);
-            ForegroundWindow = WindowHandler;
-            Input = new WindowsInputSender(WindowHandler);
-   
-
+            Hotkeys.Dispose();
+            ScreenCapture.Dispose();
         }
-
     }
 }

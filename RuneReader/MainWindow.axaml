@@ -157,13 +157,13 @@
 
         <StackPanel Orientation="Horizontal" Spacing="8">
           <TextBlock Width="95">Screen Cap MS</TextBlock>
-          <Slider x:Name="sliderCaptureRateMS" Width="100" Minimum="0" Maximum="1000" ValueChanged="sliderCaptureRateMS_ValueChanged" Height="18" />
+          <Slider x:Name="sliderCaptureRateMS" Width="100" Minimum="5" Maximum="250"  ValueChanged="sliderCaptureRateMS_ValueChanged" Height="18" />
           <TextBox x:Name="tbCaptureRateMS" Width="30" MaxLength="4" TextChanged="tbCaptureRateMS_TextChanged" />
         </StackPanel>
 
         <StackPanel Orientation="Horizontal" Spacing="8">
           <TextBlock Width="95">Key Send MS</TextBlock>
-          <Slider x:Name="sliderKeyRateMS" Width="100" Minimum="0" Maximum="1000" ValueChanged="sliderKeyRateMS_ValueChanged" Height="18" />
+          <Slider x:Name="sliderKeyRateMS" Width="100" Minimum="50" Maximum="1000" ValueChanged="sliderKeyRateMS_ValueChanged" Height="18" />
           <TextBox x:Name="tbKeyRateMS" Width="30" MaxLength="4" TextChanged="tbKeyRateMS_TextChanged" />
         </StackPanel>
 

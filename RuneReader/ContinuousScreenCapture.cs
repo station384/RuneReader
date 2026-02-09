@@ -4,135 +4,125 @@ using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 using Avalonia.Threading;
+using RuneReader.Classes.Platform;
 
 namespace RuneReader
 {
-    public class ContinuousScreenCapture
+    
+    // This now acts as a helper that triggers the capture of images.   It doesn't handle any images directly anymore.  it just triggers the grabbing.
+    // using whatever screen capture provider is provided.
+    public class ContinuousScreenCapture : IDisposable
     {
-        private Thread captureThread;
-        private volatile bool isCapturing;
-        private int captureInterval; // Interval in milliseconds
-        private Dispatcher? uiDispatcher;
-        private CaptureScreen screenCapture; // Instance of CaptureScreen class
-        private readonly object intervalLock = new object();
+        private Thread _captureThread;
+        private volatile bool _isCapturing;
+        private int _captureInterval; // Interval in milliseconds
+        private readonly IScreenCaptureProvider _screenWindowsCapture; // Instance of CaptureScreen class
+        private readonly object _intervalLock = new();
+        
 
-        public delegate void UpdateFirstImageDelegate(Mat image);
-        public event UpdateFirstImageDelegate UpdateFirstImage;
-
-        private OpenCvSharp.Rect _captureRegion;
-        public OpenCvSharp.Rect CaptureRegion
-        {
-            get
-            {
-                return _captureRegion;
-                //    screenCapture.CaptureRegion;// _captureRegion;
-            }
-            set
-            {
-                screenCapture.CaptureRegion = value;
-                _captureRegion = screenCapture.CaptureRegion;
-            }
-        }
-        public  bool IsCapturing { get { return isCapturing; } }
+        public  bool IsCapturing { get { return _isCapturing; } }
 
         private Thread CreateCaptureThread()
         {
             return  new Thread(CaptureLoop)
             {
                 IsBackground = false // Set the thread as a background thread
-,
-                Priority = ThreadPriority.AboveNormal
+                ,Priority = ThreadPriority.Normal
             };
 
         }
-        public ContinuousScreenCapture(int interval, Dispatcher? uiDispatcher, CaptureScreen captureScreen)
+        
+        public ContinuousScreenCapture(int interval,  IScreenCaptureProvider screenCapture)
         {
-            this.captureInterval = interval;
-            this.uiDispatcher = uiDispatcher;
-            this.screenCapture = captureScreen;
-            this._captureRegion = captureScreen.CaptureRegion;
-            captureThread = CreateCaptureThread();
+            _captureInterval = interval;
+            _screenWindowsCapture = screenCapture;
+            _captureThread = CreateCaptureThread();
         }
 
         public int CaptureInterval
         {
             get
             {
-                lock (intervalLock)
+                lock (_intervalLock)
                 {
-                    return captureInterval;
+                    return _captureInterval;
                 }
             }
             set
             {
-                lock (intervalLock)
+                lock (_intervalLock)
                 {
-                    captureInterval = value;
+                    _captureInterval = value;
                 }
             }
         }
 
         public void StartCapture()
         {
-            if (!isCapturing)
+            if (!_isCapturing)
             {
-                isCapturing = true;
-                if (captureThread.ThreadState == System.Threading.ThreadState.Stopped)
+                _isCapturing = true;
+                if (_captureThread.ThreadState == System.Threading.ThreadState.Stopped)
                 {
-                    captureThread = CreateCaptureThread();
+                    _captureThread = CreateCaptureThread();
                 }
-                captureThread.Start();
+                _captureThread.Start();
             }
         }
 
         public void StopCapture()
         {
-            if (isCapturing)
+            if (_isCapturing)
             {
-
-                isCapturing = false;
-               
+                _isCapturing = false;
+                _captureThread.Join(); // Wait for it to finish.
             }
         }
 
         private async void CaptureLoop()
         {
-            if (screenCapture == null)
+            if (_screenWindowsCapture == null)
             {
                 throw new Exception("screenCapture cannot be NULL");
             }
 
-            while (isCapturing)
+            while (_isCapturing)
             {
-                var results = await screenCapture.GrabScreen();
-                if (results)
-                {
-                    Mat capturedImage = screenCapture.CapturedImageFirst; // Implement this to capture the screen
-                    try
-                    {
+     
+               try
+               {
+                   _screenWindowsCapture.CaptureOnce();
                         // Marshal back to the UI thread when possible.
-                        if (uiDispatcher != null)
-                            uiDispatcher.Post(() => UpdateFirstImage?.Invoke(capturedImage));
-                        else
-                            Dispatcher.UIThread.Post(() => UpdateFirstImage?.Invoke(capturedImage));
-                    }
-                    catch (Exception ex)
-                    {
-                        Debug.WriteLine(ex);
-                        isCapturing = true;
-                    }
+                        // if (_uiDispatcher != null)
+                        //     _uiDispatcher.Post(() => UpdateFirstImage?.Invoke(capturedImage));
+                        // else
+                        //     Dispatcher.UIThread.Post(() => UpdateFirstImage?.Invoke(capturedImage));
+               }
+               catch (Exception ex)
+               {
+                   Debug.WriteLine(ex);
+                   _isCapturing = true;
+               }
+         
+                // Use the latest interval value
+                int sleepTime;
+                lock (_intervalLock)
+                {
+                    sleepTime = _captureInterval;
                 }
-                    // Use the latest interval value
-                    int sleepTime;
-                    lock (intervalLock)
-                    {
-                        sleepTime = captureInterval;
-                    }
                 
-                    await Task.Delay(sleepTime);
-                 // Thread.Sleep(sleepTime);
+                await Task.Delay(sleepTime);
             }
             Debug.WriteLine("Capturing Stopped");
+        }
+
+
+        public void Dispose()
+        {
+            StopCapture();
+
+
+
         }
     }
 }

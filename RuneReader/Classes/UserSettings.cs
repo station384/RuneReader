@@ -23,8 +23,8 @@ public class UserSettings
     public string ActivationKey { get; set; } = "1";
     public bool ActivationModeSendOnPress { get; set; } = true;
     public double VariancePercent { get; set; } = 20;
-    public int CaptureRateMs { get; set; } = 30;
-    public int KeyPressSpeedMs { get; set; } = 500;
+    public int CaptureRateMs { get; set; } = 32;  // 30 Frames Per Second
+    public int KeyPressSpeedMs { get; set; } = 150;
     public bool PushAndRelease { get; set; } = true;
     public bool KeepOnTop { get; set; } = false;
 

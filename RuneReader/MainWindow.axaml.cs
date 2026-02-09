@@ -14,6 +14,7 @@ using System.Diagnostics;
 //using System.Drawing;
 using System.IO;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using RuneReader.Classes.Platform;
 using static RuneReader.BarcodeDecode;
@@ -33,8 +34,7 @@ public partial class MainWindow : Avalonia.Controls.Window
 
    // private bool KeyProcessingFirst { get; set; } = false;
     private bool ActivationKeyPressed { get; set; }
-    private CaptureScreen? _captureScreen;
-    private ContinuousScreenCapture? _screenCapture;
+    private ContinuousScreenCapture? _continuousScreenCaptureProcess;
 
 
     private bool _barCodeFound;
@@ -49,13 +49,7 @@ public partial class MainWindow : Avalonia.Controls.Window
     private DispatcherTimer? _timerWowWindowMonitor; // Windows-only: monitors WoW window handle.
     private DispatcherTimer? _timerBarcodeMonitor; // This timer is here to attempt to find and set the barcode location automatically.
 
-
-   // private int CurrentR { get; set; }= 25;
-   // private int CurrentG { get; set; }= 255;
-   // private int CurrentB { get; set; }= 255;
-   // private int CurrentA { get; set; }= 255;
-
-   // private double CurrentThreshold { get; set; }= 0.3;
+    
     private int CurrentCaptureRateMs { get; set; }= 100;
     // ReSharper disable once AutoPropertyCanBeMadeGetOnly.Local
     private int CurrentKeyPressSpeedMs { get; set; }= 125;
@@ -85,9 +79,9 @@ public partial class MainWindow : Avalonia.Controls.Window
     private bool ShiftPressed { get; set; }
     private string ProcessActivateKey { get; set; } = "1";
 
-
-
-
+    private Mat _capRegionMat = new Mat();
+    private Mat _fullScreenMat = new Mat();
+    
         
     private struct ProcessImageResult
     {
@@ -144,22 +138,11 @@ public partial class MainWindow : Avalonia.Controls.Window
     /// <returns>ProcessImageResult</returns>
     private ProcessImageResult ProcessImageOpenCv( Mat image,   double threshold)
     {
-
-       // var origWidth = image.Width;
-        //var origHeight = image.Height;
+        
         var currentKeyToSend = string.Empty;
-
-       // var redScale = ((int)(CurrentR * ((CurrentR * threshold) / CurrentR)));
-       // var greenScale = ((int)(CurrentG * ((CurrentG * threshold) / CurrentG)));
-       // var blueScale = ((int)(CurrentB * ((CurrentB * threshold) / CurrentB)));
-
 
         var result = new ProcessImageResult { CurrentKeyToSend = "", HasTarget = false, WaitTime = 0, regions = new DetectionRegions { HasTarget = false, WaitTime = 0, BottomCenter = false, BottomLeft = false, TopLeft = false, TopRight = false } };
         
-       // double wowGammaSetting = _wowGamma;
-
-
-  
         Cv2.CvtColor(image, GrayMatHolder, ColorConversionCodes.BGR2GRAY);
 
         double maxValue = 255;
@@ -212,7 +195,7 @@ public partial class MainWindow : Avalonia.Controls.Window
         return result;
     }
 
-    private void StartCaptureProcess()
+    private void InitializeContinuousCaptureProcess()
     {
         // Define the area of the screen you want to capture
         int x = _capRegion.Left,
@@ -230,46 +213,18 @@ public partial class MainWindow : Avalonia.Controls.Window
             regions = new OpenCvSharp.Rect(0, 0, 10, 10);
 
         }
-
-        _captureScreen = new CaptureScreen(regions, 0);
-
+        
+        
         // Create an instance of ContinuousScreenCapture with the CaptureScreen object
-        _screenCapture = new ContinuousScreenCapture(
-            CurrentCaptureRateMs,
-            Dispatcher.UIThread,
-            _captureScreen
-        );
-
-        // Assign a handler to the UpdateUIImage event
-        _screenCapture.UpdateFirstImage += image =>
+        if (_platform is not null)
         {
-            double threshold = 20;//CurrentThreshold == 0 ? 0.0 : CurrentThreshold / 100;
-            var capResult = ProcessImageOpenCv( image,    threshold);
-            _currentImageRegions.FirstImageRegions.TopRight = capResult.regions.TopRight;
-            _currentImageRegions.FirstImageRegions.TopLeft = capResult.regions.TopLeft;
-            _currentImageRegions.FirstImageRegions.BottomLeft = capResult.regions.BottomLeft;
-            _currentImageRegions.FirstImageRegions.BottomCenter = capResult.regions.BottomCenter;
-            _currentImageRegions.FirstImageRegions.HasTarget = capResult.regions.HasTarget;
-            _currentImageRegions.FirstImageRegions.WaitTime = capResult.regions.WaitTime;
-            _currentKeyToSend = capResult.CurrentKeyToSend;
-            // Push the new image out the first image,  this has the markers and delays
-            if (capResult.BarcodeFound)
-            {
-                UpdatePreview(BinaryMatHoler);
-                // Update the label
-                LDetectedValue.Text = capResult.CurrentKeyToSend;
-                LDetectedTime.Text = capResult.WaitTime.ToString();
-            }
-            else
-            {
-                UpdatePreview(image);
-                LDetectedValue.Text = "N/A";
-                LDetectedTime.Text = "N/A";
-            }
-
-
-        };
-
+            _platform.ScreenCapture.CaptureRegion = regions;
+            _continuousScreenCaptureProcess = new ContinuousScreenCapture(
+                CurrentCaptureRateMs,
+                _platform.ScreenCapture
+            );
+        }
+        
     }
 
     private async void MainTimerTick(object? sender, EventArgs args)
@@ -541,23 +496,9 @@ public partial class MainWindow : Avalonia.Controls.Window
         AppSettings = SettingsManager.LoadSettings();
 
 
-        //Get Screen Metrics
-        var screenCaptureService = new DX11ScreenCaptureService();
-        var graphicsCards = screenCaptureService.GetGraphicsCards();
 
-        // Convert to a List so it moves data local, and we don't accidentally re-enumerate when we don't have to.
-        var displays = screenCaptureService.GetDisplays(graphicsCards.First()).ToList();
-        ScreenMaxHeight = displays.First().Height;
-        ScreenMaxWidth = displays.First().Width;
-           
-        // todo:  Figure out why I am disposing here.   No clue why I put this is.  Instinct tells me I did it for a reason, but that may not exist now.
-        screenCaptureService.Dispose();
 
-        _capRegion.Left = (int)(AppSettings.CapX > ScreenMaxWidth ? 100 : Math.Abs(AppSettings.CapX));
-        _capRegion.Left = (int)(AppSettings.CapX < 0 ? 0 : Math.Abs(AppSettings.CapX));
-        _capRegion.Top = (int)(AppSettings.CapY > ScreenMaxHeight ? 100 : Math.Abs(AppSettings.CapY));
-        _capRegion.Width = (int)AppSettings.CapWidth;
-        _capRegion.Height = (int)AppSettings.CapHeight;
+
 
 
 
@@ -620,10 +561,24 @@ public partial class MainWindow : Avalonia.Controls.Window
 
 
         InitializePlatform(ProcessActivateKey);
+        _platform!.ScreenCapture.CaptureRegion = _capRegion;
+        _platform!.ScreenCapture.EnableRegion = false;
 
 
-       // _wowWindowHandle = WindowsApiCalls.FindWowWindow("World of Warcraft");
+
        _platform!.ForegroundWindow.SetWindowToFind("World of Warcraft");
+       _platform!.ScreenCapture.OnRegionUpdated += ScreenCaptureOnRegionUpdated;
+       _platform!.ScreenCapture.OnFullScreenUpdated += ScreenCaptureOnonFullScreenUpdated;
+
+        ScreenMaxHeight = _platform.ScreenCapture.ScreenHeight;
+        ScreenMaxWidth = _platform.ScreenCapture.ScreenWidth;
+
+        _capRegion.Left = (int)(AppSettings.CapX > ScreenMaxWidth ? 100 : Math.Abs(AppSettings.CapX));
+        _capRegion.Left = (int)(AppSettings.CapX < 0 ? 0 : Math.Abs(AppSettings.CapX));
+        _capRegion.Top = (int)(AppSettings.CapY > ScreenMaxHeight ? 100 : Math.Abs(AppSettings.CapY));
+        _capRegion.Width = (int)AppSettings.CapWidth;
+        _capRegion.Height = (int)AppSettings.CapHeight;
+
 
         PositionChanged += (_, _) =>
             {
@@ -634,8 +589,8 @@ public partial class MainWindow : Avalonia.Controls.Window
             };
 
 
-        StartCaptureProcess();
-
+        InitializeContinuousCaptureProcess();
+        _platform.ScreenCapture.EnableFullScreen = true;
 
 
         // This timer watches for the WoW window (Windows-only).
@@ -665,6 +620,7 @@ public partial class MainWindow : Avalonia.Controls.Window
 
         Initializing = false;
     }
+
 
 
 
@@ -737,16 +693,81 @@ public partial class MainWindow : Avalonia.Controls.Window
     
     #endregion
 
+    private void ScreenCaptureOnonFullScreenUpdated(Mat image)
+    {
+        
+        // swap the values and dispose of the old value.  thread-safe
+        Mat old = Interlocked.Exchange(ref _fullScreenMat, image);
+        if (old != null && !old.IsDisposed)
+            old.Dispose();
+        
+        try
+        {
+            var r = DecodeFind(_fullScreenMat);
+            if (r.screenID >= 1)
+            {
+
+                // Get the window's current location
+                _capRegion.Left = r.X;// / dpiX;
+                _capRegion.Top = r.Y;// / dpiY;
+                _capRegion.Width = r.Width;// / dpiX;
+                _capRegion.Height = r.Height;// / dpiY;
+                _platform!.ScreenCapture!.CaptureRegion = _capRegion;
+                _barCodeFound = true;
+            }
+        }
+            
+        finally
+        {
+            //We could do this as a using.   But I like the try, it helps me visualize when we destroy and what context.
+            // We only want to capture the full screen once then stop.   if it needs it again,  it will be triggered set to true elsewhere.
+            _platform!.ScreenCapture.EnableFullScreen = false;
+            GC.Collect();
+            
+        }
+    }
     
+    private void ScreenCaptureOnRegionUpdated(Mat image)
+    {
+        // swap the values and dispose of the old value.  thread-safe
+        Mat old = Interlocked.Exchange(ref _capRegionMat, image);
+        if (old != null && !old.IsDisposed)
+            old.Dispose();
+        
+        double threshold = 20;//CurrentThreshold == 0 ? 0.0 : CurrentThreshold / 100;
+        var capResult = ProcessImageOpenCv( _capRegionMat,    threshold);
+        _currentImageRegions.FirstImageRegions.TopRight = capResult.regions.TopRight;
+        _currentImageRegions.FirstImageRegions.TopLeft = capResult.regions.TopLeft;
+        _currentImageRegions.FirstImageRegions.BottomLeft = capResult.regions.BottomLeft;
+        _currentImageRegions.FirstImageRegions.BottomCenter = capResult.regions.BottomCenter;
+        _currentImageRegions.FirstImageRegions.HasTarget = capResult.regions.HasTarget;
+        _currentImageRegions.FirstImageRegions.WaitTime = capResult.regions.WaitTime;
+        _currentKeyToSend = capResult.CurrentKeyToSend;
+        // Push the new image out the first image,  this has the markers and delays
+        if (capResult.BarcodeFound)
+        {
+            UpdatePreview(BinaryMatHoler);
+            // Update the label
+            LDetectedValue.Text = capResult.CurrentKeyToSend;
+            LDetectedTime.Text = capResult.WaitTime.ToString();
+        }
+        else
+        {
+            UpdatePreview(_capRegionMat);
+            LDetectedValue.Text = "N/A";
+            LDetectedTime.Text = "N/A";
+        }
+
+    }
     
 
     private async void _TimerBarcodeMonitor_Tick(object? sender, EventArgs e)
     {
         try
         {
-            if (_screenCapture != null && !_barCodeFound & _screenCapture.IsCapturing)
+            if (_continuousScreenCaptureProcess != null && !_barCodeFound & _continuousScreenCaptureProcess.IsCapturing)
             {
-                await AttemptToFindBarcode();
+                 AttemptToFindBarcode();
             }
         }
         catch (Exception ex)
@@ -759,37 +780,12 @@ public partial class MainWindow : Avalonia.Controls.Window
     private void _TimerWowWindowMonitor_Tick(object? sender, EventArgs e)
     {
         _platform?.ForegroundWindow.SetWindowToFind("World of Warcraft");
-        //_wowWindowHandle = WindowsApiCalls.FindWowWindow("World of Warcraft");
     }
 
 
-    private async Task AttemptToFindBarcode()
+    private void AttemptToFindBarcode()
     {
-        await _captureScreen?.GrabFullScreens()!;
-        Mat image = _captureScreen.CapturedFullScreen;
-
-        try
-        {
-            var r = DecodeFind(image);
-            if (r.screenID >= 1)
-            {
-
-                // Get the window's current location
-                _capRegion.Left = r.X;// / dpiX;
-                _capRegion.Top = r.Y;// / dpiY;
-                _capRegion.Width = r.Width;// / dpiX;
-                _capRegion.Height = r.Height;// / dpiY;
-                _screenCapture!.CaptureRegion = _capRegion;//(scaledLeft + 1, scaledTop + 1, scaledWidth - 1, scaledHeight - 1);
-                _barCodeFound = true;
-            }
-        }
-            
-        finally
-        {
-            //We could do this as a using.   But I like the try, it helps me visualize when we destroy and what context.
-            //image.Dispose();
-            GC.Collect();
-        }
+        _platform!.ScreenCapture.EnableFullScreen = true;
     }
 
 
@@ -801,9 +797,10 @@ public partial class MainWindow : Avalonia.Controls.Window
     {
         if (IsDesigner) return;
         // ... When you want to stop capturing:
-        if (_screenCapture!.IsCapturing)
+        if (_continuousScreenCaptureProcess!.IsCapturing)
         {
-            _screenCapture.StopCapture();
+            _platform!.ScreenCapture.EnableRegion = false;
+            _continuousScreenCaptureProcess.StopCapture();
             _platform!.Hotkeys.Stop();
             BStart.IsEnabled = true;
             BStop.IsEnabled = false;
@@ -834,13 +831,13 @@ public partial class MainWindow : Avalonia.Controls.Window
     private void sliderCaptureRateMS_ValueChanged(object? sender, RangeBaseValueChangedEventArgs e)
     {
         if (IsDesigner) return;
-
+        if (sliderCaptureRateMS is null) return;
         AppSettings.CaptureRateMs = (int)sliderCaptureRateMS.Value;
         CurrentCaptureRateMs = (int)sliderCaptureRateMS.Value;
         if (tbCaptureRateMS != null)
             tbCaptureRateMS.Text = ((int)sliderCaptureRateMS.Value).ToString();
-        if (_screenCapture != null)
-            _screenCapture.CaptureInterval = (int)sliderCaptureRateMS.Value;
+        if (_continuousScreenCaptureProcess != null)
+            _continuousScreenCaptureProcess.CaptureInterval = (int)sliderCaptureRateMS.Value;
 
     }
 
@@ -860,7 +857,7 @@ public partial class MainWindow : Avalonia.Controls.Window
     private void sliderKeyRateMS_ValueChanged(object? sender, RangeBaseValueChangedEventArgs e)
     {
         if (IsDesigner) return;
-
+        if (sliderKeyRateMS is null) return;
         AppSettings.KeyPressSpeedMs = (int)sliderKeyRateMS.Value;
         CurrentKeyDownDelayMs = (int)sliderKeyRateMS.Value;
         if (tbKeyRateMS != null)
@@ -873,8 +870,12 @@ public partial class MainWindow : Avalonia.Controls.Window
         if (IsDesigner) return;
 
         if (sender is not TextBox tb || !int.TryParse(tb.Text, out var v)) return;
-        sliderKeyRateMS.Value = v;
-            
+        {
+            if (v > 1000) v = 1000;
+            if (v < 5) v = 5;
+            sliderKeyRateMS.Value = v;
+        }
+
     }
 
     private void tbCaptureRateMS_TextChanged(object? sender, TextChangedEventArgs e)
@@ -882,7 +883,11 @@ public partial class MainWindow : Avalonia.Controls.Window
         if (IsDesigner) return;
 
         if (sender is TextBox tb && int.TryParse(tb.Text, out var v))
+        {
+            if (v > 250) v = 250;
+            if (v < 5) v = 5;
             sliderCaptureRateMS.Value = v;
+        }
     }
 
     private void tbWowGamme_TextChanged(object? sender, TextChangedEventArgs e)
@@ -943,7 +948,7 @@ public partial class MainWindow : Avalonia.Controls.Window
         try
         {
             if (IsDesigner) return;
-            await AttemptToFindBarcode();
+             AttemptToFindBarcode();
         }
         catch (Exception ex)
         {
@@ -1073,12 +1078,12 @@ public partial class MainWindow : Avalonia.Controls.Window
         if (IsDesigner) return;
         // Start the continuous capturing
         //_wowWindowHandle = WindowsAPICalls.FindWowWindow("World of Warcraft"); //WindowsAPICalls.FindWindow(null, "World of Warcraft");
-        if (!_screenCapture!.IsCapturing)
+        if (!_continuousScreenCaptureProcess!.IsCapturing)
         {
 
             _currentKeyToSend = "";
-
-            _screenCapture.StartCapture();
+            _platform!.ScreenCapture.EnableRegion = true;
+            _continuousScreenCaptureProcess.StartCapture();
             _platform!.Hotkeys.Start();
             BStart.IsEnabled = false;
             BStop.IsEnabled = true;
@@ -1102,18 +1107,18 @@ public partial class MainWindow : Avalonia.Controls.Window
         if (!Design.IsDesignMode)
         {
             if (_started) return;
-            _started = true;
+            //_started = true;
 
-            OnStartup();
-            // Dispatcher.UIThread.Post(() =>
-            // {
-            //     if (_started) return;
-            //     _started = true;
-            //     OnStartup();
-            // }, DispatcherPriority.Loaded);
+            //OnStartup();
+            Dispatcher.UIThread.Post(() =>
+            {
+                if (_started) return;
+                _started = true;
+                OnStartup();
+            }, DispatcherPriority.Loaded);
         }
 
-      
+
     }
 
     protected override void OnClosed(EventArgs e)
@@ -1132,42 +1137,26 @@ public partial class MainWindow : Avalonia.Controls.Window
     {
         if (Design.IsDesignMode) return;
 
-
-
-
-        
         GrayMatHolder.Dispose();
         BinaryMatHoler.Dispose();
         AppSettings.CapX = _capRegion.Left;
         AppSettings.CapY = _capRegion.Top;
         AppSettings.CapWidth = _capRegion.Width;
         AppSettings.CapHeight = _capRegion.Height;
-        
-        
-
 
         SettingsManager.SaveSettings(AppSettings);
 
         _timer!.Stop();
         _timerWowWindowMonitor!.Stop();
         
-
-        if (_screenCapture!.IsCapturing)
+        if (_continuousScreenCaptureProcess!.IsCapturing)
         {
-            _screenCapture.StopCapture();
+            _continuousScreenCaptureProcess.StopCapture();
         }
 
 
         _platform!.Hotkeys.Stop();
 
-        //if (_MouseHookID != IntPtr.Zero)
-        //{
-
-        //    // Make sure we stop trapping the mouse if its active
-        //    WindowsAPICalls.UnhookWindowsHookEx(_MouseHookID);
-        //    _MouseHookID = IntPtr.Zero;
-        //}
-        //magnifier.Close();
     }
 
 

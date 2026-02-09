@@ -366,7 +366,7 @@ namespace RuneReader
                 // So with inverting blacks become whites and its becomes easier to filter for white values.
                 // But we cant detect a barcode that is inverted so we have to invert it back.  the result is pure black and white barcode
                 // which is easier to detect and won't get messed up by ZXing's binaryizer.
-                double thresholdValue = 20;
+                double thresholdValue = 30;
                 double maxValue = 255;
                 // Cv2.BitwiseNot(srcGray, srcGray);
                 Cv2.Threshold(srcGray, srcGray, thresholdValue, maxValue, ThresholdTypes.Binary);
@@ -416,8 +416,8 @@ namespace RuneReader
                             Math.Max(1, maxX - minX + 1) * 2,
                             Math.Max(1, maxY - minY + 1) * 2);
                         // pad 40 pixels on each side too help the decoder find the start and to bars.
-                        rac.Width = rac.Width - (rac.Width / 2) + 40;
-                        rac.X = rac.X + (rac.Width / 2) - 40;
+                        rac.Width = rac.Width - (rac.Width / 2) + 50;
+                        rac.X = rac.X + (rac.Width / 2) - 50;
 
                         rac.Height = rac.Height ;
                     }

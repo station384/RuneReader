@@ -5,5 +5,5 @@ public interface IPlatformServices
     IGlobalHotkeys Hotkeys { get; }
     IForegroundWindow ForegroundWindow { get; }
     IInputSender Input { get; }
-    //IScreenCaptureProvider ScreenCapture { get; }
+    IScreenCaptureProvider ScreenCapture { get; }
 }

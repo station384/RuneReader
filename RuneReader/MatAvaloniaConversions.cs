@@ -14,7 +14,7 @@ public static class MatAvaloniaExtensions
     /// Supports CV_8UC4 (BGRA) and CV_8UC1 (grayscale).
     /// Grayscale is expanded to BGRA for display.
     /// </summary>
-    public static WriteableBitmap ToWriteableBitmap(this Mat mat, WriteableBitmap? reuse = null)
+    public static unsafe WriteableBitmap ToWriteableBitmap(this Mat mat, WriteableBitmap? reuse = null)
     {
         if (mat.Empty()) throw new ArgumentException("Mat is empty.");
 
@@ -65,7 +65,7 @@ public static class MatAvaloniaExtensions
             int dstStride = fb.RowBytes;
             int rowBytes = width * 4;
 
-            unsafe
+            
             {
                 byte* srcBase = (byte*)bgra.DataPointer;
                 byte* dstBase = (byte*)fb.Address;
@@ -84,56 +84,8 @@ public static class MatAvaloniaExtensions
         }
         finally
         {
+  
             temp?.Dispose(); // only disposes if we allocated a conversion mat
         }
     }
 }
-
-
-
-// public static class MatAvaloniaExtensions
-// {
-//     public static WriteableBitmap ToWriteableBitmapBgra(this Mat mat, WriteableBitmap? reuse = null)
-//     {
-//         if (mat.Empty()) throw new ArgumentException("Mat is empty.");
-//         if (mat.Type() != MatType.CV_8UC4)
-//             throw new ArgumentException($"Expected CV_8UC4 (BGRA). Got: {mat.Type()}");
-//
-//         int width = mat.Cols;
-//         int height = mat.Rows;
-//
-//         // Create or reuse a bitmap of the same size
-//         if (reuse == null || reuse.PixelSize.Width != width || reuse.PixelSize.Height != height)
-//         {
-//             reuse = new WriteableBitmap(
-//                 new PixelSize(width, height),
-//                 new Vector(96, 96),
-//                 PixelFormat.Bgra8888,
-//                 AlphaFormat.Unpremul); // important for BGRA from capture
-//         }
-//
-//         using var fb = reuse.Lock();
-//
-//         int srcStride = (int)mat.Step();      // bytes per row in Mat
-//         int dstStride = fb.RowBytes;          // bytes per row in bitmap
-//         int rowBytes  = width * 4;            // BGRA = 4 bytes per pixel
-//
-//         unsafe
-//         {
-//             byte* srcBase = (byte*)mat.DataPointer;
-//             byte* dstBase = (byte*)fb.Address;
-//
-//             // Copy row-by-row (handles differing strides safely)
-//             for (int y = 0; y < height; y++)
-//             {
-//                 Buffer.MemoryCopy(
-//                     srcBase + (nint)(y * srcStride),
-//                     dstBase + (nint)(y * dstStride),
-//                     dstStride,
-//                     rowBytes);
-//             }
-//         }
-//
-//         return reuse;
-//     }
-// }
