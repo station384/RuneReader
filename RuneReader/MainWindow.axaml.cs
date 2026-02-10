@@ -7,13 +7,10 @@ using Avalonia.Threading;
 using OpenCvSharp;
 using RuneReader.Classes;
 using RuneReader.Classes.Utilities;
-using ScreenCapture.NET;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-//using System.Drawing;
 using System.IO;
-using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using RuneReader.Classes.Platform;
@@ -360,18 +357,17 @@ public partial class MainWindow : Avalonia.Controls.Window
             _platform.Input.TrySendShiftKey(false);
         }
 
-        //Add the keypress delay while monitoring that the activation key is still pressed (allows interrupting the delay)
+        // Add the keypress delay while monitoring that the activation key is still pressed (allows interrupting the delay)
         // Note:  There are 10000 ticks in a millisecond
 
         if (_keyPressMode)
         {
             // This is the actual time we hold the key down.  This is used in keypress mode and Key hold mode when it is monitoring.
-            await Task.Delay(CurrentKeyPressSpeedMs); 
+            await Task.Delay(CurrentKeyDownDelayMs); 
                     
             await Task.Delay(CurrentCaptureRateMs == 0 ? 2 : CurrentCaptureRateMs / 2); // Try and wait for a capture refresh
             currentKey.MaxWaitTime = 6000;
             var currentMs = DateTime.Now.AddMilliseconds(currentKey.MaxWaitTime);
-           // var maxWaitTime = DateTime.Now.AddSeconds(8);
             var anticipateWait = currentKey.MaxWaitTime;
 
 
@@ -401,7 +397,7 @@ public partial class MainWindow : Avalonia.Controls.Window
         if (!_keyPressMode)
         {
             // add some randomness to the keypress rate,  just in case of throttling for evenly repeated times
-            await Task.Delay(Random.Shared.Next() % 50 + CurrentCaptureRateMs);
+            await Task.Delay(Random.Shared.Next() % 50 + CurrentKeyDownDelayMs);
         }
         allDone:
         _platform.Input.TrySendKey(vkCode, false);
@@ -454,7 +450,7 @@ public partial class MainWindow : Avalonia.Controls.Window
         await ProcessKey();
 
         allDone:
-       // ImageCapBorder.BorderBrush = Brushes.Black;
+
         await Task.Delay(1);
     }
 
@@ -492,43 +488,17 @@ public partial class MainWindow : Avalonia.Controls.Window
     private void OnStartup ()
     {
 
-        //_mainWindowDispatcher = Dispatcher.UIThread;
         AppSettings = SettingsManager.LoadSettings();
-
-
-
-
-
-
-
-
 
         CbUseGse.IsChecked = AppSettings.UseGse;
         CbGseKeyBindSt.SelectedValue = CbGseKeyBindSt.Items[AppSettings.GseStKey];
         CbGseKeyBindMt.SelectedValue = CbGseKeyBindMt.Items[AppSettings.GseMtKey];
         
-        
-        cbPetAttackKey.SelectedValue = cbPetAttackKey.Items[AppSettings.PetKey];
-        if (AppSettings.PetKeyEnables)
-        {
-            lPet.IsEnabled = true;
-            cbPetAttackKey.IsEnabled = true;
-            cbPetKeyEnabled.IsChecked = true;
-        }
-        else
-        {
-            lPet.IsEnabled = false;
-            cbPetAttackKey.IsEnabled = false;
-            cbPetKeyEnabled.IsChecked = false;
-        }
-
-        sliderWowGamma.Value = AppSettings.WowGamma;
-        tbWowGamma.Text = AppSettings.WowGamma.ToString("0.0");
-        tbCaptureRateMS.Text = AppSettings.CaptureRateMs.ToString();
-        sliderCaptureRateMS.Value = AppSettings.CaptureRateMs;
-        tbKeyRateMS.Text = AppSettings.KeyPressSpeedMs.ToString();
-        sliderKeyRateMS.Value = AppSettings.KeyPressSpeedMs;
-        cbPushRelease.IsChecked = AppSettings.PushAndRelease;
+        TbCaptureRateMs.Text = AppSettings.CaptureRateMs.ToString();
+        SliderCaptureRateMs.Value = AppSettings.CaptureRateMs;
+        TbKeyRateMs.Text = AppSettings.KeyPressSpeedMs.ToString();
+        SliderKeyRateMs.Value = AppSettings.KeyPressSpeedMs;
+        CbPushRelease.IsChecked = AppSettings.PushAndRelease;
         CbStayOnTop.IsChecked = AppSettings.KeepOnTop;
             
 
@@ -546,12 +516,12 @@ public partial class MainWindow : Avalonia.Controls.Window
         this.Topmost = AppSettings.KeepOnTop;
 
 
-        foreach (var x in cbActivationKey.Items)
+        foreach (var x in CbActivationKey.Items)
         {
 
             if ((x as ComboBoxItem)?.Content?.ToString() == AppSettings.ActivationKey)
             {
-                cbActivationKey.SelectedItem = x;
+                CbActivationKey.SelectedItem = x;
                 ProcessActivateKey =  AppSettings.ActivationKey;
             }
         }
@@ -564,11 +534,9 @@ public partial class MainWindow : Avalonia.Controls.Window
         _platform!.ScreenCapture.CaptureRegion = _capRegion;
         _platform!.ScreenCapture.EnableRegion = false;
 
-
-
-       _platform!.ForegroundWindow.SetWindowToFind("World of Warcraft");
-       _platform!.ScreenCapture.OnRegionUpdated += ScreenCaptureOnRegionUpdated;
-       _platform!.ScreenCapture.OnFullScreenUpdated += ScreenCaptureOnonFullScreenUpdated;
+        _platform!.ForegroundWindow.SetWindowToFind("World of Warcraft");
+        _platform!.ScreenCapture.OnRegionUpdated += ScreenCaptureOnRegionUpdated;
+        _platform!.ScreenCapture.OnFullScreenUpdated += ScreenCaptureOnFullScreenUpdated;
 
         ScreenMaxHeight = _platform.ScreenCapture.ScreenHeight;
         ScreenMaxWidth = _platform.ScreenCapture.ScreenWidth;
@@ -590,10 +558,12 @@ public partial class MainWindow : Avalonia.Controls.Window
 
 
         InitializeContinuousCaptureProcess();
+        // This makes sure we do the initial capture to check for a barcode.
         _platform.ScreenCapture.EnableFullScreen = true;
 
 
         // This timer watches for the WoW window (Windows-only).
+        // This should also be a Task.   No reason for it to be a timer.
         _timerWowWindowMonitor = new DispatcherTimer
         {
             Interval = TimeSpan.FromSeconds(5)
@@ -603,6 +573,8 @@ public partial class MainWindow : Avalonia.Controls.Window
 
 
         //This timer handles sending of the key commands
+        // I think this can become a Task.
+        // It should only delay for a few MS before checking again if there is another key ready.
         _timer = new DispatcherTimer
         {
             Interval = TimeSpan.FromMilliseconds(1)
@@ -611,6 +583,7 @@ public partial class MainWindow : Avalonia.Controls.Window
         _timer.Stop();
 
         //This timer will run every 5 seconds to try and find the barcode.
+        // Again this should be a Task.  
         _timerBarcodeMonitor = new DispatcherTimer
         {
             Interval = TimeSpan.FromSeconds(5)
@@ -693,70 +666,81 @@ public partial class MainWindow : Avalonia.Controls.Window
     
     #endregion
 
-    private void ScreenCaptureOnonFullScreenUpdated(Mat image)
+    private void ScreenCaptureOnFullScreenUpdated(Mat image)
     {
         
         // swap the values and dispose of the old value.  thread-safe
-        Mat old = Interlocked.Exchange(ref _fullScreenMat, image);
-        if (old != null && !old.IsDisposed)
+        var old = Interlocked.Exchange(ref _fullScreenMat, image);
+        if (old is { IsDisposed: false })
             old.Dispose();
-        
+        var r = DecodeFind(_fullScreenMat);
+
         try
         {
-            var r = DecodeFind(_fullScreenMat);
-            if (r.screenID >= 1)
+            if (r.screenID < 1)
             {
-
-                // Get the window's current location
-                _capRegion.Left = r.X;// / dpiX;
-                _capRegion.Top = r.Y;// / dpiY;
-                _capRegion.Width = r.Width;// / dpiX;
-                _capRegion.Height = r.Height;// / dpiY;
-                _platform!.ScreenCapture!.CaptureRegion = _capRegion;
-                _barCodeFound = true;
+                return;
             }
+
+            // Get the window's current location
+            _capRegion.Left = r.X; // / dpiX;
+            _capRegion.Top = r.Y; // / dpiY;
+            _capRegion.Width = r.Width; // / dpiX;
+            _capRegion.Height = r.Height; // / dpiY;
+            _platform!.ScreenCapture!.CaptureRegion = _capRegion;
+            _barCodeFound = true;
         }
-            
+
         finally
         {
             //We could do this as a using.   But I like the try, it helps me visualize when we destroy and what context.
             // We only want to capture the full screen once then stop.   if it needs it again,  it will be triggered set to true elsewhere.
             _platform!.ScreenCapture.EnableFullScreen = false;
             GC.Collect();
-            
+
         }
+        
     }
     
     private void ScreenCaptureOnRegionUpdated(Mat image)
     {
-        // swap the values and dispose of the old value.  thread-safe
-        Mat old = Interlocked.Exchange(ref _capRegionMat, image);
-        if (old != null && !old.IsDisposed)
+        var old = Interlocked.Exchange(ref _capRegionMat, image);
+        if (old is { IsDisposed: false })
             old.Dispose();
+
+
+             
+             // This part updates the visual stuff so make sure we launch it on the UIThread.
+             // Push the new image out the first image,  this has the markers and delays
+             Dispatcher.UIThread.Post(() =>
+             {
+                 double threshold = 20;//CurrentThreshold == 0 ? 0.0 : CurrentThreshold / 100;
+                 var capResult = ProcessImageOpenCv( _capRegionMat,    threshold);
+
+                 _currentImageRegions.FirstImageRegions.TopRight = capResult.regions.TopRight;
+                 _currentImageRegions.FirstImageRegions.TopLeft = capResult.regions.TopLeft;
+                 _currentImageRegions.FirstImageRegions.BottomLeft = capResult.regions.BottomLeft;
+                 _currentImageRegions.FirstImageRegions.BottomCenter = capResult.regions.BottomCenter;
+                 _currentImageRegions.FirstImageRegions.HasTarget = capResult.regions.HasTarget;
+                 _currentImageRegions.FirstImageRegions.WaitTime = capResult.regions.WaitTime;
+                 _currentKeyToSend = capResult.CurrentKeyToSend;
+                 if (capResult.BarcodeFound)
+                 {
+                     UpdatePreview(BinaryMatHoler);
+                     // Update the label
+                     LDetectedValue.Text = capResult.CurrentKeyToSend;
+                     LDetectedTime.Text = capResult.WaitTime.ToString();
+                 }
+                 else
+                 {
+                     UpdatePreview(_capRegionMat);
+                     LDetectedValue.Text = "N/A";
+                     LDetectedTime.Text = "N/A";
+                 }
+             });
+             // swap the values and dispose of the old value.  thread-safe
+     
         
-        double threshold = 20;//CurrentThreshold == 0 ? 0.0 : CurrentThreshold / 100;
-        var capResult = ProcessImageOpenCv( _capRegionMat,    threshold);
-        _currentImageRegions.FirstImageRegions.TopRight = capResult.regions.TopRight;
-        _currentImageRegions.FirstImageRegions.TopLeft = capResult.regions.TopLeft;
-        _currentImageRegions.FirstImageRegions.BottomLeft = capResult.regions.BottomLeft;
-        _currentImageRegions.FirstImageRegions.BottomCenter = capResult.regions.BottomCenter;
-        _currentImageRegions.FirstImageRegions.HasTarget = capResult.regions.HasTarget;
-        _currentImageRegions.FirstImageRegions.WaitTime = capResult.regions.WaitTime;
-        _currentKeyToSend = capResult.CurrentKeyToSend;
-        // Push the new image out the first image,  this has the markers and delays
-        if (capResult.BarcodeFound)
-        {
-            UpdatePreview(BinaryMatHoler);
-            // Update the label
-            LDetectedValue.Text = capResult.CurrentKeyToSend;
-            LDetectedTime.Text = capResult.WaitTime.ToString();
-        }
-        else
-        {
-            UpdatePreview(_capRegionMat);
-            LDetectedValue.Text = "N/A";
-            LDetectedTime.Text = "N/A";
-        }
 
     }
     
@@ -793,21 +777,29 @@ public partial class MainWindow : Avalonia.Controls.Window
     #region UI Event handlers
 
 
-    private void StopButton_Click(object? sender, RoutedEventArgs e)
+    private async void StopButton_Click(object? sender, RoutedEventArgs e)
     {
-        if (IsDesigner) return;
-        // ... When you want to stop capturing:
-        if (_continuousScreenCaptureProcess!.IsCapturing)
+        try
         {
-            _platform!.ScreenCapture.EnableRegion = false;
-            _continuousScreenCaptureProcess.StopCapture();
-            _platform!.Hotkeys.Stop();
-            BStart.IsEnabled = true;
-            BStop.IsEnabled = false;
-            _timer!.Stop();
-            _timerWowWindowMonitor!.Stop();
-            _timerBarcodeMonitor!.Stop();
+            if (IsDesigner) return;
+            // ... When you want to stop capturing:
+            if (_continuousScreenCaptureProcess!.IsCapturing)
+            {
+                _platform!.ScreenCapture.EnableRegion = false;
+                await _continuousScreenCaptureProcess.StopCaptureAsync(); 
+                _platform!.Hotkeys.Stop();
+                BStart.IsEnabled = true;
+                BStop.IsEnabled = false;
+                _timer!.Stop();
+                _timerWowWindowMonitor!.Stop();
+                _timerBarcodeMonitor!.Stop();
 
+            }
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine(ex.Message);
+            //throw; // TODO handle exception
         }
     }
 
@@ -831,37 +823,25 @@ public partial class MainWindow : Avalonia.Controls.Window
     private void sliderCaptureRateMS_ValueChanged(object? sender, RangeBaseValueChangedEventArgs e)
     {
         if (IsDesigner) return;
-        if (sliderCaptureRateMS is null) return;
-        AppSettings.CaptureRateMs = (int)sliderCaptureRateMS.Value;
-        CurrentCaptureRateMs = (int)sliderCaptureRateMS.Value;
-        if (tbCaptureRateMS != null)
-            tbCaptureRateMS.Text = ((int)sliderCaptureRateMS.Value).ToString();
+        if (SliderCaptureRateMs is null) return;
+        AppSettings.CaptureRateMs = (int)SliderCaptureRateMs.Value;
+        CurrentCaptureRateMs = (int)SliderCaptureRateMs.Value;
+        if (TbCaptureRateMs != null)
+            TbCaptureRateMs.Text = ((int)SliderCaptureRateMs.Value).ToString();
         if (_continuousScreenCaptureProcess != null)
-            _continuousScreenCaptureProcess.CaptureIntervalMs = (int)sliderCaptureRateMS.Value;
+            _continuousScreenCaptureProcess.CaptureIntervalMs = (int)SliderCaptureRateMs.Value;
 
     }
 
-
-    private void sliderWowGamma_ValueChanged(object? sender, RangeBaseValueChangedEventArgs e)
-    {
-        if (IsDesigner) return;
-
-        if (sliderWowGamma is null) return;
-        AppSettings.WowGamma = (float)Math.Round(sliderWowGamma.Value, 1);
-        _wowGamma = (float)AppSettings.WowGamma;
-        if (tbWowGamma != null)
-            tbWowGamma.Text = ((float)AppSettings.WowGamma).ToString("0.0");
-
-    }
-
+    
     private void sliderKeyRateMS_ValueChanged(object? sender, RangeBaseValueChangedEventArgs e)
     {
         if (IsDesigner) return;
-        if (sliderKeyRateMS is null) return;
-        AppSettings.KeyPressSpeedMs = (int)sliderKeyRateMS.Value;
-        CurrentKeyDownDelayMs = (int)sliderKeyRateMS.Value;
-        if (tbKeyRateMS != null)
-            tbKeyRateMS.Text = ((int)sliderKeyRateMS.Value).ToString();
+        if (SliderKeyRateMs is null) return;
+        AppSettings.KeyPressSpeedMs = (int)SliderKeyRateMs.Value;
+        CurrentKeyDownDelayMs = (int)SliderKeyRateMs.Value;
+        if (TbKeyRateMs != null)
+            TbKeyRateMs.Text = ((int)SliderKeyRateMs.Value).ToString();
 
     }
 
@@ -873,9 +853,8 @@ public partial class MainWindow : Avalonia.Controls.Window
         {
             if (v > 1000) v = 1000;
             if (v < 5) v = 5;
-            sliderKeyRateMS.Value = v;
+            SliderKeyRateMs.Value = v;
         }
-
     }
 
     private void tbCaptureRateMS_TextChanged(object? sender, TextChangedEventArgs e)
@@ -886,24 +865,15 @@ public partial class MainWindow : Avalonia.Controls.Window
         {
             if (v > 250) v = 250;
             if (v < 5) v = 5;
-            sliderCaptureRateMS.Value = v;
+            SliderCaptureRateMs.Value = v;
         }
     }
-
-    private void tbWowGamme_TextChanged(object? sender, TextChangedEventArgs e)
-    {
-        if (IsDesigner) return;
-
-        //  sliderWowGamma.Value = int.Parse(((System.Windows.Controls.TextBox)e.Source).Text.ToString());
-    }
-
-
 
     private void cbActivationKey_SelectionChanged(object? sender, SelectionChangedEventArgs e)
     {
         if (Initializing) return;
         
-        var activationKey = (cbActivationKey.SelectedItem as ComboBoxItem)?.Content?.ToString();
+        var activationKey = (CbActivationKey.SelectedItem as ComboBoxItem)?.Content?.ToString();
         if (string.IsNullOrEmpty(activationKey)) return;
         AppSettings.ActivationKey = activationKey;
         ProcessActivateKey = AppSettings.ActivationKey;
@@ -919,29 +889,8 @@ public partial class MainWindow : Avalonia.Controls.Window
         AppSettings.CapY = 50;
         AppSettings.CapWidth = 100;
         AppSettings.CapHeight = 100;
-
-        //magnifier.Left = AppSettings.CapX > SystemParameters.PrimaryScreenWidth ? 100 : AppSettings.CapX;
-        //magnifier.Top = AppSettings.CapY > SystemParameters.PrimaryScreenHeight ? 100 : AppSettings.CapY;
-        //magnifier.Width = AppSettings.CapWidth;
-        //magnifier.Height = AppSettings.CapHeight;
+        
     }
-
-
-
-    private void cbPetAttackKey_SelectionChanged(object? sender, SelectionChangedEventArgs e)
-    {
-
-
-        if (e.Source != null)
-        {
-            AppSettings.PetKey = (e.Source as ComboBox)!.SelectedIndex;
-            if (((ComboBox)e.Source).SelectedItem != null)
-            {
-                PetKeyVkCode = VirtualKeyCodeMapper.GetVirtualKeyCode((((ComboBox)e.Source).SelectedItem as ComboBoxItem)!.Content!.ToString()!);
-            }
-        }
-    }
-
 
     private async void bFindBarcode_Click(object? sender, RoutedEventArgs e)
     {
@@ -958,22 +907,7 @@ public partial class MainWindow : Avalonia.Controls.Window
     }
         
 
-    private void cbPetKeyEnabled_IsCheckedChanged(object? sender, RoutedEventArgs e)
-    {
-        if (IsDesigner) return;
-        if ((e.Source as CheckBox)!.IsChecked == true)
-        {
-            lPet.IsEnabled = true;
-            cbPetAttackKey.IsEnabled = true;
-            AppSettings.PetKeyEnables = lPet.IsEnabled;
-        }
-        else
-        {
-            lPet.IsEnabled = false;
-            cbPetAttackKey.IsEnabled = false;
-            AppSettings.PetKeyEnables = lPet.IsEnabled;
-        }
-    }
+
 
     private void cbPushRelease_IsCheckedChanged(object? sender, RoutedEventArgs e)
     {
@@ -1069,15 +1003,10 @@ public partial class MainWindow : Avalonia.Controls.Window
         }
     }
     
-    
-    #endregion
-        
-
     private void Button_Start_OnClick(object? sender, RoutedEventArgs e)
     {
         if (IsDesigner) return;
         // Start the continuous capturing
-        //_wowWindowHandle = WindowsAPICalls.FindWowWindow("World of Warcraft"); //WindowsAPICalls.FindWindow(null, "World of Warcraft");
         if (!_continuousScreenCaptureProcess!.IsCapturing)
         {
 
@@ -1094,6 +1023,10 @@ public partial class MainWindow : Avalonia.Controls.Window
         }
 
     }
+    #endregion
+        
+
+
 
         
         
@@ -1104,28 +1037,29 @@ public partial class MainWindow : Avalonia.Controls.Window
     public MainWindow()
     {
         InitializeComponent();
-        if (!Design.IsDesignMode)
+        if (Design.IsDesignMode) return;
+        if (_started) return;
+
+        // This is posting to the UI thread mainly as that makes sure
+        // the init of the components is done before calls are made.
+        Dispatcher.UIThread.Post(() =>
         {
             if (_started) return;
-            //_started = true;
-
-            //OnStartup();
-            Dispatcher.UIThread.Post(() =>
-            {
-                if (_started) return;
-                _started = true;
-                OnStartup();
-            }, DispatcherPriority.Loaded);
-        }
-
-
+            _started = true;
+            OnStartup();
+        }, DispatcherPriority.Loaded);
     }
 
-    protected override void OnClosed(EventArgs e)
+    protected override async void OnClosed(EventArgs e)
     {
         try
         {
-            Cleanup();
+            await Cleanup();
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine(ex.Message);
+            //throw; // TODO handle exception
         }
         finally
         {
@@ -1133,9 +1067,9 @@ public partial class MainWindow : Avalonia.Controls.Window
         }
     }
     
-    private void Cleanup()
+    private async Task<bool> Cleanup()
     {
-        if (Design.IsDesignMode) return;
+        if (Design.IsDesignMode) return true;
 
         GrayMatHolder.Dispose();
         BinaryMatHoler.Dispose();
@@ -1144,18 +1078,19 @@ public partial class MainWindow : Avalonia.Controls.Window
         AppSettings.CapWidth = _capRegion.Width;
         AppSettings.CapHeight = _capRegion.Height;
 
-        SettingsManager.SaveSettings(AppSettings);
+        await SettingsManager.SaveSettingsAsync(AppSettings);
 
         _timer!.Stop();
         _timerWowWindowMonitor!.Stop();
         
         if (_continuousScreenCaptureProcess!.IsCapturing)
         {
-            _continuousScreenCaptureProcess.StopCapture();
+            await _continuousScreenCaptureProcess.StopCaptureAsync();
         }
 
 
         _platform!.Hotkeys.Stop();
+        return true;
 
     }
 

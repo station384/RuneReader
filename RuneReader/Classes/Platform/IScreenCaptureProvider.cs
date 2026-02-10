@@ -18,8 +18,8 @@ public interface IScreenCaptureProvider : IDisposable
     void CaptureOnce();
 
     // Latest snapshots (provider-owned)
-    Mat LastRegion { get; }
-    Mat LastFullScreen { get; }
+    // Mat LastRegion { get; }
+    // Mat LastFullScreen { get; }
 
     // Fire when a new snapshot is available (consumer-owned)
     event Action<Mat>? OnRegionUpdated;
