@@ -415,11 +415,34 @@ namespace RuneReader
                             minY - (Math.Max(1, maxY - minY + 1) / 2),
                             Math.Max(1, maxX - minX + 1) * 2,
                             Math.Max(1, maxY - minY + 1) * 2);
-                        // pad 40 pixels on each side too help the decoder find the start and to bars.
+                        // pad 50 pixels on each side too help the decoder find the start and to bars.
                         rac.Width = rac.Width - (rac.Width / 2) + 50;
                         rac.X = rac.X + (rac.Width / 2) - 50;
 
                         rac.Height = rac.Height ;
+                        
+                        // ============================================================
+                        // NEW: CODE_39 is often detected as a thin strip near the bottom
+                        // of a horizontal barcode. We want to pad "upwards" by 10px,
+                        // but KEEP the bottom edge where it was.
+                        //
+                        // Example:
+                        //   oldY=200, oldH=2  => bottom=202
+                        //   newY=max(0,190)=190
+                        //   newH=bottom-newY=202-190=12
+                        //
+                        // If oldY < 10, newY becomes 0, and height expands accordingly.
+                        // ============================================================
+                        int bottom = rac.Y + rac.Height;      // preserve original bottom edge
+                        int newY = Math.Max(0, rac.Y - 10);   // move top up (clamped at 0)
+                        rac.Y = newY;
+                        rac.Height = Math.Max(1, bottom - newY);
+
+                        // Optional but recommended safety clamp:
+                        // If your earlier math makes X negative, clamp it.
+                        if (rac.X < 0) rac.X = 0;
+                        if (rac.Y < 0) rac.Y = 0;
+                        
                     }
 
                     // the screenID should be the actual screenID the barcode is found on,  but that code is not implmeneted 
