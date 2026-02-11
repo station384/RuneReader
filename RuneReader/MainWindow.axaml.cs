@@ -22,14 +22,70 @@ namespace RuneReader;
 
 public partial class MainWindow : Avalonia.Controls.Window
 {
+    static double Clamp(double x, double lo, double hi) => x < lo ? lo : (x > hi ? hi : x);
+    //Exponentially Weighted Moving Average
+    public sealed class EwmaTimeConstant
+    {
+        private readonly double _tauSec; // smoothing time constant
+        private readonly Stopwatch _sw = Stopwatch.StartNew();
+        private long _lastTicks;
+
+        public bool HasValue { get; private set; }
+        public double ValueMs { get; private set; }
+
+        /// <summary>
+        /// EWMA = Exponentially Weighted Moving Average.
+        /// It’s an average that weights recent samples more than older ones, with the weights decaying exponentially. So it smooths noisy measurements but still follows changes faster than a simple “average of everything.”
+        /// </summary>
+        /// <param name="tauSeconds">
+        /// τ = 1.0s → reacts quickly (good if delay changes a lot)
+        /// τ = 2–3s → smoother and still responsive (usually best)
+        /// τ = 5s → very smooth, slower to react
+        /// </param>
+        public EwmaTimeConstant(double tauSeconds = 2.0)
+        {
+            _tauSec = Math.Max(0.001, tauSeconds);
+            _lastTicks = _sw.ElapsedTicks;
+        }
+
+        public void Add(double xMs)
+        {
+            long now = _sw.ElapsedTicks;
+            double dt = (now - _lastTicks) / (double)Stopwatch.Frequency; // seconds
+            _lastTicks = now;
+
+            // protect against weird dt (paused debugger, etc.)
+            if (dt < 0) dt = 0;
+            if (dt > 1.0) dt = 1.0;
+
+            double alpha = 1.0 - Math.Exp(-dt / _tauSec);
+
+            if (!HasValue)
+            {
+                ValueMs = xMs;
+                HasValue = true;
+                return;
+            }
+
+            ValueMs += alpha * (xMs - ValueMs);
+        }
+    }
+    private static EwmaTimeConstant ewma = new EwmaTimeConstant(tauSeconds: 2.0);
     private static UserSettings AppSettings { get; set; } = new();
     
     private volatile string _currentKeyToSend = string.Empty; // Default key to send, can be changed dynamically
 
-    private bool ActivationKeyPressed { get; set; }
+    //private bool ActivationKeyPressed { get; set; }
+    private int _activationKeyPressed; // 0/1
+    private bool ActivationKeyPressed => Volatile.Read(ref _activationKeyPressed) == 1;
+    private void SetActivationKeyPressed(bool value) => Volatile.Write(ref _activationKeyPressed, value ? 1 : 0);
+    
     private ContinuousScreenCapture? _continuousScreenCaptureProcess;
 
-
+    private int _barcodeProcessingGate;
+    private bool TryEnterBarcodeProcessing() => Interlocked.Exchange(ref _barcodeProcessingGate, 1) == 0;
+    private void ExitBarcodeProcessing() => Volatile.Write(ref _barcodeProcessingGate, 0);
+    
     private bool _barCodeFound;
 
     private IPlatformServices? _platform;
@@ -37,6 +93,7 @@ public partial class MainWindow : Avalonia.Controls.Window
 
     //private MagnifierWindow magnifier;
     private OpenCvSharp.Rect _capRegion;
+    
     private volatile ImageRegions _currentImageRegions = new();
 
     private CancellationTokenSource? _loopsCts;
@@ -50,18 +107,20 @@ public partial class MainWindow : Avalonia.Controls.Window
     private void StartBackgroundLoops()
     {
         // already running?
-        if (_loopsCts != null) return;
 
-        _loopsCts = new CancellationTokenSource();
-        var token = _loopsCts.Token;
+            if (_loopsCts != null) return;
 
-        _keyLoopTask = RunKeyLoopAsync(token);
-        _wowMonitorTask = RunWowMonitorLoopAsync(token);
-        _barcodeMonitorTask = RunBarcodeMonitorLoopAsync(token);
+            _loopsCts = new CancellationTokenSource();
+            var token = _loopsCts.Token;
+
+            _keyLoopTask = RunKeyLoopAsync(token);
+            _wowMonitorTask = RunWowMonitorLoopAsync(token);
+            _barcodeMonitorTask = RunBarcodeMonitorLoopAsync(token);
     }
     
     private async Task StopBackgroundLoopsAsync()
     {
+
         var cts = _loopsCts;
         if (cts == null) return;
 
@@ -100,7 +159,15 @@ public partial class MainWindow : Avalonia.Controls.Window
     private bool UseGse { get; set; }
     
     private volatile bool _keyPressMode;
-    private volatile bool _processingKey;
+    
+    // private int _processingKeyPressed; // 0/1
+    // private bool ProcessingKeyPressed => Volatile.Read(ref _processingKeyPressed) == 1;
+    // private void SetProcessingKeyPressed(bool value) => Volatile.Write(ref _processingKeyPressed, value ? 1 : 0);
+    private int _processingKeyGate; // 0/1
+    private bool TryEnterProcessingKey() => Interlocked.Exchange(ref _processingKeyGate, 1) == 0;
+    private void ExitProcessingKey() => Volatile.Write(ref _processingKeyGate, 0);
+    
+    //private volatile bool _processingKey;
 
     private bool Initializing { get; set; }= true;  // To prevent events from firing as the xaml defaults are applied
     private int ScreenMaxHeight { get; set; }
@@ -161,7 +228,7 @@ public partial class MainWindow : Avalonia.Controls.Window
         }
     }
 
-    
+    private double avgDelay = 0.0;
     private Mat GrayMatHolder { get; }= new();  // This is reused. We will let OpenCV manage the disposal of the heap when reassign it
     private Mat BinaryMatHoler { get; }= new();   // This is reused. We will let OpenCV manage the disposal of the heap when reassign it
 
@@ -189,7 +256,14 @@ public partial class MainWindow : Avalonia.Controls.Window
         var barcodeResult = DecodeBarcode(BinaryMatHoler);
         if (barcodeResult.BarcodeFound)
         {
+            // treat negative as jitter/lead and only care about lag:
+            barcodeResult.TDiff = Math.Max(barcodeResult.TDiff, 0);
+            // Clamp to something sane 
+            double x = Clamp(barcodeResult.TDiff, 0, 2000);
 
+            ewma.Add(x); 
+            avgDelay = ewma.ValueMs;
+            
             result = new ProcessImageResult
             {
                 CurrentKeyToSend = "",
@@ -204,6 +278,7 @@ public partial class MainWindow : Avalonia.Controls.Window
                     BottomLeft = (barcodeResult.WaitTime <= 300),
                     TopLeft = (barcodeResult.WaitTime <= 0),
                     TopRight = (barcodeResult.WaitTime < 1000)
+                    ,GcdTime = barcodeResult.GCD
                 }
             };
 
@@ -271,7 +346,7 @@ public partial class MainWindow : Avalonia.Controls.Window
         {
             try
             {
-                if (ActivationKeyPressed )
+                if (IsRunning && ActivationKeyPressed )
                     await ProcessBarCodeKey().ConfigureAwait(false);
             }
             catch (OperationCanceledException) when (token.IsCancellationRequested)
@@ -281,182 +356,185 @@ public partial class MainWindow : Avalonia.Controls.Window
             catch (Exception ex)
             {
                 Debug.WriteLine(ex);
-                ActivationKeyPressed = false; 
+                SetActivationKeyPressed(false);
             }
             
-            await Task.Delay(2, token).ConfigureAwait(false);
+            await Task.Delay(ActivationKeyPressed ? 2 : 10, token).ConfigureAwait(false);
         }
     }
     
     private async Task ProcessKey(KeyCommand? currentKey)
     {
 
-
-           if (_processingKey) return;
-            _processingKey = true;
-            if (currentKey is null) return;
-            if (UseGse)
+        bool keyDown = false;
+        bool ctrlDown = false, altDown = false, shiftDown = false;
+        if (!TryEnterProcessingKey()) return;
+        int vkCode = 0;
+            try
             {
-                if (!_currentImageRegions.FirstImageRegions.HasMultiTarget)
+                if (currentKey is null) return;
+                
+                if (UseGse)
                 {
-                    currentKey = new KeyCommand(VirtualKeyCodeMapper.GetKeyFromVKCode(GseStVkKeyCode),
-                        currentKey.MaxWaitTime, currentKey.HasTarget)
+                    if (!_currentImageRegions.FirstImageRegions.HasMultiTarget)
                     {
-                        Alt = false,
-                        Ctrl = false,
-                        Shift = false
-                    };
+                        currentKey = new KeyCommand(VirtualKeyCodeMapper.GetKeyFromVKCode(GseStVkKeyCode),
+                            currentKey.MaxWaitTime, currentKey.HasTarget)
+                        {
+                            Alt = false,
+                            Ctrl = false,
+                            Shift = false
+                        };
+                    }
+                    else
+                    {
+                        currentKey = new KeyCommand(VirtualKeyCodeMapper.GetKeyFromVKCode(GseMtVkKeyCode),
+                            currentKey.MaxWaitTime, currentKey.HasTarget)
+                        {
+                            Alt = false,
+                            Ctrl = false,
+                            Shift = false
+                        };
+                    }
+                }
+
+
+                if (!_platform!.ForegroundWindow.IsActiveWindow())
+                    return;
+              
+
+
+                if (AltPressed &&
+                    currentKey.Key ==
+                    "F4") // Somehow AF4 got through and killed wow.   so I want to Explicitly ignore it.  I will never allow ALT-F4
+                    return;
+                
+
+
+                
+
+                // Translate the char to the virtual Key Code
+                 vkCode = VirtualKeyCodeMapper.GetVirtualKeyCode(currentKey.Key);
+
+                // Wows Default Key behavior is to activate as soon as the key is pressed.   So lets make sure we do not press anything till we have a 0 wait…
+                // Pre-pressing is built into the addon calc  so we don't have to worry about command queuing here.
+                while (_currentImageRegions.FirstImageRegions.WaitTime + _currentImageRegions.FirstImageRegions.GcdTime  > avgDelay && ActivationKeyPressed)
+                {
+                    await Task.Delay(16).ConfigureAwait(false);
+                }
+
+                // command is tied to CTRL or ALT So have to press them
+                if (currentKey.Ctrl)
+                {
+                    _platform.Input.TrySendCtrlKey(true); ctrlDown = true;
                 }
                 else
                 {
-                    currentKey = new KeyCommand(VirtualKeyCodeMapper.GetKeyFromVKCode(GseMtVkKeyCode),
-                        currentKey.MaxWaitTime, currentKey.HasTarget)
-                    {
-                        Alt = false,
-                        Ctrl = false,
-                        Shift = false
-                    };
+                    // Command isn't tied to CTRL so send a CTRL Up.
+                    // This should really be peeking in the message buffer to see if the key is really pressed or not. and only send the up if it is. 
+                    // This could also be accomplished by storing off the value in the message processor and storing a flag local if it saw one or not.
+                    // keyboards are global so that may work.
+                    _platform.Input.TrySendCtrlKey(false);
                 }
-            }
 
-
-            if (!(_platform!).ForegroundWindow.IsActiveWindow())
-            {
-                _processingKey = false;
-                return;
-            }
-
-
-            if (AltPressed &&
-                currentKey.Key ==
-                "F4") // Somehow AF4 got through and killed wow.   so I want to Explicitly ignore it.  I will never allow ALT-F4
-            {
-                _processingKey = false;
-                return;
-            }
-
-            if (AltPressed && currentKey.Key == "F4") // Alt key was pressed so don't want that
-            {
-                _processingKey = false;
-                return;
-            }
-
-            // Translate the char to the virtual Key Code
-            var vkCode = VirtualKeyCodeMapper.GetVirtualKeyCode(currentKey.Key);
-
-            // Wows Default Key behavior is to activate as soon as the key is pressed.   So lets make sure we do not press anything till we have a 0 wait…
-            // Pre-pressing is built into the addon calc  so we don't have to worry about command queuing here.
-            while (_currentImageRegions.FirstImageRegions.WaitTime != 0 && ActivationKeyPressed)
-            {
-                await Task.Delay(16);
-            }
-
-            // command is tied to CTRL or ALT So have to press them
-            if (currentKey.Ctrl)
-            {
-                _platform.Input.TrySendCtrlKey(true);
-            }
-            else
-            {
-                // Command isn't tied to CTRL so send a CTRL Up.
-                // This should really be peeking in the message buffer to see if the key is really pressed or not. and only send the up if it is. 
-                // This could also be accomplished by storing off the value in the message processor and storing a flag local if it saw one or not.
-                // keyboards are global so that may work.
-                _platform.Input.TrySendCtrlKey(false);
-            }
-
-            if (currentKey.Alt)
-            {
-                _platform.Input.TrySendAltKey(true);
-            }
-            else
-            {
-                // See Notes on CTRL.
-                _platform.Input.TrySendAltKey(false);
-            }
-
-            if (currentKey.Shift)
-            {
-                _platform.Input.TrySendShiftKey(true);
-            }
-            else
-            {
-                // See Notes on CTRL.
-                _platform.Input.TrySendShiftKey(false);
-            }
-
-
-            // Press the command Key Down
-            _platform.Input.TrySendKey(vkCode, true);
-
-
-
-            // CTRL and ALT do not need to be held down just only pressed initially for the command to be interpreted correctly
-            if (currentKey.Ctrl)
-            {
-                _platform.Input.TrySendCtrlKey(false);
-            }
-
-            if (currentKey.Alt)
-            {
-                _platform.Input.TrySendAltKey(false);
-            }
-
-            if (currentKey.Shift)
-            {
-                _platform.Input.TrySendShiftKey(false);
-            }
-
-            // Add the keypress delay while monitoring that the activation key is still pressed (allows interrupting the delay)
-            // Note:  There are 10000 ticks in a millisecond
-
-            if (_keyPressMode)
-            {
-                // This is the actual time we hold the key down.  This is used in keypress mode and Key hold mode when it is monitoring.
-                await Task.Delay(CurrentKeyDownDelayMs);
-
-                await Task.Delay(CurrentCaptureRateMs == 0
-                    ? 2
-                    : CurrentCaptureRateMs / 2); // Try and wait for a capture refresh
-                currentKey.MaxWaitTime = 6000;
-                var currentMs = DateTime.Now.AddMilliseconds(currentKey.MaxWaitTime);
-                var anticipateWait = currentKey.MaxWaitTime;
-
-
-                // Wait time may be out of sync here.  this re-syncs the wait time.
-                while ((currentMs >= DateTime.Now && currentKey.MaxWaitTime >= 5000) && ActivationKeyPressed)
+                if (currentKey.Alt)
                 {
-                    await Task.Delay(16);
-                    currentKey.MaxWaitTime = _currentImageRegions.FirstImageRegions.WaitTime;
+                    _platform.Input.TrySendAltKey(true); altDown = true;
+                }
+                else
+                {
+                    // See Notes on CTRL.
+                    _platform.Input.TrySendAltKey(false);
+                }
+
+                if (currentKey.Shift)
+                {
+                    _platform.Input.TrySendShiftKey(true); shiftDown = true;
+                }
+                else
+                {
+                    // See Notes on CTRL.
+                    _platform.Input.TrySendShiftKey(false);
                 }
 
 
-                while (currentMs >= DateTime.Now && currentKey.MaxWaitTime >= anticipateWait && ActivationKeyPressed)
-                {
-                    await Task.Delay(16);
-                    currentKey.MaxWaitTime = _currentImageRegions.FirstImageRegions.WaitTime;
+                // Press the command Key Down
+                _platform.Input.TrySendKey(vkCode, true);
+                keyDown = true;
 
-                    if (currentKey.MaxWaitTime <= 250)
+
+                // CTRL and ALT do not need to be held down just only pressed initially for the command to be interpreted correctly
+                if (currentKey.Ctrl)
+                {
+                    _platform.Input.TrySendCtrlKey(false); ctrlDown = false;
+                }
+
+                if (currentKey.Alt)
+                {
+                    _platform.Input.TrySendAltKey(false);
+                    altDown = false;
+                }
+
+                if (currentKey.Shift)
+                {
+                    _platform.Input.TrySendShiftKey(false); shiftDown = false;
+                }
+
+                // Add the keypress delay while monitoring that the activation key is still pressed (allows interrupting the delay)
+                // Note:  There are 10000 ticks in a millisecond
+
+                if (_keyPressMode)
+                {
+                    // This is the actual time we hold the key down.  This is used in keypress mode and Key hold mode when it is monitoring.
+                    //await Task.Delay((int)avgDelay/2);
+
+                    currentKey.MaxWaitTime = 6000;
+
+                    var anticipateWait = _currentImageRegions.FirstImageRegions.WaitTime + _currentImageRegions.FirstImageRegions.GcdTime;
+
+
+                    // Wait time may be out of sync here.  this re-syncs the wait time.
+    
+                    while (( anticipateWait >= avgDelay) && ActivationKeyPressed)
                     {
-                        goto allDone;
+                        await Task.Delay(16).ConfigureAwait(false);
+                        anticipateWait = _currentImageRegions.FirstImageRegions.WaitTime +  _currentImageRegions.FirstImageRegions.GcdTime;
+            
                     }
+
+
+
+                    while ((int)avgDelay < anticipateWait    && ActivationKeyPressed)
+                    {
+                        await Task.Delay(16).ConfigureAwait(false);;
+ 
+                        anticipateWait = _currentImageRegions.FirstImageRegions.WaitTime + _currentImageRegions.FirstImageRegions.GcdTime;
+                        // if (currentKey.MaxWaitTime <= avgDelay)
+                        // {
+                        //     break;
+                        // }
+                    }
+                } else
+
+                    // If where not watching for when things time out, we insert a hard delay
+                    // This is no longer need as were putting a hard pause above
+                {
+                    // add some randomness to the keypress rate,  just in case of throttling for evenly repeated times
+                    await Task.Delay(Random.Shared.Next() % 50 + CurrentKeyDownDelayMs);
                 }
+
+              
             }
-
-
-            // If where not watching for when things time out, we insert a hard delay
-            // This is no longer need as were putting a hard pause above
-            if (!_keyPressMode)
+            finally
             {
-                // add some randomness to the keypress rate,  just in case of throttling for evenly repeated times
-                await Task.Delay(Random.Shared.Next() % 50 + CurrentKeyDownDelayMs);
+
+                if (keyDown) _platform!.Input.TrySendKey(vkCode, false);
+                // always release modifiers if we put them down and they just so happen to be down still.  
+                if (ctrlDown) _platform!.Input.TrySendCtrlKey(false);
+                if (altDown) _platform!.Input.TrySendAltKey(false);
+                if (shiftDown) _platform!.Input.TrySendShiftKey(false);
+                ExitProcessingKey();
             }
-
-            allDone:
-            _platform.Input.TrySendKey(vkCode, false);
-            _processingKey = false;
-        
-
     }
 
 
@@ -464,45 +542,44 @@ public partial class MainWindow : Avalonia.Controls.Window
 
     private async Task ProcessBarCodeKey()
     {
-
-
-        if (!ActivationKeyPressed)
+        if (!TryEnterBarcodeProcessing()) return;
+ 
+        try
         {
-            return;
-        }
-        
+            if (!IsRunning) return;
+            if (!ActivationKeyPressed) return;
+          
+            #region WaitFor a Key to show up
 
-        #region WaitFor a Key to show up
-
-        // let's just hang out here till we have a key
-        var currentD = DateTime.Now;
-        var keyToSendFirst = _currentKeyToSend;
-        while (String.IsNullOrEmpty(keyToSendFirst) && IsRunning && ActivationKeyPressed)
-        {
-            await Task.Delay(5);
-            keyToSendFirst = _currentKeyToSend;
-            if (currentD.AddMilliseconds(15000) < DateTime.Now)
+            // let's just hang out here till we have a key
+            var currentD = DateTime.Now;
+            var keyToSendFirst = _currentKeyToSend;
+          
+            while (String.IsNullOrEmpty(keyToSendFirst) && IsRunning && ActivationKeyPressed)
             {
-                goto allDone;
+                await Task.Delay(5).ConfigureAwait(false);
+                keyToSendFirst = _currentKeyToSend;
+            
+                if (currentD.AddMilliseconds(15000) < DateTime.Now) return;
             }
+
+
+            if (!VirtualKeyCodeMapper.HasKey(keyToSendFirst)) return;
+            
+
+
+            #endregion
+
+
+            await ProcessKey(new KeyCommand(keyToSendFirst, _currentImageRegions.FirstImageRegions.WaitTime,
+                _currentImageRegions.FirstImageRegions.HasTarget));
         }
-
-
-        if (!VirtualKeyCodeMapper.HasKey(keyToSendFirst))
+        finally
         {
-            goto allDone;
+            ExitBarcodeProcessing();
         }
 
-
-        #endregion
-
-
-        await ProcessKey(new KeyCommand(keyToSendFirst, _currentImageRegions.FirstImageRegions.WaitTime,
-            _currentImageRegions.FirstImageRegions.HasTarget));
-
-        allDone:
-
-        await Task.Delay(1);
+        await Task.Delay(1).ConfigureAwait(false);
 
     }
 
@@ -539,6 +616,7 @@ public partial class MainWindow : Avalonia.Controls.Window
         AppSettings = SettingsManager.LoadSettings();
 
         CbUseGse.IsChecked = AppSettings.UseGse;
+        UseGse =  AppSettings.UseGse;
         CbGseKeyBindSt.SelectedValue = CbGseKeyBindSt.Items[AppSettings.GseStKey];
         CbGseKeyBindMt.SelectedValue = CbGseKeyBindMt.Items[AppSettings.GseMtKey];
         
@@ -547,7 +625,9 @@ public partial class MainWindow : Avalonia.Controls.Window
         TbKeyRateMs.Text = AppSettings.KeyPressSpeedMs.ToString();
         SliderKeyRateMs.Value = AppSettings.KeyPressSpeedMs;
         CbPushRelease.IsChecked = AppSettings.PushAndRelease;
+        _keyPressMode = AppSettings.PushAndRelease;
         CbStayOnTop.IsChecked = AppSettings.KeepOnTop;
+        
             
 
 
@@ -620,9 +700,10 @@ public partial class MainWindow : Avalonia.Controls.Window
     {
         
         if (obj.KeyState == HotkeyState.PRESSED)
-            ActivationKeyPressed = true;
+            SetActivationKeyPressed(true);
         if (obj.KeyState == HotkeyState.RELEASED)
-            ActivationKeyPressed = false;
+            SetActivationKeyPressed(false);
+
     }
     
     private void HotkeysOnCtrlChangedAsync(HotkeyActionResult obj)
@@ -711,6 +792,7 @@ public partial class MainWindow : Avalonia.Controls.Window
                  _currentImageRegions.FirstImageRegions.BottomCenter = capResult.regions.BottomCenter;
                  _currentImageRegions.FirstImageRegions.HasTarget = capResult.regions.HasTarget;
                  _currentImageRegions.FirstImageRegions.WaitTime = capResult.regions.WaitTime;
+                 _currentImageRegions.FirstImageRegions.GcdTime = capResult.regions.GcdTime;
                  _currentKeyToSend = capResult.CurrentKeyToSend;
                  if (capResult.BarcodeFound)
                  {
@@ -721,6 +803,8 @@ public partial class MainWindow : Avalonia.Controls.Window
                      _lastDetectedTime = capResult.WaitTime.ToString();
                      LDetectedValue.Text = _lastDetectedValue;
                      LDetectedTime.Text = _lastDetectedTime;
+                     LSkew.Text = ((int)avgDelay).ToString()+"MS";
+                     LGcdWait.Text = capResult.regions.GcdTime.ToString();
                  }
                  else
                  {
@@ -730,6 +814,8 @@ public partial class MainWindow : Avalonia.Controls.Window
                      // No need to panic the keysend with N/A.
                      LDetectedValue.Text = _lastDetectedValue;
                      LDetectedTime.Text = _lastDetectedTime;
+                     LSkew.Text = ((int)avgDelay).ToString()+"MS";
+                     LGcdWait.Text = "0";
                  }
              });
              // swap the values and dispose of the old value.  thread-safe
@@ -805,11 +891,13 @@ public partial class MainWindow : Avalonia.Controls.Window
                 Volatile.Write(ref _isRunning, 0); // stop
                 _platform!.ScreenCapture.EnableRegion = false;
                 await _continuousScreenCaptureProcess.StopCaptureAsync(); 
-                
+                _currentKeyToSend = string.Empty;
+                SetActivationKeyPressed(false);
                 await StopBackgroundLoopsAsync();
                 _platform!.Hotkeys.Stop();
                 BStart.IsEnabled = true;
                 BStop.IsEnabled = false;
+                _barCodeFound = false;
 
 
             }
@@ -929,7 +1017,7 @@ public partial class MainWindow : Avalonia.Controls.Window
 
     private void cbPushRelease_IsCheckedChanged(object? sender, RoutedEventArgs e)
     {
-        if (Initializing) return;
+       // if (Initializing) return;
         if (IsDesigner) return;
         if ((e.Source as CheckBox)!.IsChecked == true)
         {
@@ -1048,8 +1136,8 @@ public partial class MainWindow : Avalonia.Controls.Window
         
         
     private bool _started;
-    private string _lastDetectedValue;
-    private string _lastDetectedTime;
+    private string _lastDetectedValue  = "N/A";
+    private string _lastDetectedTime  = "N/A";
 
 
     public MainWindow()

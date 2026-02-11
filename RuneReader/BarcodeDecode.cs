@@ -39,6 +39,12 @@ namespace RuneReader
             public bool holder1 { get; set; } = false;  // this will get renamed when I find a use for it.
             public bool holder2 { get; set; } = false; // this will get renamed when I find a use for it.
             public bool holder3 { get; set; } = false; // this will get renamed when I find a use for it.
+            public int TStampAddon { get; set; } = 0;
+            
+            public int TStampApp  { get; set; } = 0;
+
+            public int TDiff { get; set; } = 0;
+
         }
 
         public class BarcodeResultV2 : BarcodeResult
@@ -246,7 +252,16 @@ namespace RuneReader
             AutoRotate = false,
             Options = Hints
         };
-
+        static int NowMs10s() => (int)(Environment.TickCount64 % 10_000); // 0..9999
+        static int DiffWrap(int sent, int recv, int wrap)
+        {
+            int d = recv - sent;
+            int half = wrap / 2;
+            if (d >  half) d -= wrap;
+            if (d < -half) d += wrap;
+            return d; // ms
+        }
+        
         public static BarcodeResult DecodeBarcode(Mat imageMat)
         {
             BarcodeResult result = new BarcodeResult();
@@ -275,6 +290,7 @@ namespace RuneReader
 
                         if (item.StartsWith('B')) //Bit Encoded Values
                         {
+                           // var backToBase10 = FromBase36(item.Substring(1));
                             if (int.TryParse(item.Substring(1), out var ti))
                             {
                                 result.HasTarget = (ti & (1 << 0)) != 0;
@@ -288,6 +304,7 @@ namespace RuneReader
 
                         if (item.StartsWith('W')) //Time to wait (includes GCD, and Delay (Charge time and Channeled)
                         {
+                            //var backToBase10 = FromBase36(item.Substring(1));
                             if (int.TryParse(item.Substring(1), out var ti))
                             {
                                 result.WaitTime = ti;
@@ -296,11 +313,13 @@ namespace RuneReader
 
                         if (item.StartsWith('K')) // This is our encoded key value
                         {
-                            result.DecodedTextValue = DecodeTextValue(item.Substring(1));
+                            var backToBase10 = item.Substring(1);
+                            result.DecodedTextValue = DecodeTextValue(backToBase10.ToString());
                         }
 
                         if (item.StartsWith('D')) // Delay Time (Charge time and Channeled) 
                         {
+                            //var backToBase10 = FromBase36(item.Substring(1));
                             if (int.TryParse(item.Substring(1), out var ti))
                             {
                                 result.Delay = ti;
@@ -309,6 +328,7 @@ namespace RuneReader
 
                         if (item.StartsWith('G')) // GCD time
                         {
+                            //var backToBase10 = FromBase36(item.Substring(1));
                             if (int.TryParse(item.Substring(1), out var ti))
                             {
                                 result.GCD = ti;
@@ -317,6 +337,7 @@ namespace RuneReader
 
                         if (item.StartsWith('A')) //Our SpellID
                         {
+                            //var backToBase10 = FromBase36(item.Substring(1));
                             if (int.TryParse(item.Substring(1), out var ti))
                             {
                                 result.SpellID = ti;
@@ -325,11 +346,24 @@ namespace RuneReader
 
                         if (item.StartsWith('L')) //Current Latency
                         {
+                            //var backToBase10 = FromBase36(item.Substring(1));
                             if (int.TryParse(item.Substring(1), out var ti))
                             {
                                 result.Latency = ti;
                             }
                         }
+
+                        if (item.StartsWith('T')) //Current Latency
+                        {
+                            //var backToBase10 = FromBase36(item.Substring(1));
+                            if (int.TryParse(item.Substring(1), out var ti))
+                            {
+                                result.TStampAddon = ti;
+                                result.TStampApp =  NowMs10s();
+                                result.TDiff = DiffWrap(result.TStampAddon, result.TStampApp, 10_000);
+                            }
+                        }
+
                     }
 
                     result.BarcodeFound = true;
@@ -343,7 +377,10 @@ namespace RuneReader
                 result.BarcodeFound = false;
                 result.HasTarget = false;
                 result.InCombat = false;
-           
+                result.TStampAddon = 0;
+                result.TStampApp =  0;
+                result.TDiff = 0;
+
             }
 
             return result;

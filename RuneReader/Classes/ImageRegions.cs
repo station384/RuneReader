@@ -1,25 +1,26 @@
 ﻿namespace RuneReader.Classes;
 
-public struct DetectionRegions
+public class DetectionRegions
 {
-    public bool TopLeft = false;
-    public bool TopRight = false;
-    public bool BottomLeft = false;
-    public bool BottomCenter = false;
-    public int WaitTime = 0;
-    public bool HasTarget { get; internal set; }
-    public bool HasMultiTarget { get; internal set; }
-
-    public DetectionRegions()
+    public bool TopLeft { get; set; }= false;
+    public bool TopRight { get; set; }= false;
+    public bool BottomLeft { get; set; }= false;
+    public bool BottomCenter { get; set; }= false;
+    public int WaitTime
     {
-        TopLeft = false;
-        TopRight = false;
-        BottomLeft = false;
-        BottomCenter = false;
-        WaitTime = 0;
-        HasTarget = false;
-        HasMultiTarget = false;
-    }
+        get;
+        set;
+    } = 0;
+
+    public bool HasTarget { get; internal set; } = false;
+    public bool HasMultiTarget { get; internal set; } = false;
+    public int GcdTime
+    {
+        get;
+        set;
+    } = 0;
+
+
 
 
 }

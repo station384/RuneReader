@@ -25,6 +25,8 @@
         <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="12">
           <TextBlock x:Name="LDetectedValue" Width="50" Margin="5" />
           <TextBlock x:Name="LDetectedTime" Width="50" Margin="5" />
+          <TextBlock x:Name="LGcdWait"  Width="50" Margin="5" />
+          <TextBlock x:Name="LSkew" Width="50" Margin="5" />
         </StackPanel>
       </StackPanel>
 
