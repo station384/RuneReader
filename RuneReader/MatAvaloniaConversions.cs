@@ -17,7 +17,8 @@ public static class MatAvaloniaExtensions
     public static unsafe WriteableBitmap ToWriteableBitmap(this Mat mat, WriteableBitmap? reuse = null)
     {
         if (mat.Empty()) throw new ArgumentException("Mat is empty.");
-
+        if (mat.IsDisposed) return 
+            new WriteableBitmap(new PixelSize(80,80),Vector.One);
         // Normalize to BGRA (CV_8UC4) for display
         Mat? temp = null;
         Mat bgra = mat;

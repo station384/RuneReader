@@ -252,7 +252,7 @@ namespace RuneReader
             AutoRotate = false,
             Options = Hints
         };
-        static int NowMs10s() => (int)(Environment.TickCount64 % 10_000); // 0..9999
+        static int NowMsXs() => (int)(Environment.TickCount64 % 999); // -99..999
         static int DiffWrap(int sent, int recv, int wrap)
         {
             int d = recv - sent;
@@ -270,9 +270,15 @@ namespace RuneReader
             ZXing.Result decodeResult = null;
 
             var luminanceSource = new RuneReader.Classes.OpenCV.OpenCvLuminanceSource(imageMat);
-
-            decodeResult = BarcodeReaderEngine.Decode(luminanceSource);
-
+            try
+            {
+                decodeResult = BarcodeReaderEngine.Decode(luminanceSource);
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e.Message);
+            }
+          
             if (decodeResult != null)
             {
                 var items = decodeResult.Text.Split('/');
@@ -280,14 +286,6 @@ namespace RuneReader
                 {
                     foreach (var item in items)
                     {
-                        // if (item.StartsWith('1') || item.StartsWith('0'))
-                        // {
-                        //     if (byte.TryParse(item, out var ti))
-                        //     {
-                        //         result.mode = ti;
-                        //     }
-                        // }
-
                         if (item.StartsWith('B')) //Bit Encoded Values
                         {
                            // var backToBase10 = FromBase36(item.Substring(1));
@@ -359,8 +357,8 @@ namespace RuneReader
                             if (int.TryParse(item.Substring(1), out var ti))
                             {
                                 result.TStampAddon = ti;
-                                result.TStampApp =  NowMs10s();
-                                result.TDiff = DiffWrap(result.TStampAddon, result.TStampApp, 10_000);
+                                result.TStampApp =  NowMsXs();
+                                result.TDiff = DiffWrap(result.TStampAddon, result.TStampApp, 999);
                             }
                         }
 
@@ -391,7 +389,7 @@ namespace RuneReader
             var result = new BarcodeFindResult();
 
             // Convert the image to grayscale.
-             Mat srcGray = new Mat();
+            Mat srcGray = new Mat();
             try
             {
                 Cv2.CvtColor(imageMat, srcGray, ColorConversionCodes.BGR2GRAY);

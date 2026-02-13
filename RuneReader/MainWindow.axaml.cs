@@ -210,6 +210,8 @@ public partial class MainWindow : Avalonia.Controls.Window
 
     private void UpdatePreview(Mat frame)
     {
+        if (frame.IsDisposed || frame.Data == IntPtr.Zero) return;
+        
         _frameBitmap = frame.ToWriteableBitmap(_frameBitmap);
         if (Dispatcher.UIThread.CheckAccess())
             Apply();
@@ -257,11 +259,12 @@ public partial class MainWindow : Avalonia.Controls.Window
         if (barcodeResult.BarcodeFound)
         {
             // treat negative as jitter/lead and only care about lag:
-            barcodeResult.TDiff = Math.Max(barcodeResult.TDiff, 0);
+            barcodeResult.TDiff = Math.Abs(barcodeResult.TDiff);
             // Clamp to something sane 
-            double x = Clamp(barcodeResult.TDiff, 0, 2000);
+            double x = Clamp(barcodeResult.TDiff, 0, 999);
 
-            ewma.Add(x); 
+            ewma.Add(x);
+
             avgDelay = ewma.ValueMs;
             
             result = new ProcessImageResult
@@ -363,10 +366,19 @@ public partial class MainWindow : Avalonia.Controls.Window
         }
     }
     
+
     private async Task ProcessKey(KeyCommand? currentKey)
     {
+      
+        int  CurrentDelay()
+        {
+            return (int)_currentImageRegions.FirstImageRegions.WaitTime + (int)_currentImageRegions.FirstImageRegions.GcdTime -
+                   (int)avgDelay;
+        }
 
+        
         bool keyDown = false;
+            
         bool ctrlDown = false, altDown = false, shiftDown = false;
         if (!TryEnterProcessingKey()) return;
         int vkCode = 0;
@@ -408,20 +420,24 @@ public partial class MainWindow : Avalonia.Controls.Window
                     currentKey.Key ==
                     "F4") // Somehow AF4 got through and killed wow.   so I want to Explicitly ignore it.  I will never allow ALT-F4
                     return;
-                
 
+                double avgDelayLocalized;
+            if (avgDelay < 100)
+                avgDelayLocalized = (100 - avgDelay) + avgDelay;
+            else
+                avgDelayLocalized = avgDelay;
 
                 
 
                 // Translate the char to the virtual Key Code
-                 vkCode = VirtualKeyCodeMapper.GetVirtualKeyCode(currentKey.Key);
+                vkCode = VirtualKeyCodeMapper.GetVirtualKeyCode(currentKey.Key);
 
-                // Wows Default Key behavior is to activate as soon as the key is pressed.   So lets make sure we do not press anything till we have a 0 wait…
-                // Pre-pressing is built into the addon calc  so we don't have to worry about command queuing here.
-                while (_currentImageRegions.FirstImageRegions.WaitTime + _currentImageRegions.FirstImageRegions.GcdTime  > avgDelay && ActivationKeyPressed)
-                {
-                    await Task.Delay(16).ConfigureAwait(false);
-                }
+                 // Wows Default Key behavior is to activate as soon as the key is pressed.   So lets make sure we do not press anything till we have a 0 wait…
+                 // Pre-pressing is built into the addon calc  so we don't have to worry about command queuing here.
+                 while ((CurrentDelay()  > avgDelayLocalized) && ActivationKeyPressed)
+                 {
+                     await Task.Delay(5).ConfigureAwait(false);
+                 }
 
                 // command is tied to CTRL or ALT So have to press them
                 if (currentKey.Ctrl)
@@ -485,34 +501,21 @@ public partial class MainWindow : Avalonia.Controls.Window
 
                 if (_keyPressMode)
                 {
-                    // This is the actual time we hold the key down.  This is used in keypress mode and Key hold mode when it is monitoring.
-                    //await Task.Delay((int)avgDelay/2);
-
-                    currentKey.MaxWaitTime = 6000;
-
-                    var anticipateWait = _currentImageRegions.FirstImageRegions.WaitTime + _currentImageRegions.FirstImageRegions.GcdTime;
-
-
+                    var anticipateWait = CurrentDelay() ;
+                    
                     // Wait time may be out of sync here.  this re-syncs the wait time.
-    
-                    while (( anticipateWait >= avgDelay) && ActivationKeyPressed)
+                    while ( anticipateWait >= avgDelayLocalized && ActivationKeyPressed)
                     {
-                        await Task.Delay(16).ConfigureAwait(false);
-                        anticipateWait = _currentImageRegions.FirstImageRegions.WaitTime +  _currentImageRegions.FirstImageRegions.GcdTime;
-            
+                        await Task.Delay(5).ConfigureAwait(false);
+                        anticipateWait = CurrentDelay();
                     }
 
 
 
                     while ((int)avgDelay < anticipateWait    && ActivationKeyPressed)
                     {
-                        await Task.Delay(16).ConfigureAwait(false);;
- 
-                        anticipateWait = _currentImageRegions.FirstImageRegions.WaitTime + _currentImageRegions.FirstImageRegions.GcdTime;
-                        // if (currentKey.MaxWaitTime <= avgDelay)
-                        // {
-                        //     break;
-                        // }
+                        await Task.Delay(16).ConfigureAwait(false);
+                        anticipateWait = CurrentDelay();
                     }
                 } else
 
@@ -808,7 +811,11 @@ public partial class MainWindow : Avalonia.Controls.Window
                  }
                  else
                  {
-                     UpdatePreview(_capRegionMat);
+                     if (!_capRegionMat.IsDisposed)
+                     {
+                         UpdatePreview(_capRegionMat);
+                     }
+
                      // Use our last values.
                      // Frame doubling or smoothing can cause the barcode to jitter.
                      // No need to panic the keysend with N/A.
