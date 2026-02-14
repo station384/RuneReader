@@ -1,6 +1,8 @@
+using System;
+
 namespace RuneReader.Classes.Platform;
 
-public interface IInputSender 
+public interface IInputSender : IDisposable
 {
     bool TrySendKey(int key, bool pressed);
     bool TrySendCtrlKey(bool pressed);

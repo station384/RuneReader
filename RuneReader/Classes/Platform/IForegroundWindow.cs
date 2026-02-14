@@ -2,7 +2,7 @@ using System;
 
 namespace RuneReader.Classes.Platform;
 
-public interface IForegroundWindow
+public interface IForegroundWindow : IDisposable
 {
     /// <summary>
     /// checks if the window exists

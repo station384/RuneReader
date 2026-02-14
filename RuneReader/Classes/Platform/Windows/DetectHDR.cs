@@ -1,11 +1,12 @@
-﻿using System;
+﻿#if WINDOWS
+using System;
 using System.Runtime.InteropServices;
 
 namespace RuneReader.Classes.Platform.Windows;
 
 public static class DetectHdr
 {
-#if WINDOWS
+
     // Method to check if HDR is enabled in windows
     private static bool IsWindowsHdrModeEnabled()
     {
@@ -52,25 +53,13 @@ public static class DetectHdr
         // Placeholder for actual implementation
         return IntPtr.Zero;
     }
-#endif
 
-#if LINUX
-    // todo: add a method that will return true or false depending on if HDR is enabled in Linux
-    private static bool IsLinuxHdrModeEnabled()
-    {
-        bool hdrEnabled = false;
-        return hdrEnabled;
-    }
-#endif
+
 
     public static bool HdrEnabled
     {
-#if WINDOWS
         get { return IsWindowsHdrModeEnabled(); }
-#endif
-
-#if LINUX
-        get { return IsWindowsHdrModeEnabled(); }
-#endif
+        get { return false; }
     }
 }
+#endif

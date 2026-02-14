@@ -1,3 +1,4 @@
+#if WINDOWS
 using System;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
@@ -184,3 +185,4 @@ public class WindowsGlobalHotkeys : IGlobalHotkeys
         _activationKey = activationKey;
     }
 }
+#endif

@@ -12,7 +12,7 @@ public static class PlatformFactory
 #if WINDOWS
         return new WindowsPlatformServices(activationKey);
 #elif LINUX
-        return new LinuxPlatformServices();
+        return new LinuxPlatformServices(activationKey);
 #else
         throw new PlatformNotSupportedException();
 #endif

@@ -73,18 +73,18 @@
     <Copyright>2026 Michael Sutton</Copyright>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="OpenCvSharp4" Version="4.11.0.20250507" />
-    <PackageReference Include="OpenCvSharp4.Extensions" Version="4.11.0.20250507" />
-    <PackageReference Include="OpenCvSharp4.official.runtime.linux-x64" Version="4.11.0.20250507" />
+    <PackageReference Include="OpenCvSharp4" Version="4.13.0.20260213" />
+    <PackageReference Include="OpenCvSharp4.Extensions" Version="4.13.0.20260213" />
 
     <!-- Runtime/native bindings -->
     <PackageReference Include="OpenCvSharp4.runtime.win" Version="4.11.0.20250507" Condition="'$(OS)'=='Windows_NT'" />
-    <PackageReference Include="OpenCvSharp4.unofficial.runtime.linux-x64" Version="4.10.0.20241108" Condition="'$(OS)'!='Windows_NT'" />
+    <PackageReference Include="OpenCvSharp4.unofficial.runtime.linux-x64" Version="4.10.0.20241108" />
 
     <!-- Screen capture -->
     <PackageReference Include="ScreenCapture.NET.DX11" Version="3.0.0" Condition="'$(OS)'=='Windows_NT'" />
     <PackageReference Include="ScreenCapture.NET.X11" Version="3.0.0" Condition="'$(OS)'!='Windows_NT'" />
     <PackageReference Include="System.Configuration.ConfigurationManager" Version="10.0.2" />
+    <PackageReference Include="Tmds.DBus" Version="0.90.3" />
 
     <PackageReference Include="ZXing.Net" Version="0.16.11" />
 
@@ -125,6 +125,7 @@
 
   <ItemGroup>
     <Folder Include="Classes\NativeBitmap\" />
+    <Folder Include="Classes\Platform\Linux\X11\" />
     <Folder Include="Properties\PublishProfiles\" />
   </ItemGroup>
 

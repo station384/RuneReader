@@ -1,3 +1,4 @@
+#if WINDOWS
 using System;
 
 namespace RuneReader.Classes.Platform.Windows
@@ -17,3 +18,4 @@ namespace RuneReader.Classes.Platform.Windows
         }
     }
 }
+#endif
