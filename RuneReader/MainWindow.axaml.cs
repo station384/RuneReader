@@ -113,8 +113,10 @@ public partial class MainWindow : Avalonia.Controls.Window
             _loopsCts = new CancellationTokenSource();
             var token = _loopsCts.Token;
 
+            #if WINDOWS
             _keyLoopTask = RunKeyLoopAsync(token);
             _wowMonitorTask = RunWowMonitorLoopAsync(token);
+            #endif            
             _barcodeMonitorTask = RunBarcodeMonitorLoopAsync(token);
     }
     
@@ -602,11 +604,12 @@ public partial class MainWindow : Avalonia.Controls.Window
         }
 
         _platform = PlatformFactory.Create(activationKey);
+#if WINDOWS
         _platform.Hotkeys.ActivateKeyChangedAsync += HotkeysOnActivateKeyChangedAsync;
         _platform.Hotkeys.ShiftChangedAsync += HotkeysOnShiftChangedAsync;
         _platform.Hotkeys.CtrlChangedAsync += HotkeysOnCtrlChangedAsync;
-        _platform.Hotkeys.AltChangedAsync += HotkeysOnAltChangedAsync;
-        
+        _platform.Hotkeys.AltChangedAsync += HotkeysOnAltChangedAsync; 
+#endif
         
     }
 
@@ -663,9 +666,11 @@ public partial class MainWindow : Avalonia.Controls.Window
 
         InitializePlatform(ProcessActivateKey);
         _platform!.ScreenCapture.CaptureRegion = _capRegion;
+        _platform!.ScreenCapture.EnableFullScreen = false;
         _platform!.ScreenCapture.EnableRegion = false;
-
+#if WINDOWS
         _platform!.ForegroundWindow.SetWindowToFind("World of Warcraft");
+#endif        
         _platform!.ScreenCapture.OnRegionUpdated += ScreenCaptureOnRegionUpdated;
         _platform!.ScreenCapture.OnFullScreenUpdated += ScreenCaptureOnFullScreenUpdated;
 
@@ -1126,8 +1131,12 @@ public partial class MainWindow : Avalonia.Controls.Window
             _currentKeyToSend = "";
             _platform!.ScreenCapture.EnableRegion = true;
             _continuousScreenCaptureProcess.StartCapture();
+            #if WINDOWS
+            
             _platform!.Hotkeys.Start();
+        #endif          
             StartBackgroundLoops();
+
             BStart.IsEnabled = false;
             BStop.IsEnabled = true;
             Volatile.Write(ref _isRunning, 1); // start

@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
@@ -127,6 +128,10 @@ public sealed class PipeWireWaylandCaptureProvider : IScreenCaptureProvider
             var started = PipeWireNative.pw_thread_loop_start(_loop);
             if (started < 0)
                 throw new InvalidOperationException($"pw_thread_loop_start failed rc={started}");
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine("Exception: "+ ex.Message);
         }
         finally
         {

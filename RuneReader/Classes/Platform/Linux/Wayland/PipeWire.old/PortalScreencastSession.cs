@@ -1,9 +1,11 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
 using Tmds.DBus;
+
 
 namespace RuneReader.Classes.Platform.Linux.Wayland.PipeWire;
 
@@ -13,17 +15,25 @@ public sealed class PortalScreencastSession : IAsyncDisposable
     private readonly IPortal _portal;
     private readonly IProperties _portalProps;
 
-    private ObjectPath? _sessionPath;
-    private ObjectPath? _requestPath;
+    
+    private Tmds.DBus.ObjectPath? _sessionPath;
+    private Tmds.DBus.ObjectPath? _requestPath;
 
-    public sealed record Result(SafeHandle PipeWireFd, uint NodeId, int Width, int Height);
+    public sealed record Result( SafeHandle PipeWireFd, uint NodeId, int Width, int Height);
 
     public PortalScreencastSession()
     {
-        _bus = new Connection(Address.Session);
-        _portal = _bus.CreateProxy<IPortal>("org.freedesktop.portal.Desktop", "/org/freedesktop/portal/desktop");
-        _portalProps =
-            _bus.CreateProxy<IProperties>("org.freedesktop.portal.Desktop", "/org/freedesktop/portal/desktop");
+        _bus = new Tmds.DBus.Connection(Tmds.DBus.Protocol.Address.Session);
+        try
+        {
+            _portal = _bus.CreateProxy<IPortal>("org.freedesktop.portal.Desktop", "/org/freedesktop/portal/desktop");
+            _portalProps =
+                _bus.CreateProxy<IProperties>("org.freedesktop.portal.Desktop", "/org/freedesktop/portal/desktop");
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine(ex.Message);
+        }
     }
 
     public async Task<Result> StartAsync(CancellationToken ct)

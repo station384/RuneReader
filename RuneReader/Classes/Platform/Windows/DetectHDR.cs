@@ -59,7 +59,6 @@ public static class DetectHdr
     public static bool HdrEnabled
     {
         get { return IsWindowsHdrModeEnabled(); }
-        get { return false; }
     }
 }
 #endif

@@ -97,6 +97,7 @@
 
   <ItemGroup>
     <None Include="..\.editorconfig" Link=".editorconfig" />
+    <None Remove="Classes\Platform\Linux\Wayland\PipeWire.old\**" />
   </ItemGroup>
 
   <ItemGroup>
@@ -110,6 +111,7 @@
       <AutoGen>True</AutoGen>
       <DependentUpon>Settings.settings</DependentUpon>
     </Compile>
+    <Compile Remove="Classes\Platform\Linux\Wayland\PipeWire.old\**" />
   </ItemGroup>
 
   <ItemGroup>
@@ -134,6 +136,7 @@
       <Generator>ResXFileCodeGenerator</Generator>
       <LastGenOutput>Resources.Designer.cs</LastGenOutput>
     </EmbeddedResource>
+    <EmbeddedResource Remove="Classes\Platform\Linux\Wayland\PipeWire.old\**" />
   </ItemGroup>
 
   <!--<ItemGroup>
@@ -151,6 +154,15 @@
 
   <ItemGroup>
     <AvaloniaResource Remove="Icons\RuneReader_Icon.ico" />
+    <AvaloniaResource Remove="Classes\Platform\Linux\Wayland\PipeWire.old\**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <AvaloniaXaml Remove="Classes\Platform\Linux\Wayland\PipeWire.old\**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <AdditionalFiles Remove="Classes\Platform\Linux\Wayland\PipeWire.old\**" />
   </ItemGroup>
 
 </Project>

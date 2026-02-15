@@ -48,6 +48,8 @@ cmake -G Ninja \
 ninja
 ninja install
 ```
+
+Original build list
 ```
 Old build option
 - D BUILD_LIST=core,imgproc,imgcodecs,videoio,objdetect \
@@ -64,7 +66,7 @@ APP_NATIVE=~/src/RuneReader/runtimes/linux-x64/native
 mkdir -p "$APP_NATIVE"
 ```
 
-Copy your extern:
+Copy you're extern:
 ``` bash
 cp -v ~/build/opencvsharp/src/OpenCvSharpExtern/build/*.so "$APP_NATIVE/"
 ```
