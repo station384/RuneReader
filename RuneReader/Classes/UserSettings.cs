@@ -43,73 +43,81 @@ public class UserSettings
 
 
 }
-
 public static class SettingsManager
 {
-    // This will need to be updated I think for linux.
-    private static readonly string SettingsFilePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "RuneReaderSettings.json");
+    private const string AppName = "RuneReader";
+    private const string SettingsFileName = "settings.json";
+
     private static readonly JsonSerializerOptions JsonSaveOptions = new() { WriteIndented = true };
-    public static async Task<UserSettings?> LoadSettingsAsync()
+
+    private static string SettingsFilePath => Path.Combine(GetConfigDirectory(), SettingsFileName);
+
+    private static string GetConfigDirectory()
     {
         try
         {
-            if (File.Exists(SettingsFilePath))
+            if (OperatingSystem.IsLinux())
             {
-                await using FileStream fs = File.OpenRead(SettingsFilePath);
-                return await JsonSerializer.DeserializeAsync<UserSettings>(fs);
+                // Prefer XDG_CONFIG_HOME, else ~/.config
+                var xdg = Environment.GetEnvironmentVariable("XDG_CONFIG_HOME");
+                if (!string.IsNullOrWhiteSpace(xdg))
+                    return Path.Combine(xdg, AppName);
+
+                var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+                return Path.Combine(home, ".config", AppName);
             }
+
+            // Windows + macOS default behavior is fine here:
+            // Windows: %AppData%
+            // macOS: ~/Library/Application Support
+            var baseDir = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+
+            // If baseDir is empty for some reason, fall back to user profile
+            if (string.IsNullOrWhiteSpace(baseDir))
+                baseDir = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+
+            return Path.Combine(baseDir, AppName);
         }
-        catch (Exception ex)
+        catch
         {
-            Debug.WriteLine("Error reading settings: " + ex);
+            // Last-resort fallback to current directory (not ideal, but prevents "nothing saved")
+            return Path.Combine(AppContext.BaseDirectory, AppName);
         }
-        // Return default settings if file doesn't exist or an error occurs.
-        return new UserSettings();
     }
 
     public static UserSettings LoadSettings()
     {
         try
         {
-            if (File.Exists(SettingsFilePath))
-            {
-                using FileStream fs = File.OpenRead(SettingsFilePath);
-                return JsonSerializer.Deserialize<UserSettings>(fs)!;
-            }
+            var path = SettingsFilePath;
+            if (!File.Exists(path))
+                return new UserSettings();
+
+            var json = File.ReadAllText(path);
+            return JsonSerializer.Deserialize<UserSettings>(json) ?? new UserSettings();
         }
         catch (Exception ex)
         {
-            Debug.WriteLine("Error reading settings: " + ex);
+            Debug.WriteLine($"Error reading settings from '{SettingsFilePath}': {ex}");
+            return new UserSettings();
         }
-        // Return default settings if file doesn't exist or an error occurs.
-        return new UserSettings();
     }
 
-
-
-
-    public static async Task SaveSettingsAsync(UserSettings settings)
+    public static async Task<UserSettings> LoadSettingsAsync()
     {
         try
         {
-            // Optionally create the file's directory if it doesn't exist.
-            var dir = Path.GetDirectoryName(SettingsFilePath);
-            if (dir == null)
-            {
-                throw new DirectoryNotFoundException();
-            }
-            
-            if (!Directory.Exists(dir))
-            {
-                Directory.CreateDirectory(dir);
-            }
+            var path = SettingsFilePath;
+            if (!File.Exists(path))
+                return new UserSettings();
 
-            await using FileStream fs = File.Create(SettingsFilePath);
-            await JsonSerializer.SerializeAsync(fs, settings, JsonSaveOptions);
+            await using var fs = File.OpenRead(path);
+            return (await JsonSerializer.DeserializeAsync<UserSettings>(fs)) ?? new UserSettings();
         }
         catch (Exception ex)
         {
-            Debug.WriteLine("Error saving settings: " + ex);
+            Debug.WriteLine($"Error reading settings from '{SettingsFilePath}': {ex}");
+            return new UserSettings();
         }
     }
 
@@ -117,23 +125,48 @@ public static class SettingsManager
     {
         try
         {
-            // Optionally create the file's directory if it doesn't exist.
-            var dir = Path.GetDirectoryName(SettingsFilePath);
-            if (dir == null)
-            {
-                throw new DirectoryNotFoundException();
-            }
-            if (!Directory.Exists(dir))
-            {
-                Directory.CreateDirectory(dir);
-            }
+            var dir = Path.GetDirectoryName(SettingsFilePath)!;
+            Directory.CreateDirectory(dir);
 
-            using FileStream fs = File.Create(SettingsFilePath);
-            JsonSerializer.Serialize(fs, settings, JsonSaveOptions);
+            var tmp = SettingsFilePath + ".tmp";
+            var json = JsonSerializer.Serialize(settings, JsonSaveOptions);
+
+            File.WriteAllText(tmp, json);
+
+            // Atomic-ish replace
+            if (File.Exists(SettingsFilePath))
+                File.Replace(tmp, SettingsFilePath, null);
+            else
+                File.Move(tmp, SettingsFilePath);
+
+            Debug.WriteLine($"Saved settings to '{SettingsFilePath}'");
         }
         catch (Exception ex)
         {
-            Debug.WriteLine("Error saving settings: " + ex);
+            Debug.WriteLine($"Error saving settings to '{SettingsFilePath}': {ex}");
+        }
+    }
+
+    public static async Task SaveSettingsAsync(UserSettings settings)
+    {
+        try
+        {
+            var dir = Path.GetDirectoryName(SettingsFilePath)!;
+            Directory.CreateDirectory(dir);
+
+            var tmp = SettingsFilePath + ".tmp";
+            await File.WriteAllTextAsync(tmp, JsonSerializer.Serialize(settings, JsonSaveOptions));
+
+            if (File.Exists(SettingsFilePath))
+                File.Replace(tmp, SettingsFilePath, null);
+            else
+                File.Move(tmp, SettingsFilePath);
+
+            Debug.WriteLine($"Saved settings to '{SettingsFilePath}'");
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"Error saving settings to '{SettingsFilePath}': {ex}");
         }
     }
 }
