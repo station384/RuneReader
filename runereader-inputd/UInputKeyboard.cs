@@ -1,8 +1,8 @@
 #nullable enable
 using System.Runtime.InteropServices;
-using static RuneReader.InputD.Sys;
 
-namespace RuneReader.InputD;
+
+namespace runereader_inputd;
 
 internal sealed class UInputKeyboard : IDisposable
 {

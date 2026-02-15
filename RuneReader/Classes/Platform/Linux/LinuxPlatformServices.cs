@@ -1,3 +1,4 @@
+#if LINUX
 using System;
 using System.Threading;
 using RuneReader.Classes.Platform.Linux.Wayland;
@@ -43,3 +44,4 @@ namespace RuneReader.Classes.Platform.Linux
         }
     }
 }
+#endif

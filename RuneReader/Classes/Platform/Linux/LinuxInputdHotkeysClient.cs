@@ -1,4 +1,4 @@
-#nullable enable
+#if LINUX
 using System;
 using System.Threading.Tasks;
 using RuneReader.Classes.Platform;
@@ -97,3 +97,4 @@ public sealed class RunereaderInputdHotkeysClient : IGlobalHotkeys
         if (async != null) _ = Task.Run(() => async(r));
     }
 }
+#endif

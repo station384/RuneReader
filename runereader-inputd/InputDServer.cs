@@ -2,7 +2,7 @@
 using System.Net.Sockets;
 using System.Text;
 
-namespace RuneReader.InputD;
+namespace runereader_inputd;
 
 internal sealed class InputDServer
 {

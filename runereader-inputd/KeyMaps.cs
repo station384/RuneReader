@@ -1,5 +1,5 @@
 #nullable enable
-namespace RuneReader.InputD;
+namespace runereader_inputd;
 
 internal static class KeyMaps
 {

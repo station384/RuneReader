@@ -2,7 +2,7 @@
 using System.Runtime.InteropServices;
 using System.Text;
 
-namespace RuneReader.InputD;
+namespace runereader_inputd;
 
 internal static class Sys
 {
