@@ -9,6 +9,7 @@ using OpenCvSharp;
 using Tmds.DBus;
 
 
+
 namespace RuneReader.Classes.Platform.Linux.Wayland
 {
     /// <summary>
@@ -37,7 +38,7 @@ namespace RuneReader.Classes.Platform.Linux.Wayland
         private Connection? _bus;
         private PortalScreenCastSession? _portal;
 
-        private uint _pwFd = uint.MinValue;
+        private SafeHandle _pwFd ;
         private uint _nodeId;
         private string? _sessionHandle;
 
@@ -45,14 +46,15 @@ namespace RuneReader.Classes.Platform.Linux.Wayland
         private nint _appsink = nint.Zero;
 
         // We keep a buffer for conversion to Mat to avoid re-allocating huge arrays repeatedly.
-        private byte[]? _frameBuffer;
+        //private byte[]? _frameBuffer;
         private int _frameStrideBytes;
         private int _frameWidth;
         private int _frameHeight;
+        private int _pwFdInt = -1;
 
         // Controls whether CaptureOnce blocks briefly or is purely opportunistic.
         // 0 = don't block; small positive = wait up to N ms for a sample.
-        public int PullSampleTimeoutMs { get; set; } = 0;
+        public int PullSampleTimeoutMs { get; set; } = 250;
 
         public WaylandScreenCaptureProvider(int screenNumber = 0)
         {
@@ -70,11 +72,13 @@ namespace RuneReader.Classes.Platform.Linux.Wayland
             if (_appsink == nint.Zero || _pipeline == nint.Zero)
                 return;
 
-            var timeoutNs = PullSampleTimeoutMs <= 0 ? 0UL : (ulong)PullSampleTimeoutMs * 1_000_000UL;
-            nint sample = timeoutNs == 0
-                ? GstNative.gst_app_sink_try_pull_sample(_appsink, 0)
-                : GstNative.gst_app_sink_try_pull_sample(_appsink, timeoutNs);
-
+            // var timeoutNs = PullSampleTimeoutMs <= 0 ? 0UL : (ulong)PullSampleTimeoutMs * 1_000_000UL;
+            // nint sample = timeoutNs == 0
+            //     ? GstNative.gst_app_sink_try_pull_sample(_appsink, 0)
+            //     : GstNative.gst_app_sink_try_pull_sample(_appsink, timeoutNs);
+            var timeoutNs = (ulong)Math.Max(10, PullSampleTimeoutMs) * 1_000_000UL;
+            nint sample = GstNative.gst_app_sink_try_pull_sample(_appsink, timeoutNs);
+            
             if (sample == nint.Zero)
                 return;
 
@@ -95,34 +99,41 @@ namespace RuneReader.Classes.Platform.Linux.Wayland
 
                 try
                 {
-                    int size = checked((int)map.size);
-                    EnsureFrameBuffer(size);
-
-                    Marshal.Copy(map.data, _frameBuffer!, 0, size);
-
-                    // Construct a Mat from the buffer (BGR)
-                    // IMPORTANT: We create consumer-owned Mats for events (Clone/Copy).
-                    using var full = new Mat(_frameHeight, _frameWidth, MatType.CV_8UC3);
-                    full.SetArray( _frameBuffer!);
-
-                    ScreenWidth = _frameWidth;
-                    ScreenHeight = _frameHeight;
-
-                    if (EnableFullScreen)
+                    unsafe
                     {
-                        // consumer-owned copy
-                        var outFull = full.Clone();
-                        OnFullScreenUpdated?.Invoke(outFull);
-                    }
+                        //int size = checked((int)map.size);
+                        //EnsureFrameBuffer(size);
 
-                    if (EnableRegion)
-                    {
-                        var r = NormalizeRegion(CaptureRegion, _frameWidth, _frameHeight);
-                        if (r.Width > 0 && r.Height > 0)
+                        //Marshal.Copy(map.data, _frameBuffer!, 0, size);
+
+                        // Construct a Mat from the buffer (BGR)
+                        // IMPORTANT: We create consumer-owned Mats for events (Clone/Copy).
+                        // using var full = new Mat(_frameHeight, _frameWidth, MatType.CV_8UC3);
+                        // full.SetArray( _frameBuffer!);
+
+                        using var full = new Mat(_frameHeight, _frameWidth, MatType.CV_8UC4);
+                        int bytes = _frameHeight * _frameStrideBytes;
+                        Buffer.MemoryCopy((void*)map.data, (void*)full.Data, bytes, bytes);
+                    
+                        ScreenWidth = _frameWidth;
+                        ScreenHeight = _frameHeight;
+
+                        if (EnableFullScreen)
                         {
-                            using var roi = new Mat(full, r);
-                            var outRegion = roi.Clone(); // consumer-owned
-                            OnRegionUpdated?.Invoke(outRegion);
+                            // consumer-owned copy
+                            var outFull = full.Clone();
+                            OnFullScreenUpdated?.Invoke(outFull);
+                        }
+
+                        if (EnableRegion)
+                        {
+                            var r = NormalizeRegion(CaptureRegion, _frameWidth, _frameHeight);
+                            if (r.Width > 0 && r.Height > 0)
+                            {
+                                using var roi = new Mat(full, r);
+                                var outRegion = roi.Clone(); // consumer-owned
+                                OnRegionUpdated?.Invoke(outRegion);
+                            }
                         }
                     }
                 }
@@ -160,6 +171,7 @@ namespace RuneReader.Classes.Platform.Linux.Wayland
             }
         }
 
+        
         private void StartPortalAndPipeline()
         {
             ThrowIfDisposed();
@@ -168,7 +180,11 @@ namespace RuneReader.Classes.Platform.Linux.Wayland
             // This triggers user permission picker.
             _portal ??= PortalScreenCastSession.CreateAndStartAsync(ScreenNumber).GetAwaiter().GetResult();
 
-            _pwFd = _portal.PipeWireFd;
+            _pwFd = _portal.PipeWireHandle;
+            int fdInt = _portal.PipeWireHandle.DangerousGetHandle().ToInt32();
+            Debug.WriteLine($"PipeWire fd int={fdInt}");
+            _pwFdInt = _pwFd.DangerousGetHandle().ToInt32();
+            
             _nodeId = _portal.NodeId;
             _sessionHandle = _portal.SessionHandle;
 
@@ -179,8 +195,8 @@ namespace RuneReader.Classes.Platform.Linux.Wayland
             // Note: "path" is used by pipewiresrc to select the node. For portal screencast, passing the numeric node id works.
             // We force BGR to avoid extra conversion later.
             string pipelineDesc =
-                $"pipewiresrc fd={_pwFd} path={_nodeId} do-timestamp=true ! " +
-                $"videoconvert ! video/x-raw,format=BGR ! " +
+                $"pipewiresrc fd={_pwFdInt} path={_nodeId} do-timestamp=true ! " +
+                $"videoconvert ! video/x-raw,format=BGRA ! " +
                 $"appsink name=sink emit-signals=false sync=false max-buffers=1 drop=true";
 
             nint err = nint.Zero;
@@ -226,11 +242,11 @@ namespace RuneReader.Classes.Platform.Linux.Wayland
             return true;
         }
 
-        private void EnsureFrameBuffer(int requiredSize)
-        {
-            if (_frameBuffer == null || _frameBuffer.Length < requiredSize)
-                _frameBuffer = new byte[requiredSize];
-        }
+        // private void EnsureFrameBuffer(int requiredSize)
+        // {
+        //     if (_frameBuffer == null || _frameBuffer.Length < requiredSize)
+        //         _frameBuffer = new byte[requiredSize];
+        // }
 
         private static OpenCvSharp.Rect NormalizeRegion(Rect r, int maxW, int maxH)
         {
@@ -290,16 +306,9 @@ namespace RuneReader.Classes.Platform.Linux.Wayland
             try { _portal?.Dispose(); } catch { /* ignore */ }
             _portal = null;
 
-            // Close fd if we own it
-            try
-            {
-                if (_pwFd > 0)
-                    close(_pwFd);
-            }
-            catch { /* ignore */ }
-            _pwFd = uint.MinValue;
 
-            _frameBuffer = null;
+
+            //_frameBuffer = null;
         }
 
         private void ThrowIfDisposed()
@@ -307,7 +316,7 @@ namespace RuneReader.Classes.Platform.Linux.Wayland
             if (_disposed) throw new ObjectDisposedException(nameof(WaylandScreenCaptureProvider));
         }
 
-        [DllImport("libc", SetLastError = true)]
-        private static extern int close(uint fd);
+        // [DllImport("libc", SetLastError = true)]
+        // private static extern int close(SafeHandle fd);
     }
 }

@@ -906,7 +906,8 @@ public partial class MainWindow : Avalonia.Controls.Window
                 _currentKeyToSend = string.Empty;
                 SetActivationKeyPressed(false);
                 await StopBackgroundLoopsAsync();
-                _platform!.Hotkeys.Stop();
+                if (_platform!.Hotkeys != null)
+                    _platform!.Hotkeys.Stop();
                 BStart.IsEnabled = true;
                 BStop.IsEnabled = false;
                 _barCodeFound = false;
@@ -1121,7 +1122,7 @@ public partial class MainWindow : Avalonia.Controls.Window
         }
     }
     
-    private void Button_Start_OnClick(object? sender, RoutedEventArgs e)
+    private async void Button_Start_OnClick(object? sender, RoutedEventArgs e)
     {
         if (IsDesigner) return;
         // Start the continuous capturing
@@ -1134,9 +1135,11 @@ public partial class MainWindow : Avalonia.Controls.Window
             #if WINDOWS
             
             _platform!.Hotkeys.Start();
-        #endif          
-            StartBackgroundLoops();
-
+        #endif
+            _ = Task.Run(async () =>
+            {
+                StartBackgroundLoops();
+            });
             BStart.IsEnabled = false;
             BStop.IsEnabled = true;
             Volatile.Write(ref _isRunning, 1); // start
