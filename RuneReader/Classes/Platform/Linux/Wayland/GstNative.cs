@@ -126,5 +126,16 @@ namespace RuneReader.Classes.Platform.Linux.Wayland
 
         [DllImport(GLibLib)]
         private static extern void g_error_free(nint error);
+        
+        internal const ulong GST_CLOCK_TIME_NONE = ulong.MaxValue;
+
+        [DllImport(GstLib)]
+        public static extern ulong gst_buffer_get_pts(nint buffer);
+
+        [DllImport(GstLib)]
+        public static extern ulong gst_buffer_get_dts(nint buffer);
     }
+    
+    
+    
 }

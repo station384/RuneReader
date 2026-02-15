@@ -167,53 +167,7 @@ namespace RuneReader.Classes.Platform.Linux.Wayland
             return new PortalScreenCastSession(bus, screenCast, sessionHandle, pwHandle, nodeId);
         }
 
-        // private static (uint nodeId, int width, int height) ParseFirstStream(object streamsObj)
-        // {
-        //     // Tmds.DBus will typically materialize complex variants as:
-        //     // object[] where each element is object[] representing (u, IDictionary<string, object>)
-        //     // We'll handle a few common shapes defensively.
-        //
-        //     // Expected: object[] streams
-        //     if (streamsObj is not object[] streams || streams.Length == 0)
-        //         throw new InvalidOperationException("Portal streams is empty or not an array.");
-        //
-        //     var stream0 = streams[0];
-        //
-        //     // Each stream: (u node_id, a{sv} props)
-        //     if (stream0 is object[] tuple && tuple.Length == 2)
-        //     {
-        //         uint nodeId = Convert.ToUInt32(tuple[0]);
-        //         var props = tuple[1] as IDictionary<string, object>;
-        //
-        //         int w = 0, h = 0;
-        //
-        //         // Known keys (depending on portal/compositor):
-        //         // "size" might be (ii) or int[] {w,h}
-        //         // Sometimes "width"/"height" exist.
-        //         if (props != null)
-        //         {
-        //             if (props.TryGetValue("size", out var sizeObj))
-        //             {
-        //                 if (sizeObj is object[] sz && sz.Length == 2)
-        //                 {
-        //                     w = Convert.ToInt32(sz[0]);
-        //                     h = Convert.ToInt32(sz[1]);
-        //                 }
-        //                 else if (sizeObj is int[] ia && ia.Length == 2)
-        //                 {
-        //                     w = ia[0]; h = ia[1];
-        //                 }
-        //             }
-        //
-        //             if (w == 0 && props.TryGetValue("width", out var wObj)) w = Convert.ToInt32(wObj);
-        //             if (h == 0 && props.TryGetValue("height", out var hObj)) h = Convert.ToInt32(hObj);
-        //         }
-        //
-        //         return (nodeId, w, h);
-        //     }
-        //
-        //     throw new InvalidOperationException("Unrecognized streams element shape.");
-        // }
+      
 private static object UnwrapVariant(object v)
 {
     // Tmds.DBus sometimes wraps values in Variant.

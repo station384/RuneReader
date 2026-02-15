@@ -816,6 +816,7 @@ public partial class MainWindow : Avalonia.Controls.Window
                  }
                  else
                  {
+                     //Cv2.ImShow("Error", _capRegionMat);
                      if (!_capRegionMat.IsDisposed)
                      {
                          UpdatePreview(_capRegionMat);
