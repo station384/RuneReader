@@ -76,6 +76,11 @@ namespace RuneReader.Classes.Platform.Windows
 
             return true;
         }
+
+        public void Dispose()
+        {
+  
+        }
     }
 }
 #endif

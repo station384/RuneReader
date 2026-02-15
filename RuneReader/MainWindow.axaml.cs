@@ -424,9 +424,9 @@ public partial class MainWindow : Avalonia.Controls.Window
                     return;
 
                 double avgDelayLocalized;
-            if (avgDelay < 100)
-                avgDelayLocalized = (100 - avgDelay) + avgDelay;
-            else
+            // if (avgDelay < 100)
+            //     avgDelayLocalized = (100 - avgDelay) + avgDelay;
+            // else
                 avgDelayLocalized = avgDelay;
 
                 
@@ -1200,7 +1200,7 @@ public partial class MainWindow : Avalonia.Controls.Window
         AppSettings.CapWidth = _capRegion.Width;
         AppSettings.CapHeight = _capRegion.Height;
 
-        await SettingsManager.SaveSettingsAsync(AppSettings);
+        SettingsManager.SaveSettings(AppSettings);
         await StopBackgroundLoopsAsync();
         
         if (_continuousScreenCaptureProcess!.IsCapturing)

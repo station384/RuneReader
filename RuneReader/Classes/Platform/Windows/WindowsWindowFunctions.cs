@@ -54,6 +54,11 @@ namespace RuneReader.Classes.Platform.Windows
             var result = WindowsApiCalls.IsCurrentWindowWithTitle(_windowTitle);
             return result;
         }
+
+        public void Dispose()
+        {
+           
+        }
     }
 }
 #endif
