@@ -16,9 +16,15 @@ namespace RuneReader.Classes.Platform.Linux
 
         public LinuxPlatformServices(string? s)
         {
-            Hotkeys = null;
-            ForegroundWindow = null;
-            Input = null;
+            var sock = Environment.GetEnvironmentVariable("RUNEREADER_INPUTD_SOCK") ?? "/run/runereader-inputd.sock";
+            var key  = Environment.GetEnvironmentVariable("RUNEREADER_INPUTD_KEY")  ?? "change-me";
+            //activationKey ??= "1";
+            Hotkeys = new RunereaderInputdHotkeysClient(activationKey, sock, s);
+            Input   = new RunereaderInputdInputSenderClient(sock, s);
+            
+            //Hotkeys = null;
+            ForegroundWindow = new NullForegroundWindow();;
+            //Input = null;
             ScreenCapture = new WaylandScreenCaptureProvider(0);
         }
         
@@ -29,6 +35,11 @@ namespace RuneReader.Classes.Platform.Linux
             ForegroundWindow.Dispose();
             Input.Dispose();
             ScreenCapture.Dispose();
+        }
+        internal sealed class NullForegroundWindow : IForegroundWindow, IDisposable
+        {
+            public void Dispose() { }
+            // add methods as required by your IForegroundWindow interface
         }
     }
 }
