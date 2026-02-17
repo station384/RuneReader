@@ -12,6 +12,7 @@ namespace RuneReader.Classes.Platform.Windows;
 public sealed class WindowsKeycodeMapper : IKeycodeMapper
 {
 //  This needs to be moved to platform unique.
+  
     private static readonly Dictionary<string, int> KeyMappingsExclude = new Dictionary<string, int>
     {
         {"1", (int)VirtualKeyCodes.VirtualKeyStates.VK_Alphanumeric_1},
@@ -107,37 +108,36 @@ public sealed class WindowsKeycodeMapper : IKeycodeMapper
         // ... add additional key mappings as needed
     };
 
-    public static int GetVirtualKeyCode(string key)
+
+    
+
+    public int GetKeyCode(string keyToken)
     {
-        if (key.Contains("N/A"))
+        if (keyToken.Contains("N/A"))
             return 0;
-        if (KeyMappings.TryGetValue(key, out int vkCode))
+        if (KeyMappings.TryGetValue(keyToken, out int vkCode))
         {
             return vkCode;
         }
-        throw new ArgumentException("Key not found.", nameof(key));
+        throw new ArgumentException("Key not found.", nameof(keyToken));
     }
 
-    // Finish this
-    // Need to return the key string that the found that where the value matches the vkCode
-    public static string GetKeyFromVKCode(int vkCode)
+    public string GetTokenFromKeyCode(int keyCode)
     {
         foreach (var kv in KeyMappings)
         {
-            if (kv.Value == vkCode)
+            if (kv.Value == keyCode)
                 return kv.Key;
         }
-        throw new ArgumentException("Key not found for vkCode " + vkCode, nameof(vkCode));
-    }
-    public static bool HasExcludeKey(string key)
-    {
-        return KeyMappingsExclude.ContainsKey(key);
+        throw new ArgumentException("Key not found for vkCode " + keyCode, nameof(keyCode));
     }
 
-    public static bool HasKey(string key)
-    {
-        return KeyMappings.ContainsKey(key);
-    }
+    public bool HasKey(string keyToken) => KeyMappings.ContainsKey(keyToken);
+    
+    public bool HasExcludeKey(string keyToken) => KeyMappingsExclude.ContainsKey(keyToken);
+    
+    public string[] AllowedActivationKeys => new[] { "1", "2", "3", "`", "Q", "E", "W" };
+    
 
 }
 #endif

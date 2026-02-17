@@ -56,6 +56,7 @@ public static class SettingsManager
     {
         try
         {
+            // todo this section needs to be moved to being a platform since this can be platform specific.
             if (OperatingSystem.IsLinux())
             {
                 // Prefer XDG_CONFIG_HOME, else ~/.config

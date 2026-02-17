@@ -1,9 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
-using static RuneReader.Classes.Utilities.VirtualKeyCodes;
 
 
-namespace RuneReader.Classes.Utilities;
+// todo this is redundant.   all this functionality can now be handled by the keycodemapper object.
+namespace RuneReader.Classes.Platform.Windows;
 
 public static class ActivationKeyCodeMapper
 {
@@ -11,13 +11,13 @@ public static class ActivationKeyCodeMapper
     // Virtual-Key codes: https://learn.microsoft.com/windows/win32/inputdev/virtual-key-codes
     private static readonly Dictionary<string, int> KeyMappings = new Dictionary<string, int>
     {
-        {"1", (int) VirtualKeyStates.VK_Alphanumeric_1 }, // VK_1
-        {"2", (int) VirtualKeyStates.VK_Alphanumeric_2 }, // VK_2
-        {"3", (int) VirtualKeyStates.VK_Alphanumeric_2  }, // VK_3
-        {"`", (int) VirtualKeyStates.VK_OEM_3 }, // VK_OEM_3 (grave/tilde)
-        {"Q", (int) VirtualKeyStates.VK_Q }, // VK_Q
-        {"W", (int) VirtualKeyStates.VK_W }, // VK_W
-        {"E", (int) VirtualKeyStates.VK_E }, // VK_E
+        {"1", (int) VirtualKeyCodes.VirtualKeyStates.VK_Alphanumeric_1 }, // VK_1
+        {"2", (int) VirtualKeyCodes.VirtualKeyStates.VK_Alphanumeric_2 }, // VK_2
+        {"3", (int) VirtualKeyCodes.VirtualKeyStates.VK_Alphanumeric_2  }, // VK_3
+        {"`", (int) VirtualKeyCodes.VirtualKeyStates.VK_OEM_3 }, // VK_OEM_3 (grave/tilde)
+        {"Q", (int) VirtualKeyCodes.VirtualKeyStates.VK_Q }, // VK_Q
+        {"W", (int) VirtualKeyCodes.VirtualKeyStates.VK_W }, // VK_W
+        {"E", (int) VirtualKeyCodes.VirtualKeyStates.VK_E }, // VK_E
             
     };
 

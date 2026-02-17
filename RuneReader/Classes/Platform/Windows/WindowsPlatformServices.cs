@@ -10,7 +10,8 @@ namespace RuneReader.Classes.Platform.Windows
         public IInputSender Input { get; } = new WindowsInputSender(WindowHandler);
         public IForegroundWindow ForegroundWindow { get; } = WindowHandler;
         public IScreenCaptureProvider ScreenCapture { get; } = new WindowsCaptureScreen();
-        public IKeycodeMapper Keycodes  = new WindowsKeycodeMapper() ;
+        public IKeycodeMapper Keycodes { get; } = new WindowsKeycodeMapper() ;
+
 
         public void Dispose()
         {

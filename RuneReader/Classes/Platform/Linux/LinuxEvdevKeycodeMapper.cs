@@ -1,3 +1,4 @@
+#if LINUX
 using System;
 using System.Collections.Generic;
 using RuneReader.Classes.Platform;
@@ -94,3 +95,4 @@ public sealed class LinuxEvdevKeycodeMapper : IKeycodeMapper
     public bool HasExcludeKey(string keyToken) => KeyMappingsExclude.ContainsKey(keyToken);
     public bool HasKey(string keyToken) => KeyMappings.ContainsKey(keyToken);
 }
+#endif

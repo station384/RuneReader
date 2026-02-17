@@ -1,4 +1,4 @@
-﻿namespace RuneReader.Classes.Utilities;
+﻿namespace RuneReader.Classes.Platform.Windows;
 
 public class VirtualKeyCodes
 {

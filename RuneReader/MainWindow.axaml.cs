@@ -574,7 +574,7 @@ public partial class MainWindow : Avalonia.Controls.Window
 
             #endregion
 
-
+          
             await ProcessKey(new KeyCommand(keyToSendFirst, _currentImageRegions.FirstImageRegions.WaitTime,
                 _currentImageRegions.FirstImageRegions.HasTarget));
         }
