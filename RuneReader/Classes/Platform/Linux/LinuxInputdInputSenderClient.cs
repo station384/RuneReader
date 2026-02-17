@@ -1,4 +1,4 @@
-#nullable enable
+#if LINUX
 using System;
 
 namespace RuneReader.Classes.Platform.Linux;
@@ -59,3 +59,4 @@ public sealed class RunereaderInputdInputSenderClient : IInputSender
         public const int KEY_LEFTALT = 56;
     }
 }
+#endif

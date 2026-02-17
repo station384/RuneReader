@@ -1,4 +1,4 @@
-
+#if LINUX
 using System;
 using System.Diagnostics;
 using OpenCvSharp;
@@ -367,3 +367,5 @@ public sealed class WaylandScreenCaptureProvider : RuneReader.Classes.Platform.I
 
 
 }
+
+#endif

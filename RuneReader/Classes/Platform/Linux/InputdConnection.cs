@@ -1,4 +1,5 @@
 #nullable enable
+#if LINUX
 using System;
 using System.IO;
 using System.Net.Sockets;
@@ -144,3 +145,4 @@ internal sealed class InputdConnection : IDisposable
         _sock = null;
     }
 }
+#endif

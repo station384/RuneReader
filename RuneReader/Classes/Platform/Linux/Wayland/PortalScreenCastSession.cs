@@ -1,4 +1,4 @@
-#nullable enable
+#if LINUX
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -361,3 +361,4 @@ public interface IPortalSession : IDBusObject
 {
     Task CloseAsync();
 }
+#endif

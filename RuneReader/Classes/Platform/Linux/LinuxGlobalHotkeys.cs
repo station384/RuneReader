@@ -1,3 +1,4 @@
+#if LINUX
 using System;
 
 namespace RuneReader.Classes.Platform.Linux
@@ -37,3 +38,4 @@ namespace RuneReader.Classes.Platform.Linux
         }
     }
 }
+#endif

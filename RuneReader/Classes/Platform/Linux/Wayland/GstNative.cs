@@ -1,4 +1,4 @@
-#nullable enable
+#if LINUX
 using System;
 using System.Runtime.InteropServices;
 using System.Text;
@@ -139,3 +139,4 @@ namespace RuneReader.Classes.Platform.Linux.Wayland
     
     
 }
+#endif
