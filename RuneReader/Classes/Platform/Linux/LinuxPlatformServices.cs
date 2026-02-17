@@ -19,7 +19,7 @@ namespace RuneReader.Classes.Platform.Linux
             var sock = Environment.GetEnvironmentVariable("RUNEREADER_INPUTD_SOCK") ?? "/run/runereader-inputd.sock";
             var key  = Environment.GetEnvironmentVariable("RUNEREADER_INPUTD_KEY")  ?? "change-me";
             //activationKey ??= "1";
-            Hotkeys = new RunereaderInputdHotkeysClient(activationKey, sock, s);
+            Hotkeys = new RunereaderInputdHotkeysClient(s, sock, s);
             Input   = new RunereaderInputdInputSenderClient(sock, s);
             
             //Hotkeys = null;
@@ -36,10 +36,40 @@ namespace RuneReader.Classes.Platform.Linux
             Input.Dispose();
             ScreenCapture.Dispose();
         }
-        internal sealed class NullForegroundWindow : IForegroundWindow, IDisposable
+
+        private sealed class NullForegroundWindow : IForegroundWindow, IDisposable
         {
             public void Dispose() { }
             // add methods as required by your IForegroundWindow interface
+            public bool IsWindowFound()
+            {
+                return true;
+            }
+
+            public void SetWindowToFind(string windowName)
+            {
+                
+            }
+
+            public string? GetWindowTitle()
+            {
+                return "NA";
+            }
+
+            public IntPtr GetWindowHandle()
+            {
+                return IntPtr.Zero;
+            }
+
+            public string? GetActiveWindowTitle()
+            {
+                return "NA";
+            }
+
+            public bool IsActiveWindow()
+            {
+                return true;
+            }
         }
     }
 }

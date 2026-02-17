@@ -1,9 +1,8 @@
 #nullable enable
 using System;
 using System.Threading.Tasks;
-using RuneReader.Classes.Platform;
 
-namespace RuneReader.InputD.Client;
+namespace RuneReader.Classes.Platform.Linux;
 
 public sealed class RunereaderInputdHotkeysClient : IGlobalHotkeys
 {

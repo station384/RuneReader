@@ -1,8 +1,8 @@
 #nullable enable
 using System.Runtime.InteropServices;
-using static RuneReader.InputD.Sys;
+using static runereader_inputd.Sys;
 
-namespace RuneReader.InputD;
+namespace runereader_inputd;
 
 internal sealed class UInputKeyboard : IDisposable
 {
@@ -32,10 +32,11 @@ internal sealed class UInputKeyboard : IDisposable
         var uidev = new uinput_user_dev
         {
             name = opt.DeviceName,
-            id_bustype = BUS_USB,
-            id_vendor = 0x1234,
-            id_product = 0x5678,
-            id_version = 1
+            id =  new input_id() { bustype =BUS_USB, vendor = 0x1234, product = 0x5678, version = 1},
+            absmax = new int[64],
+            absmin = new int[64],
+            absfuzz = new int[64],
+            absflat = new int[64],
         };
 
         WriteStruct(_fd, uidev);
@@ -77,27 +78,60 @@ internal sealed class UInputKeyboard : IDisposable
         try { close(_fd); } catch { }
     }
 
-    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi)]
-    private struct uinput_user_dev
+    // [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi)]
+    // private struct uinput_user_dev
+    // {
+    //     [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 80)]
+    //     public string name;
+    //
+    //     public ushort id_bustype;
+    //     public ushort id_vendor;
+    //     public ushort id_product;
+    //     public ushort id_version;
+    //
+    //     [MarshalAs(UnmanagedType.ByValArray, SizeConst = 64)]
+    //     public int[] absmax;
+    //     [MarshalAs(UnmanagedType.ByValArray, SizeConst = 64)]
+    //     public int[] absmin;
+    //     [MarshalAs(UnmanagedType.ByValArray, SizeConst = 64)]
+    //     public int[] absfuzz;
+    //     [MarshalAs(UnmanagedType.ByValArray, SizeConst = 64)]
+    //     public int[] absflat;
+    // }
+
+    [StructLayout(LayoutKind.Sequential, Pack = 1)]
+    internal struct input_id
+    {
+        public ushort bustype;
+        public ushort vendor;
+        public ushort product;
+        public ushort version;
+    }
+    
+    [StructLayout(LayoutKind.Sequential, Pack = 1, CharSet = CharSet.Ansi)]
+    internal struct uinput_user_dev
     {
         [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 80)]
         public string name;
 
-        public ushort id_bustype;
-        public ushort id_vendor;
-        public ushort id_product;
-        public ushort id_version;
+        public input_id id;
+
+        public uint ff_effects_max;
 
         [MarshalAs(UnmanagedType.ByValArray, SizeConst = 64)]
         public int[] absmax;
+
         [MarshalAs(UnmanagedType.ByValArray, SizeConst = 64)]
         public int[] absmin;
+
         [MarshalAs(UnmanagedType.ByValArray, SizeConst = 64)]
         public int[] absfuzz;
+
         [MarshalAs(UnmanagedType.ByValArray, SizeConst = 64)]
         public int[] absflat;
     }
-
+    
+    
     [StructLayout(LayoutKind.Sequential)]
     private struct input_event
     {
@@ -114,13 +148,40 @@ internal sealed class UInputKeyboard : IDisposable
         public long tv_usec;
     }
 
-    private static unsafe void WriteStruct<T>(int fd, T value) where T : unmanaged
+    // private static unsafe void WriteStruct<T>(int fd, T value) where T : unmanaged
+    // {
+    //     int size = sizeof(T);
+    //     Span<byte> buf = stackalloc byte[size];
+    //     MemoryMarshal.Write(buf, in value);
+    //     int written = Sys.write(fd, buf);
+    //     if (written != size)
+    //         throw new InvalidOperationException("uinput write failed.");
+    // }
+    
+    private static void WriteStruct<T>(int fd, T value) where T : struct
     {
-        int size = sizeof(T);
-        Span<byte> buf = stackalloc byte[size];
-        MemoryMarshal.Write(buf, in value);
-        int written = Sys.write(fd, buf);
-        if (written != size)
-            throw new InvalidOperationException("uinput write failed.");
+        int size = Marshal.SizeOf<T>();
+        IntPtr mem = Marshal.AllocHGlobal(size);
+        try
+        {
+            // Copy managed struct -> unmanaged memory
+            Marshal.StructureToPtr(value, mem, fDeleteOld: false);
+
+            // Copy unmanaged memory -> managed byte[]
+            byte[] buf = new byte[size];
+            Marshal.Copy(mem, buf, 0, size);
+
+            int written = Sys.write(fd, buf);
+            if (written != size)
+            {
+                int errno = Marshal.GetLastWin32Error();
+                throw new InvalidOperationException(
+                    $"uinput write failed. wrote={written} expected={size} errno={errno}");
+            }
+        }
+        finally
+        {
+            Marshal.FreeHGlobal(mem);
+        }
     }
 }

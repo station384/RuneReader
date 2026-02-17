@@ -1,7 +1,5 @@
 ﻿#nullable enable
-using System.Net.Sockets;
-using System.Runtime.InteropServices;
-using RuneReader.InputD;
+namespace runereader_inputd;
 
 internal static class Program
 {

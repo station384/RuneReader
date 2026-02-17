@@ -2,7 +2,7 @@
 using System.Net.Sockets;
 using System.Text;
 
-namespace RuneReader.InputD;
+namespace runereader_inputd;
 
 internal sealed class InputDServer
 {
@@ -27,6 +27,7 @@ internal sealed class InputDServer
         _monitor.KeyEvent += OnMonitorKeyEvent;
     }
 
+    
     public async Task RunAsync()
     {
         var ep = new UnixDomainSocketEndPoint(_socketPath);
@@ -57,12 +58,15 @@ internal sealed class InputDServer
         if (e.Code == _activationKeyCode)
         {
             Broadcast($"ACT {(e.Pressed ? "DOWN" : "UP")}");
+            Console.WriteLine($" ACT: {(e.Pressed ? "ON" : "OFF")}");
         }
 
         // Modifiers (optional but useful for parity with your IGlobalHotkeys)
         if (KeyMaps.ModifierCodeToName.TryGetValue(e.Code, out var mod))
         {
             Broadcast($"MOD {mod} {(e.Pressed ? "DOWN" : "UP")}");
+            Console.WriteLine($" MOD: {(e.Pressed ? "DOWN" : "UP")}");
+
         }
     }
 
@@ -107,16 +111,20 @@ internal sealed class InputDServer
                         {
                             authed = true;
                             client.TrySend("OK AUTH");
+                            Console.WriteLine($"AUTH: OK");
                         }
                         else
                         {
                             client.TrySend("ERR AUTH");
+                            Console.WriteLine($"AUTH: ERR");
                             break;
                         }
                     }
                     else
                     {
                         client.TrySend("ERR NOT_AUTHED");
+                        Console.WriteLine($"AUTH: ERR NOT_AUTHED");
+
                     }
 
                     continue;
@@ -138,30 +146,49 @@ internal sealed class InputDServer
                             }
                             _activationKeyCode = code;
                             client.TrySend($"OK SET_ACTKEY {tok.ToUpperInvariant()}");
+                            Console.WriteLine($"OK SET_ACTKEY {tok.ToUpperInvariant()}");
                             break;
                         }
 
                     case "INJECT":
                         {
                             if (!TryHandleInject(rest, client, out var err))
+                            {
                                 client.TrySend($"ERR INJECT {err}");
+                                Console.WriteLine($"ERR INJECT {err}");
+
+                            }
                             else
+                            {
                                 client.TrySend("OK INJECT");
+                                Console.WriteLine($"OK INJECT");
+
+                            }
                             break;
                         }
                     case "INJECTC":
                     {
                         // INJECTC DOWN <intcode>
                         var parts = rest.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-                        if (parts.Length != 2) { client.TrySend("ERR INJECTC syntax"); break; }
+                        if (parts.Length != 2)
+                        {
+                            client.TrySend("ERR INJECTC syntax"); 
+                            Console.WriteLine($"ERR INJECTC syntax");
+                            break;
+                        }
 
                         var op = parts[0].ToUpperInvariant();
                         if (!int.TryParse(parts[1], out var codeInt) || codeInt < 0 || codeInt > 4096)
-                        { client.TrySend("ERR INJECTC bad_code"); break; }
+                        { 
+                            client.TrySend("ERR INJECTC bad_code"); 
+                            Console.WriteLine($"ERR INJECTC bad_code");
+                            break; 
+                        }
 
                         bool pressed = op == "DOWN";
                         _uinput.EmitKey((ushort)codeInt, pressed);
                         client.TrySend("OK INJECTC");
+                        Console.WriteLine($"OK INJECTC");
                         break;
                     }
                     case "RESET":
@@ -172,11 +199,13 @@ internal sealed class InputDServer
 
                             client.ClearPressed();
                             client.TrySend("OK RESET");
+                            Console.WriteLine($"OK RESET");
                             break;
                         }
 
                     default:
                         client.TrySend("ERR UNKNOWN_CMD");
+                        Console.WriteLine($"ERR UNKNOWN_CMD");
                         break;
                 }
             }

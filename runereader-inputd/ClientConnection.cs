@@ -2,7 +2,7 @@
 using System.Net.Sockets;
 using System.Text;
 
-namespace RuneReader.InputD;
+namespace runereader_inputd;
 
 internal sealed class ClientConnection : IDisposable
 {
@@ -12,7 +12,6 @@ internal sealed class ClientConnection : IDisposable
     private readonly StreamWriter _writer;
 
     private readonly object _sendGate = new();
-
     private readonly object _pressedGate = new();
     private readonly HashSet<ushort> _pressed = new();
 

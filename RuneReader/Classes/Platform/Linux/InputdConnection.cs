@@ -1,11 +1,12 @@
 #nullable enable
 using System;
+using System.IO;
 using System.Net.Sockets;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace RuneReader.InputD.Client;
+namespace RuneReader.Classes.Platform.Linux;
 
 internal sealed class InputdConnection : IDisposable
 {

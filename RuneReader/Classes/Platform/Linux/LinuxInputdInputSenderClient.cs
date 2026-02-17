@@ -1,8 +1,7 @@
 #nullable enable
 using System;
-using RuneReader.Classes.Platform;
 
-namespace RuneReader.InputD.Client;
+namespace RuneReader.Classes.Platform.Linux;
 
 public sealed class RunereaderInputdInputSenderClient : IInputSender
 {

@@ -1,7 +1,7 @@
 #nullable enable
 using System.Runtime.InteropServices;
 
-namespace RuneReader.InputD;
+namespace runereader_inputd;
 
 internal sealed class EvdevKeyboardMonitor : IDisposable
 {
