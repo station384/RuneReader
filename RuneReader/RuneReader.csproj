@@ -98,6 +98,8 @@
   <ItemGroup>
     <None Include="..\.editorconfig" Link=".editorconfig" />
     <None Remove="Classes\Platform\Linux\Wayland\PipeWire.old\**" />
+    <None Remove="RuneReader_v4.zip" />
+    <None Remove="RuneReader_v3.zip" />
   </ItemGroup>
 
   <ItemGroup>
