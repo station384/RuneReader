@@ -1,13 +1,17 @@
-﻿using System;
+﻿#if WINDOWS
+
+
+using System;
 using System.Collections.Generic;
 
-namespace RuneReader.Classes.Utilities;
+
+namespace RuneReader.Classes.Platform.Windows;
 
 // This is the list of acceptable keys we can send to the game and the associated Windows virtual key to send.
 // We can use this for comparison or use it for looking up the matching key
-public static class VirtualKeyCodeMapper
+public sealed class WindowsKeycodeMapper : IKeycodeMapper
 {
-
+//  This needs to be moved to platform unique.
     private static readonly Dictionary<string, int> KeyMappingsExclude = new Dictionary<string, int>
     {
         {"1", (int)VirtualKeyCodes.VirtualKeyStates.VK_Alphanumeric_1},
@@ -136,3 +140,4 @@ public static class VirtualKeyCodeMapper
     }
 
 }
+#endif

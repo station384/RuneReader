@@ -113,10 +113,9 @@ public partial class MainWindow : Avalonia.Controls.Window
             _loopsCts = new CancellationTokenSource();
             var token = _loopsCts.Token;
 
-            #if WINDOWS
             _keyLoopTask = RunKeyLoopAsync(token);
             _wowMonitorTask = RunWowMonitorLoopAsync(token);
-            #endif            
+
             _barcodeMonitorTask = RunBarcodeMonitorLoopAsync(token);
     }
     
@@ -392,7 +391,7 @@ public partial class MainWindow : Avalonia.Controls.Window
                 {
                     if (!_currentImageRegions.FirstImageRegions.HasMultiTarget)
                     {
-                        currentKey = new KeyCommand(VirtualKeyCodeMapper.GetKeyFromVKCode(GseStVkKeyCode),
+                        currentKey = new KeyCommand(_platform.Keycodes.GetTokenFromKeyCode(GseStVkKeyCode),
                             currentKey.MaxWaitTime, currentKey.HasTarget)
                         {
                             Alt = false,
@@ -402,7 +401,7 @@ public partial class MainWindow : Avalonia.Controls.Window
                     }
                     else
                     {
-                        currentKey = new KeyCommand(VirtualKeyCodeMapper.GetKeyFromVKCode(GseMtVkKeyCode),
+                        currentKey = new KeyCommand(_platform.Keycodes.GetTokenFromKeyCode(GseMtVkKeyCode),
                             currentKey.MaxWaitTime, currentKey.HasTarget)
                         {
                             Alt = false,
@@ -432,7 +431,7 @@ public partial class MainWindow : Avalonia.Controls.Window
                 
 
                 // Translate the char to the virtual Key Code
-                vkCode = VirtualKeyCodeMapper.GetVirtualKeyCode(currentKey.Key);
+                vkCode = _platform.Keycodes.GetKeyCode(currentKey.Key);
 
                  // Wows Default Key behavior is to activate as soon as the key is pressed.   So lets make sure we do not press anything till we have a 0 wait…
                  // Pre-pressing is built into the addon calc  so we don't have to worry about command queuing here.
@@ -569,7 +568,7 @@ public partial class MainWindow : Avalonia.Controls.Window
             }
 
 
-            if (!VirtualKeyCodeMapper.HasKey(keyToSendFirst)) return;
+            if (!_platform.Keycodes.HasKey(keyToSendFirst)) return;
             
 
 
@@ -604,23 +603,16 @@ public partial class MainWindow : Avalonia.Controls.Window
         }
 
         _platform = PlatformFactory.Create(activationKey);
-#if WINDOWS
+
         _platform.Hotkeys.ActivateKeyChangedAsync += HotkeysOnActivateKeyChangedAsync;
         _platform.Hotkeys.ShiftChangedAsync += HotkeysOnShiftChangedAsync;
         _platform.Hotkeys.CtrlChangedAsync += HotkeysOnCtrlChangedAsync;
-        _platform.Hotkeys.AltChangedAsync += HotkeysOnAltChangedAsync; 
-#endif
+
         
     }
 
-
-
-
-    private void OnStartup ()
+    private void SetControlsToSavedSettings()
     {
-
-        AppSettings = SettingsManager.LoadSettings();
-
         CbUseGse.IsChecked = AppSettings.UseGse;
         UseGse =  AppSettings.UseGse;
         CbGseKeyBindSt.SelectedValue = CbGseKeyBindSt.Items[AppSettings.GseStKey];
@@ -634,9 +626,6 @@ public partial class MainWindow : Avalonia.Controls.Window
         _keyPressMode = AppSettings.PushAndRelease;
         CbStayOnTop.IsChecked = AppSettings.KeepOnTop;
         
-            
-
-
         if (AppSettings.IgnoreTargetingInfo)
         {
             CbIgnoreTargetInfo.IsChecked = true;
@@ -646,10 +635,6 @@ public partial class MainWindow : Avalonia.Controls.Window
             CbIgnoreTargetInfo.IsChecked = false;
 
         }
-
-        this.Topmost = AppSettings.KeepOnTop;
-
-
         foreach (var x in CbActivationKey.Items)
         {
 
@@ -660,17 +645,34 @@ public partial class MainWindow : Avalonia.Controls.Window
             }
         }
 
+    }
+
+
+    private void OnStartup ()
+    {
+
+        AppSettings = SettingsManager.LoadSettings();
+
+
+        
+        
+        this.Topmost = AppSettings.KeepOnTop;
+
+
+
 
         Position = new PixelPoint((int)AppSettings.AppStartX, (int)AppSettings.AppStartY);
 
 
         InitializePlatform(ProcessActivateKey);
+        SetControlsToSavedSettings();
+        
         _platform!.ScreenCapture.CaptureRegion = _capRegion;
         _platform!.ScreenCapture.EnableFullScreen = false;
         _platform!.ScreenCapture.EnableRegion = false;
-#if WINDOWS
+
         _platform!.ForegroundWindow.SetWindowToFind("World of Warcraft");
-#endif        
+      
         _platform!.ScreenCapture.OnRegionUpdated += ScreenCaptureOnRegionUpdated;
         _platform!.ScreenCapture.OnFullScreenUpdated += ScreenCaptureOnFullScreenUpdated;
 
@@ -895,9 +897,11 @@ public partial class MainWindow : Avalonia.Controls.Window
 
     private async void StopButton_Click(object? sender, RoutedEventArgs e)
     {
+        if (IsDesigner) return;
+        if (Initializing) return;
         try
         {
-            if (IsDesigner) return;
+
 
             if (_continuousScreenCaptureProcess!.IsCapturing)
             {
@@ -926,6 +930,7 @@ public partial class MainWindow : Avalonia.Controls.Window
     private void Capture_Click(object? sender, RoutedEventArgs e)
     {
         if (IsDesigner) return;
+        if (Initializing) return;
         // Optional debug capture. The UI button is hidden by default.
         var filePath = ".\\captures\\Cap" + DateTime.Now.ToBinary() + ".png";
             
@@ -943,6 +948,7 @@ public partial class MainWindow : Avalonia.Controls.Window
     private void sliderCaptureRateMS_ValueChanged(object? sender, RangeBaseValueChangedEventArgs e)
     {
         if (IsDesigner) return;
+        if (Initializing) return;
         if (SliderCaptureRateMs is null) return;
         AppSettings.CaptureRateMs = (int)SliderCaptureRateMs.Value;
         CurrentCaptureRateMs = (int)SliderCaptureRateMs.Value;
@@ -957,6 +963,7 @@ public partial class MainWindow : Avalonia.Controls.Window
     private void sliderKeyRateMS_ValueChanged(object? sender, RangeBaseValueChangedEventArgs e)
     {
         if (IsDesigner) return;
+        if (Initializing) return;
         if (SliderKeyRateMs is null) return;
         AppSettings.KeyPressSpeedMs = (int)SliderKeyRateMs.Value;
         CurrentKeyDownDelayMs = (int)SliderKeyRateMs.Value;
@@ -968,6 +975,7 @@ public partial class MainWindow : Avalonia.Controls.Window
     private void tbKeyRateMS_TextChanged(object? sender, TextChangedEventArgs e)
     {
         if (IsDesigner) return;
+        if (Initializing) return;
 
         if (sender is not TextBox tb || !int.TryParse(tb.Text, out var v)) return;
         {
@@ -980,6 +988,7 @@ public partial class MainWindow : Avalonia.Controls.Window
     private void tbCaptureRateMS_TextChanged(object? sender, TextChangedEventArgs e)
     {
         if (IsDesigner) return;
+        if (Initializing) return;
 
         if (sender is TextBox tb && int.TryParse(tb.Text, out var v))
         {
@@ -991,6 +1000,7 @@ public partial class MainWindow : Avalonia.Controls.Window
 
     private void cbActivationKey_SelectionChanged(object? sender, SelectionChangedEventArgs e)
     {
+        if (IsDesigner) return;
         if (Initializing) return;
         
         var activationKey = (CbActivationKey.SelectedItem as ComboBoxItem)?.Content?.ToString();
@@ -1005,6 +1015,8 @@ public partial class MainWindow : Avalonia.Controls.Window
 
     private void bResetMagPosition_Click(object? sender, RoutedEventArgs e)
     {
+        if (IsDesigner) return;
+        if (Initializing) return;
         AppSettings.CapX = 50;
         AppSettings.CapY = 50;
         AppSettings.CapWidth = 100;
@@ -1014,6 +1026,8 @@ public partial class MainWindow : Avalonia.Controls.Window
 
     private async void bFindBarcode_Click(object? sender, RoutedEventArgs e)
     {
+        if (IsDesigner) return;
+        if (Initializing) return;
         try
         {
             if (IsDesigner) return;
@@ -1031,8 +1045,8 @@ public partial class MainWindow : Avalonia.Controls.Window
 
     private void cbPushRelease_IsCheckedChanged(object? sender, RoutedEventArgs e)
     {
-       // if (Initializing) return;
         if (IsDesigner) return;
+        if (Initializing) return;
         if ((e.Source as CheckBox)!.IsChecked == true)
         {
             _keyPressMode = true;
@@ -1048,6 +1062,7 @@ public partial class MainWindow : Avalonia.Controls.Window
     private void cbStayOnTop_IsCheckedChanged(object? sender, RoutedEventArgs e)
     {
         if (IsDesigner) return;
+        if (Initializing) return;
         if ((e.Source as CheckBox)!.IsChecked == true)
         {
             this.Topmost = true;
@@ -1064,7 +1079,7 @@ public partial class MainWindow : Avalonia.Controls.Window
     private void cbIgnoreTargetInfo_IsCheckedChanged(object? sender, RoutedEventArgs e)
     {
         if (IsDesigner) return;
-       
+        if (Initializing) return;
         if ((e.Source as CheckBox)!.IsChecked == null)
         {
             AppSettings.IgnoreTargetingInfo = true;
@@ -1085,32 +1100,36 @@ public partial class MainWindow : Avalonia.Controls.Window
    
     private void CbGseKeyBindMt_OnSelectionChanged(object? sender, SelectionChangedEventArgs e)
     {
+        if (IsDesigner) return;
+        if (Initializing) return;
         AppSettings.GseMtKey = (e.Source as ComboBox)!.SelectedIndex;
         if (e.Source != null)
         {
             if (((ComboBox)e.Source).SelectedItem != null)
             {
-                GseMtVkKeyCode = VirtualKeyCodeMapper.GetVirtualKeyCode(((e.Source as ComboBox)!.SelectedItem as ComboBoxItem)!.Content!.ToString()!);
+                GseMtVkKeyCode = _platform.Keycodes.GetKeyCode(((e.Source as ComboBox)!.SelectedItem as ComboBoxItem)!.Content!.ToString()!);
             }
         }
     }
 
     private void CbGseKeyBindSt_OnSelectionChanged(object? sender, SelectionChangedEventArgs e)
     {
+        if (IsDesigner) return;
+        if (Initializing) return;
         AppSettings.GseStKey = (e.Source as ComboBox)!.SelectedIndex;
         if (e.Source != null)
         {
             if (((ComboBox)e.Source).SelectedItem != null)
             {
-                GseStVkKeyCode = VirtualKeyCodeMapper.GetVirtualKeyCode(((e.Source as ComboBox)!.SelectedItem as ComboBoxItem)!.Content!.ToString()!);
+                GseStVkKeyCode = _platform.Keycodes.GetKeyCode(((e.Source as ComboBox)!.SelectedItem as ComboBoxItem)!.Content!.ToString()!);
             }
         }
     }
 
     private void CbUseGse_OnIsCheckedChanged(object? sender, RoutedEventArgs e)
     {
-        if (Initializing) return;
         if (IsDesigner) return;
+        if (Initializing) return;
         if ((e.Source as CheckBox)!.IsChecked == true)
         {
             UseGse = true;
@@ -1125,7 +1144,9 @@ public partial class MainWindow : Avalonia.Controls.Window
     
     private async void Button_Start_OnClick(object? sender, RoutedEventArgs e)
     {
+      
         if (IsDesigner) return;
+        if (Initializing) return;
         // Start the continuous capturing
         if (!_continuousScreenCaptureProcess!.IsCapturing)
         {
@@ -1133,10 +1154,8 @@ public partial class MainWindow : Avalonia.Controls.Window
             _currentKeyToSend = "";
             _platform!.ScreenCapture.EnableRegion = true;
             _continuousScreenCaptureProcess.StartCapture();
-            #if WINDOWS
-            
             _platform!.Hotkeys.Start();
-        #endif
+
             _ = Task.Run(async () =>
             {
                 StartBackgroundLoops();

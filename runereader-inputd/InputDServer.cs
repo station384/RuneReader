@@ -37,7 +37,7 @@ internal sealed class InputDServer
         // Permissions: 0660 on the socket file so your app group can connect.
         try
         {
-            Sys.chmod(_socketPath, Convert.ToUInt32("660", 8));
+            Sys.chmod(_socketPath, Convert.ToUInt32("666", 8));
         }
         catch { /* ignore */ }
 
@@ -193,7 +193,7 @@ internal sealed class InputDServer
                         else client.MarkReleased((ushort)codeInt);
 
                         client.TrySend("OK INJECTC");
-                        Console.WriteLine($"OK INJECTC");
+                        Console.WriteLine($"OK INJECTC {codeInt}");
                         break;
                     }
                     case "RESET":

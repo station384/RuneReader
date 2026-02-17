@@ -1,10 +1,12 @@
 #nullable enable
+using System.Diagnostics.CodeAnalysis;
 using System.Runtime.InteropServices;
 using System.Text;
 // ReSharper disable InconsistentNaming
 
 namespace runereader_inputd;
 
+[SuppressMessage("Interoperability", "SYSLIB1054:Use \'LibraryImportAttribute\' instead of \'DllImportAttribute\' to generate P/Invoke marshalling code at compile time")]
 internal static class Sys
 {
     // open flags
@@ -30,8 +32,9 @@ internal static class Sys
     private const uint EVIOCGBIT_EV_0_64 = 0x80404520; // _IOR('E', 0x20 + 0, char[64])
     private const uint EVIOCGBIT_KEY_0_512 = 0x82004521; // _IOR('E', 0x20 + 1, char[512])
 
-    [DllImport("libc", SetLastError = true, CharSet = CharSet.Unicode)]
-    public static extern int open(string pathname, int flags);
+    [DllImport("libc", SetLastError = true)]
+    [SuppressMessage("Globalization", "CA2101:Specify marshaling for P/Invoke string arguments")]
+    public static extern int open([MarshalAs(UnmanagedType.LPUTF8Str)] string pathname, int flags);
 
     [DllImport("libc", SetLastError = true)]
     public static extern int close(int fd);

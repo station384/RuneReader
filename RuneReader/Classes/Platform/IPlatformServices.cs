@@ -6,4 +6,5 @@ public interface IPlatformServices
     IForegroundWindow ForegroundWindow { get; }
     IInputSender Input { get; }
     IScreenCaptureProvider ScreenCapture { get; }
+    IKeycodeMapper Keycodes { get; }   
 }
