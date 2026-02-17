@@ -1,6 +1,7 @@
+# Deployment  notes
 
 ---
-* Create a group for access
+### Create a group for access
 ```bash
 sudo groupadd -f runereader
 sudo usermod -aG runereader "$USER"
@@ -8,12 +9,12 @@ newgrp runereader
 ```
 
 ---
-* Install the daemon binary
+### Install the daemon binary
 ```bash
 sudo install -Dm755 /path/to/runereader-inputd /usr/local/sbin/runereader-inputd
 ```
 ---
-* modify or install the runereader-inputd.socket service
+### Modify or install the runereader-inputd.socket service
 ```ini
 [Unit]
 Description=RuneReader input daemon socket
@@ -33,7 +34,7 @@ WantedBy=sockets.target
 ```
 
 
-* Modify or install the runereader-inputd.service service
+### Modify or install the runereader-inputd.service service
 ```ini
 [Unit]
 Description=RuneReader input daemon (evdev monitor + uinput injection)
@@ -85,7 +86,7 @@ WantedBy=multi-user.target
 ```
 
 ---
-* Enable and start the service
+### Enable and start the service
 ```bash
 sudo systemctl daemon-reload
 sudo systemctl enable --now runereader-inputd.socket
@@ -93,7 +94,7 @@ sudo systemctl start runereader-inputd.socket
 ```
 
 ---
-* Verify service is started
+### Verify service is started
 ```base 
 systemctl status runereader-inputd.socket
 systemctl status runereader-inputd.service
@@ -105,13 +106,13 @@ Optionally you can check the system journal
 journalctl -u runereader-inputd.service -f
 ```
 
---- Verify permission
+### Verify permission
 ```bash
 ls -l /run/runereader-inputd.sock
 # should be: srw-rw---- root runereader ...
 
 getent group runereader
 ```
-That path will exist when the socket unit is enabled (even before the daemon is started), it is created by the runereader-inputd.socket
+The path will exist when the socket unit is enabled (even before the daemon is started), it is created by the runereader-inputd.socket
 If you do not see output or permissions are incorrect, something is wrong.
 

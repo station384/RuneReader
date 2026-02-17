@@ -1,6 +1,7 @@
 #nullable enable
 using System.Runtime.InteropServices;
 using System.Text;
+// ReSharper disable InconsistentNaming
 
 namespace runereader_inputd;
 
@@ -29,7 +30,7 @@ internal static class Sys
     private const uint EVIOCGBIT_EV_0_64 = 0x80404520; // _IOR('E', 0x20 + 0, char[64])
     private const uint EVIOCGBIT_KEY_0_512 = 0x82004521; // _IOR('E', 0x20 + 1, char[512])
 
-    [DllImport("libc", SetLastError = true)]
+    [DllImport("libc", SetLastError = true, CharSet = CharSet.Unicode)]
     public static extern int open(string pathname, int flags);
 
     [DllImport("libc", SetLastError = true)]

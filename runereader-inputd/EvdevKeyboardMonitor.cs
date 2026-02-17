@@ -39,11 +39,13 @@ internal sealed class EvdevKeyboardMonitor : IDisposable
             try
             {
                 var dev = EvdevDevice.TryOpenKeyboardLike(path, _activationKeys, _monitorModifiers);
-                if (dev != null)
+                if (dev == null)
                 {
-                    _devices.Add(dev);
-                    Console.WriteLine($"Monitor: {path} ({dev.Name})");
+                    continue;
                 }
+
+                _devices.Add(dev);
+                Console.WriteLine($"Monitor: {path} ({dev.Name})");
             }
             catch { /* ignore */ }
         }
@@ -95,16 +97,16 @@ internal sealed class EvdevKeyboardMonitor : IDisposable
     }
 
     [StructLayout(LayoutKind.Sequential)]
-    internal struct input_event
+    private struct InputEvent
     {
-        public timeval time;
+        public TimeValue time;
         public ushort type;
         public ushort code;
         public int value;
     }
 
     [StructLayout(LayoutKind.Sequential)]
-    internal struct timeval
+    private struct TimeValue
     {
         public long tv_sec;
         public long tv_usec;
@@ -162,9 +164,9 @@ internal sealed class EvdevKeyboardMonitor : IDisposable
             }
         }
 
-        public bool TryReadEvent(out input_event ev)
+        public bool TryReadEvent(out InputEvent ev)
         {
-            int size = Marshal.SizeOf<input_event>();
+            int size = Marshal.SizeOf<InputEvent>();
             Span<byte> buf = stackalloc byte[size];
 
             int n = Sys.read(_fd, buf);
@@ -174,7 +176,7 @@ internal sealed class EvdevKeyboardMonitor : IDisposable
                 return false;
             }
 
-            ev = MemoryMarshal.Read<input_event>(buf);
+            ev = MemoryMarshal.Read<InputEvent>(buf);
             return true;
         }
 

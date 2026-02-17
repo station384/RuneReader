@@ -187,6 +187,11 @@ internal sealed class InputDServer
 
                         bool pressed = op == "DOWN";
                         _uinput.EmitKey((ushort)codeInt, pressed);
+
+                        // Track for stuck-key safety.
+                        if (pressed) client.MarkPressed((ushort)codeInt);
+                        else client.MarkReleased((ushort)codeInt);
+
                         client.TrySend("OK INJECTC");
                         Console.WriteLine($"OK INJECTC");
                         break;
@@ -217,10 +222,15 @@ internal sealed class InputDServer
         finally
         {
             // release any keys this client left pressed
-            foreach (var k in client.GetPressedSnapshot())
+            try
             {
-                try { _uinput.EmitKey(k, pressed: false); } catch { /* ignore */ }
+                // 1) release keys we believe this client is holding
+                _uinput.ReleaseKeys(client.GetPressedSnapshot());
+
+                // 2) belt-and-suspenders: release all enabled keys (guards against missed tracking)
+                _uinput.ReleaseAllEnabled();
             }
+            catch { /* ignore */ }
 
             client.Dispose();
 

@@ -1,4 +1,5 @@
 ﻿#nullable enable
+using System.Runtime.InteropServices;
 namespace runereader_inputd;
 
 internal static class Program
@@ -25,6 +26,27 @@ internal static class Program
             DeviceName = "runereader-inputd-virtual-kbd",
             EnabledKeys = KeyMaps.InjectableKeyCodesDistinct
         });
+
+        // Best-effort cleanup: prevent stuck keys on Ctrl+C / SIGTERM.
+        Console.CancelKeyPress += (_, e) =>
+        {
+            try { uinput.ReleaseAllEnabled(); } catch { }
+            e.Cancel = true;
+            Environment.Exit(0);
+        };
+
+        if (OperatingSystem.IsLinux())
+        {
+            try
+            {
+                PosixSignalRegistration.Create(PosixSignal.SIGTERM, _ =>
+                {
+                    try { uinput.ReleaseAllEnabled(); } catch { }
+                    Environment.Exit(0);
+                });
+            }
+            catch { /* ignore */ }
+        }
 
         // Start input monitor (evdev)
         using var monitor = new EvdevKeyboardMonitor(

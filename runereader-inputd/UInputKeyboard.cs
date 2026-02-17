@@ -13,10 +13,13 @@ internal sealed class UInputKeyboard : IDisposable
     }
 
     private readonly int _fd;
+    private readonly ushort[] _enabledKeys;
     private bool _disposed;
 
     public UInputKeyboard(Options opt)
     {
+        _enabledKeys = (opt.EnabledKeys ?? Array.Empty<ushort>()).Distinct().ToArray();
+
         _fd = open("/dev/uinput", O_WRONLY | O_NONBLOCK);
         if (_fd < 0)
             throw new InvalidOperationException("Failed to open /dev/uinput (need root or udev permission).");
@@ -25,7 +28,7 @@ internal sealed class UInputKeyboard : IDisposable
         ioctl(_fd, UI_SET_EVBIT, EV_KEY);
         ioctl(_fd, UI_SET_EVBIT, EV_SYN);
 
-        foreach (var k in opt.EnabledKeys.Distinct())
+        foreach (var k in _enabledKeys)
             ioctl(_fd, UI_SET_KEYBIT, k);
 
         // Create device using legacy uinput_user_dev (widely compatible)
@@ -51,7 +54,7 @@ internal sealed class UInputKeyboard : IDisposable
         if (_disposed) return;
 
         // EV_KEY event
-        var ev1 = new input_event
+        var ev1 = new InputEvent
         {
             type = EV_KEY,
             code = code,
@@ -60,7 +63,7 @@ internal sealed class UInputKeyboard : IDisposable
         WriteStruct(_fd, ev1);
 
         // SYN_REPORT
-        var ev2 = new input_event
+        var ev2 = new InputEvent
         {
             type = EV_SYN,
             code = SYN_REPORT,
@@ -69,35 +72,41 @@ internal sealed class UInputKeyboard : IDisposable
         WriteStruct(_fd, ev2);
     }
 
+    /// <summary>
+    /// Releases (key-up) all keys this virtual device is allowed to emit.
+    /// Safe to call repeatedly.
+    /// </summary>
+    public void ReleaseAllEnabled()
+    {
+        if (_disposed) return;
+        foreach (var k in _enabledKeys)
+        {
+            // Sending UP for a key that isn't down is harmless.
+            EmitKey(k, pressed: false);
+        }
+    }
+
+    /// <summary>
+    /// Releases (key-up) the provided key codes.
+    /// </summary>
+    public void ReleaseKeys(IEnumerable<ushort> keys)
+    {
+        if (_disposed) return;
+        foreach (var k in keys)
+            EmitKey(k, pressed: false);
+    }
+
     public void Dispose()
     {
         if (_disposed) return;
         _disposed = true;
 
+        // Best-effort: prevent stuck keys if the daemon is stopped while keys are held.
+        try { ReleaseAllEnabled(); } catch { }
+
         try { ioctl(_fd, UI_DEV_DESTROY, 0); } catch { }
         try { close(_fd); } catch { }
     }
-
-    // [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi)]
-    // private struct uinput_user_dev
-    // {
-    //     [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 80)]
-    //     public string name;
-    //
-    //     public ushort id_bustype;
-    //     public ushort id_vendor;
-    //     public ushort id_product;
-    //     public ushort id_version;
-    //
-    //     [MarshalAs(UnmanagedType.ByValArray, SizeConst = 64)]
-    //     public int[] absmax;
-    //     [MarshalAs(UnmanagedType.ByValArray, SizeConst = 64)]
-    //     public int[] absmin;
-    //     [MarshalAs(UnmanagedType.ByValArray, SizeConst = 64)]
-    //     public int[] absfuzz;
-    //     [MarshalAs(UnmanagedType.ByValArray, SizeConst = 64)]
-    //     public int[] absflat;
-    // }
 
     [StructLayout(LayoutKind.Sequential, Pack = 1)]
     internal struct input_id
@@ -109,7 +118,7 @@ internal sealed class UInputKeyboard : IDisposable
     }
     
     [StructLayout(LayoutKind.Sequential, Pack = 1, CharSet = CharSet.Ansi)]
-    internal struct uinput_user_dev
+    private struct uinput_user_dev
     {
         [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 80)]
         public string name;
@@ -133,16 +142,16 @@ internal sealed class UInputKeyboard : IDisposable
     
     
     [StructLayout(LayoutKind.Sequential)]
-    private struct input_event
+    private struct InputEvent
     {
-        public timeval time;
+        public TimeValue time;
         public ushort type;
         public ushort code;
         public int value;
     }
 
     [StructLayout(LayoutKind.Sequential)]
-    private struct timeval
+    private struct TimeValue
     {
         public long tv_sec;
         public long tv_usec;
