@@ -35,6 +35,9 @@ internal sealed class InputDServer
         listener.Bind(ep);
 
         // Permissions: 0660 on the socket file so your app group can connect.
+        // For now I am using 0666 so any app can use it.   Less secure but that is what I want for now.
+        // I'm breaking so many "secure" rules just by doing this wayland workaround anyway.
+        
         try
         {
             Sys.chmod(_socketPath, Convert.ToUInt32("666", 8));
@@ -65,7 +68,7 @@ internal sealed class InputDServer
         if (KeyMaps.ModifierCodeToName.TryGetValue(e.Code, out var mod))
         {
             Broadcast($"MOD {mod} {(e.Pressed ? "DOWN" : "UP")}");
-            Console.WriteLine($" MOD: {(e.Pressed ? "DOWN" : "UP")}");
+            Console.WriteLine($" MOD: {mod} {(e.Pressed ? "DOWN" : "UP")}");
 
         }
     }
@@ -193,7 +196,7 @@ internal sealed class InputDServer
                         else client.MarkReleased((ushort)codeInt);
 
                         client.TrySend("OK INJECTC");
-                        Console.WriteLine($"OK INJECTC {codeInt}");
+                        Console.WriteLine($"OK INJECTC {codeInt} : {op}");
                         break;
                     }
                     case "RESET":

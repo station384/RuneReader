@@ -2,7 +2,8 @@
 using System;
 
 namespace RuneReader.Classes.Platform.Linux;
-
+// All this is required to work around wayland.   
+// in X11 we can just call the X11 server.
 public sealed class RunereaderInputdInputSenderClient : IInputSender
 {
     private readonly InputdConnection _conn;
@@ -25,21 +26,13 @@ public sealed class RunereaderInputdInputSenderClient : IInputSender
         try
         {
             EnsureConnected();
-
             // send by numeric code: INJECTC DOWN 60
-            // This requires a tiny daemon addition OR we convert here to a token.
-            // To avoid daemon changes, we'll send as token if you provide mapping upstream.
-            // Since your interface is int, simplest is: add daemon command INJECTC.
-            // I'll include both paths:
-            //
-            // If you do NOT want to modify daemon, then treat `key` as an ASCII token id is impossible.
-            // So: add INJECTC support to daemon.
-
             var resp = _conn.SendAndReadLine($"INJECTC {(pressed ? "DOWN" : "UP")} {key}");
             return resp.StartsWith("OK", StringComparison.Ordinal);
         }
-        catch
+        catch (Exception ex)
         {
+            Console.WriteLine(ex.Message);
             return false;
         }
     }
@@ -50,8 +43,8 @@ public sealed class RunereaderInputdInputSenderClient : IInputSender
 
     public void Dispose() => _conn.Dispose();
 
-    // Minimal evdev codes you need for modifiers.
-    // You can reuse your daemon's map constants instead.
+
+    // todo this is redundant.   use that key mapper.
     private static class LinuxEvdevCodes
     {
         public const int KEY_LEFTCTRL = 29;
