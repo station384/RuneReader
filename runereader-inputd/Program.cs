@@ -6,6 +6,13 @@ internal static class Program
 {
     public static async Task Main(string[] args)
     {
+        var cts = new CancellationTokenSource();
+
+        AppDomain.CurrentDomain.ProcessExit += (s, e) =>
+        {
+            try { cts.Cancel(); } catch { }
+        };
+        
         // Socket path: default /run/runereader-inputd.sock
         // You can change this to /run/user/<uid>/... if you want non-root service with udev grants.
         var socketPath = Environment.GetEnvironmentVariable("RUNEREADER_INPUTD_SOCK")
@@ -32,9 +39,15 @@ internal static class Program
         {
             try { uinput.ReleaseAllEnabled(); } catch { }
             e.Cancel = true;
+            cts.Cancel();
             Environment.Exit(0);
         };
-
+        AppDomain.CurrentDomain.ProcessExit += (s, e) =>
+        {
+            try { cts.Cancel(); } catch { }
+        };
+        
+        
         if (OperatingSystem.IsLinux())
         {
             try
@@ -62,6 +75,6 @@ internal static class Program
         // Start monitoring before accepting clients so early key events work.
         monitor.Start();
 
-        await server.RunAsync();
+        await server.RunAsync(cts.Token);
     }
 }

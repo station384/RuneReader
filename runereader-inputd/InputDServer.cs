@@ -28,30 +28,61 @@ internal sealed class InputDServer
     }
 
     
-    public async Task RunAsync()
+    public async Task RunAsync(CancellationToken ct)
     {
+        // Remove stale socket file before bind (common after crashes)
+        try { Sys.unlink(_socketPath); } catch { /* ignore */ }
+        
         var ep = new UnixDomainSocketEndPoint(_socketPath);
         var listener = new Socket(AddressFamily.Unix, SocketType.Stream, ProtocolType.Unspecified);
-        listener.Bind(ep);
 
-        // Permissions: 0660 on the socket file so your app group can connect.
-        // For now I am using 0666 so any app can use it.   Less secure but that is what I want for now.
-        // I'm breaking so many "secure" rules just by doing this wayland workaround anyway.
-        
         try
         {
-            Sys.chmod(_socketPath, Convert.ToUInt32("666", 8));
+            listener.Bind(ep);
+
+            // Permissions: 0660 on the socket file so your app group can connect.
+            // For now I am using 0666 so any app can use it.   Less secure but that is what I want for now.
+            // I'm breaking so many "secure" rules just by doing this wayland workaround anyway.
+
+            try
+            {
+                Sys.chmod(_socketPath, Convert.ToUInt32("666", 8));
+            }
+            catch
+            {
+                /* ignore */
+            }
+
+            listener.Listen(backlog: 50);
+
+            Console.WriteLine("Listening...");
+
+            while (!ct.IsCancellationRequested)
+            {
+                Socket socket;
+                try
+                {
+                     socket = await listener.AcceptAsync(ct).ConfigureAwait(false);
+                }
+                catch (OperationCanceledException)
+                {
+                    break;
+                }
+                catch (ObjectDisposedException)
+                {
+                    break;
+                }
+
+                _ = Task.Run(() => HandleClientAsync(socket));
+            }
         }
-        catch { /* ignore */ }
-
-        listener.Listen(backlog: 50);
-
-        Console.WriteLine("Listening...");
-
-        while (true)
+        finally
         {
-            var socket = await listener.AcceptAsync();
-            _ = Task.Run(() => HandleClientAsync(socket));
+            // Best effort: release any possibly held keys on daemon exit
+            try { _uinput.ReleaseAllEnabled(); } catch { }
+
+            // Remove socket file on exit
+            try { Sys.unlink(_socketPath); } catch { }
         }
     }
 

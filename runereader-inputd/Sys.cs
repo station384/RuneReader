@@ -57,6 +57,15 @@ internal static class Sys
     [DllImport("libc", SetLastError = true)]
     private static extern int write(int fd, IntPtr buf, int count);
 
+    [DllImport("libc", SetLastError = true)]
+    internal static extern int unlink(string pathname);
+
+    // optional helper
+    internal static void UnlinkNoThrow(string path)
+    {
+        try { unlink(path); } catch { }
+    }
+    
     public static int read(int fd, Span<byte> buf)
     {
         unsafe
