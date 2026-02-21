@@ -14,7 +14,7 @@ public class WindowsGlobalHotkeys : IGlobalHotkeys
     private static WindowsApiCalls.WindowsMessageProc? _proc;
     private bool _started = false;
 
-    private readonly string? _activationKey = null;
+    private string? _activationKey = null;
     
     private IntPtr HookCallbackActionKey(int nCode, IntPtr wParam, IntPtr lParam)
     {
@@ -180,7 +180,14 @@ public class WindowsGlobalHotkeys : IGlobalHotkeys
       _started = false;
     }
 
-     public WindowsGlobalHotkeys(string? activationKey)
+    public void SetHotkey (string? activationKey)
+    {
+        if (activationKey != null)
+          _activationKey = activationKey;
+    }
+
+
+    public WindowsGlobalHotkeys(string? activationKey)
     {
         _activationKey = activationKey;
     }

@@ -15,6 +15,7 @@ public interface IGlobalHotkeys : IDisposable
     public event Action<HotkeyActionResult> CtrlChangedAsync;
     public event Action<HotkeyActionResult> AltChangedAsync;
     public event Action<HotkeyActionResult> ShiftChangedAsync;
+    public void SetHotkey(string? s );
     public bool isStarted(); 
     public void Start();
     public void Stop();

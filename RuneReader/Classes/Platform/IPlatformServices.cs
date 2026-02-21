@@ -7,4 +7,6 @@ public interface IPlatformServices
     IInputSender Input { get; }
     IScreenCaptureProvider ScreenCapture { get; }
     IKeycodeMapper Keycodes { get; }   
+
+
 }

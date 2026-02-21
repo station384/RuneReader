@@ -615,15 +615,31 @@ public partial class MainWindow : Avalonia.Controls.Window
     {
         CbUseGse.IsChecked = AppSettings.UseGse;
         UseGse =  AppSettings.UseGse;
+
+        var cbitemSt = (CbGseKeyBindSt.Items[AppSettings.GseStKey] as ComboBoxItem).Content.ToString();
         CbGseKeyBindSt.SelectedValue = CbGseKeyBindSt.Items[AppSettings.GseStKey];
+        GseStVkKeyCode = _platform.Keycodes.GetKeyCode(cbitemSt);
+
+        var cbitemMt = (CbGseKeyBindMt.Items[AppSettings.GseMtKey] as ComboBoxItem).Content.ToString();
         CbGseKeyBindMt.SelectedValue = CbGseKeyBindMt.Items[AppSettings.GseMtKey];
-        
-        TbCaptureRateMs.Text = AppSettings.CaptureRateMs.ToString();
+        GseMtVkKeyCode = _platform.Keycodes.GetKeyCode(cbitemMt); 
+
+
+
+
+        TbCaptureRateMs.Text = AppSettings.CaptureRateMs.ToString(); 
         SliderCaptureRateMs.Value = AppSettings.CaptureRateMs;
+        CurrentCaptureRateMs = AppSettings.CaptureRateMs;
+
         TbKeyRateMs.Text = AppSettings.KeyPressSpeedMs.ToString();
+
         SliderKeyRateMs.Value = AppSettings.KeyPressSpeedMs;
+        CurrentKeyDownDelayMs = AppSettings.KeyPressSpeedMs;
+
+
         CbPushRelease.IsChecked = AppSettings.PushAndRelease;
         _keyPressMode = AppSettings.PushAndRelease;
+
         CbStayOnTop.IsChecked = AppSettings.KeepOnTop;
         
         if (AppSettings.IgnoreTargetingInfo)
@@ -635,6 +651,10 @@ public partial class MainWindow : Avalonia.Controls.Window
             CbIgnoreTargetInfo.IsChecked = false;
 
         }
+      
+
+
+
         foreach (var x in CbActivationKey.Items)
         {
 
@@ -642,6 +662,10 @@ public partial class MainWindow : Avalonia.Controls.Window
             {
                 CbActivationKey.SelectedItem = x;
                 ProcessActivateKey =  AppSettings.ActivationKey;
+                // Make sure we restore the capture state
+                //var lastPlatformState = _platform!.Hotkeys.isStarted();
+
+                _platform!.Hotkeys.SetHotkey(ProcessActivateKey);
             }
         }
 
@@ -1008,9 +1032,12 @@ public partial class MainWindow : Avalonia.Controls.Window
         AppSettings.ActivationKey = activationKey;
         ProcessActivateKey = AppSettings.ActivationKey;
         // Make sure we restore the capture state
-        var lastPlatformState = _platform!.Hotkeys.isStarted();
-        InitializePlatform(ProcessActivateKey);
-        if (lastPlatformState) _platform.Hotkeys.Start();
+        //var lastPlatformState = _platform!.Hotkeys.isStarted();
+        
+        _platform!.Hotkeys.SetHotkey(ProcessActivateKey);
+
+        //InitializePlatform(ProcessActivateKey);
+        //if (lastPlatformState) _platform.Hotkeys.Start();
     }
 
     private void bResetMagPosition_Click(object? sender, RoutedEventArgs e)
