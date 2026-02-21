@@ -92,8 +92,7 @@ internal sealed class PortalScreenCastSession : IDisposable
         Debug.WriteLine($"DBUS resolved address={addr}");
             
         await ConnectWithTimeout(bus, 5000).ConfigureAwait(false);
-          
-
+        
         var screenCast = bus.CreateProxy<IPortalScreenCast>(PortalBusName, PortalPath);
     
 

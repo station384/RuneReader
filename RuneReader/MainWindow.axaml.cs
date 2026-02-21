@@ -103,6 +103,7 @@ public partial class MainWindow : Avalonia.Controls.Window
     private Task? _barcodeMonitorTask; // This task tries to find the barcode on the screen and when found sets the region Note:  This should only happen if the main Barcode comes back as no barcode found.
     private int _isRunning;
     private bool IsRunning => Volatile.Read(ref _isRunning) == 1;
+    private bool _ignoreTargetInfo = false;
     
     private void StartBackgroundLoops()
     {
@@ -134,7 +135,7 @@ public partial class MainWindow : Avalonia.Controls.Window
             var tasks = new[] { _keyLoopTask, _wowMonitorTask, _barcodeMonitorTask };
             _keyLoopTask = _wowMonitorTask = _barcodeMonitorTask = null;
 
-            await Task.WhenAll(tasks.Where(t => t != null)!).ConfigureAwait(false);
+            await Task.WhenAll(tasks.Where(t => t != null)!).ConfigureAwait(true);
         }
         catch (OperationCanceledException)
         {
@@ -232,8 +233,8 @@ public partial class MainWindow : Avalonia.Controls.Window
     }
 
     private double avgDelay = 0.0;
-    private Mat GrayMatHolder { get; }= new();  // This is reused. We will let OpenCV manage the disposal of the heap when reassign it
-    private Mat BinaryMatHoler { get; }= new();   // This is reused. We will let OpenCV manage the disposal of the heap when reassign it
+    //private Mat GrayMatHolder { get; }= new();  // This is reused. We will let OpenCV manage the disposal of the heap when reassign it
+    //private Mat BinaryMatHoler { get; }= new();   // This is reused. We will let OpenCV manage the disposal of the heap when reassign it
 
     /// <summary>
     /// Used to find the delays and text in the image 
@@ -241,71 +242,84 @@ public partial class MainWindow : Avalonia.Controls.Window
     /// <param name="image">OpenCV Mat we are going to process</param>
     /// <param name="threshold">0.0 -> 1.0 How much variance of color are we going to call the same</param>
     /// <returns>ProcessImageResult</returns>
-    private ProcessImageResult ProcessImageOpenCv( Mat image,   double threshold)
+    private (ProcessImageResult, Mat) ProcessImageOpenCv( Mat image,   double threshold)
     {
         
         var currentKeyToSend = string.Empty;
         var result = new ProcessImageResult { CurrentKeyToSend = "", HasTarget = false, WaitTime = 0, regions = new DetectionRegions { HasTarget = false, WaitTime = 0, BottomCenter = false, BottomLeft = false, TopLeft = false, TopRight = false } };
-        
-        Cv2.CvtColor(image, GrayMatHolder, ColorConversionCodes.BGR2GRAY);
-
-        const double maxValue = 255;
-        var thresholdValue = threshold;
-        // This is what filters out the background so we can measure the gaps between the bars.
-        Cv2.Threshold(GrayMatHolder, BinaryMatHoler, thresholdValue, maxValue, ThresholdTypes.Binary);
-
-
-
-        var barcodeResult = DecodeBarcode(BinaryMatHoler);
-        if (barcodeResult.BarcodeFound)
+        if (image.IsDisposed || image.Data == IntPtr.Zero)
         {
-            // treat negative as jitter/lead and only care about lag:
-            barcodeResult.TDiff = Math.Abs(barcodeResult.TDiff);
-            // Clamp to something sane 
-            double x = Clamp(barcodeResult.TDiff, 0, 999);
-
-            ewma.Add(x);
-
-            avgDelay = ewma.ValueMs;
+            return (result, new Mat());
             
-            result = new ProcessImageResult
+        }
+        var _grayMat = new Mat();
+        var _binMat = new Mat();
+        try
+        {
+            Cv2.CvtColor(image, _grayMat, ColorConversionCodes.BGR2GRAY);
+
+            const double maxValue = 255;
+            var thresholdValue = threshold;
+
+            // This is what filters out the background so we can measure the gaps between the bars.
+            Cv2.Threshold(_grayMat, _binMat, thresholdValue, maxValue, ThresholdTypes.Binary);
+
+
+
+            var barcodeResult = DecodeBarcode(_binMat);
+            if (barcodeResult.BarcodeFound)
             {
-                CurrentKeyToSend = "",
-                HasTarget = barcodeResult.HasTarget,
-                WaitTime = barcodeResult.WaitTime + barcodeResult.Delay,
-                regions = new DetectionRegions
+                // treat negative as jitter/lead and only care about lag:
+                barcodeResult.TDiff = Math.Abs(barcodeResult.TDiff);
+                // Clamp to something sane 
+                double x = Clamp(barcodeResult.TDiff, 0, 999);
+
+                ewma.Add(x);
+
+                avgDelay = ewma.ValueMs;
+
+                result = new ProcessImageResult
                 {
-                    HasMultiTarget = barcodeResult.HasTarget,
+                    CurrentKeyToSend = "",
                     HasTarget = barcodeResult.HasTarget,
                     WaitTime = barcodeResult.WaitTime + barcodeResult.Delay,
-                    BottomCenter = (barcodeResult.WaitTime <= 500),
-                    BottomLeft = (barcodeResult.WaitTime <= 300),
-                    TopLeft = (barcodeResult.WaitTime <= 0),
-                    TopRight = (barcodeResult.WaitTime < 1000)
-                    ,GcdTime = barcodeResult.GCD
-                }
-            };
+                    regions = new DetectionRegions
+                    {
+                        HasMultiTarget = barcodeResult.HasTarget,
+                        HasTarget = barcodeResult.HasTarget,
+                        WaitTime = barcodeResult.WaitTime + barcodeResult.Delay,
+                        BottomCenter = (barcodeResult.WaitTime <= 500),
+                        BottomLeft = (barcodeResult.WaitTime <= 300),
+                        TopLeft = (barcodeResult.WaitTime <= 0),
+                        TopRight = (barcodeResult.WaitTime < 1000), GcdTime = barcodeResult.GCD
+                    }
+                };
 
-            _barCodeFound = true;
-            if (barcodeResult.HasTarget || CbIgnoreTargetInfo.IsChecked == true)
-            {
-                currentKeyToSend = barcodeResult.DecodedTextValue;
+                _barCodeFound = true;
+                if (barcodeResult.HasTarget || _ignoreTargetInfo == true)
+                {
+                    currentKeyToSend = barcodeResult.DecodedTextValue;
+                }
+                else
+                {
+                    currentKeyToSend = "";
+                }
             }
             else
             {
-                currentKeyToSend = "";
+                _barCodeFound = false;
             }
         }
-        else
+        finally
         {
-            _barCodeFound = false;
+            _grayMat.Dispose();
         }
 
         result.BarcodeFound = _barCodeFound;
         result.CurrentKeyToSend = currentKeyToSend;
 
 
-        return result;
+        return (result, _binMat);
     }
 
     private void InitializeContinuousCaptureProcess()
@@ -351,7 +365,7 @@ public partial class MainWindow : Avalonia.Controls.Window
             try
             {
                 if (IsRunning && ActivationKeyPressed )
-                    await ProcessBarCodeKey().ConfigureAwait(false);
+                    await ProcessBarCodeKey().ConfigureAwait(true);
             }
             catch (OperationCanceledException) when (token.IsCancellationRequested)
             {
@@ -363,7 +377,7 @@ public partial class MainWindow : Avalonia.Controls.Window
                 SetActivationKeyPressed(false);
             }
             
-            await Task.Delay(ActivationKeyPressed ? 2 : 10, token).ConfigureAwait(false);
+            await Task.Delay(ActivationKeyPressed ? 2 : 10, token).ConfigureAwait(true);
         }
     }
     
@@ -422,13 +436,8 @@ public partial class MainWindow : Avalonia.Controls.Window
                     "F4") // Somehow AF4 got through and killed wow.   so I want to Explicitly ignore it.  I will never allow ALT-F4
                     return;
 
-                double avgDelayLocalized;
-            // if (avgDelay < 100)
-            //     avgDelayLocalized = (100 - avgDelay) + avgDelay;
-            // else
-                avgDelayLocalized = avgDelay;
+                var avgDelayLocalized = avgDelay;
 
-                
 
                 // Translate the char to the virtual Key Code
                 vkCode = _platform.Keycodes.GetKeyCode(currentKey.Key);
@@ -437,7 +446,7 @@ public partial class MainWindow : Avalonia.Controls.Window
                  // Pre-pressing is built into the addon calc  so we don't have to worry about command queuing here.
                  while ((CurrentDelay()  > avgDelayLocalized) && ActivationKeyPressed)
                  {
-                     await Task.Delay(5).ConfigureAwait(false);
+                     await Task.Delay(5).ConfigureAwait(true);
                  }
 
                 // command is tied to CTRL or ALT So have to press them
@@ -507,7 +516,7 @@ public partial class MainWindow : Avalonia.Controls.Window
                     // Wait time may be out of sync here.  this re-syncs the wait time.
                     while ( anticipateWait >= avgDelayLocalized && ActivationKeyPressed)
                     {
-                        await Task.Delay(5).ConfigureAwait(false);
+                        await Task.Delay(5).ConfigureAwait(true);
                         anticipateWait = CurrentDelay();
                     }
 
@@ -515,7 +524,7 @@ public partial class MainWindow : Avalonia.Controls.Window
 
                     while ((int)avgDelay < anticipateWait    && ActivationKeyPressed)
                     {
-                        await Task.Delay(16).ConfigureAwait(false);
+                        await Task.Delay(16).ConfigureAwait(true);
                         anticipateWait = CurrentDelay();
                     }
                 } else
@@ -561,7 +570,7 @@ public partial class MainWindow : Avalonia.Controls.Window
           
             while (String.IsNullOrEmpty(keyToSendFirst) && IsRunning && ActivationKeyPressed)
             {
-                await Task.Delay(5).ConfigureAwait(false);
+                await Task.Delay(5).ConfigureAwait(true);
                 keyToSendFirst = _currentKeyToSend;
             
                 if (currentD.AddMilliseconds(15000) < DateTime.Now) return;
@@ -583,7 +592,7 @@ public partial class MainWindow : Avalonia.Controls.Window
             ExitBarcodeProcessing();
         }
 
-        await Task.Delay(1).ConfigureAwait(false);
+        await Task.Delay(5).ConfigureAwait(true);
 
     }
 
@@ -645,10 +654,12 @@ public partial class MainWindow : Avalonia.Controls.Window
         if (AppSettings.IgnoreTargetingInfo)
         {
             CbIgnoreTargetInfo.IsChecked = true;
+            _ignoreTargetInfo = true;
         }
         else
         {
             CbIgnoreTargetInfo.IsChecked = false;
+            _ignoreTargetInfo = false;
 
         }
       
@@ -804,65 +815,74 @@ public partial class MainWindow : Avalonia.Controls.Window
         }
         
     }
-    
+
+    private readonly object _screenFlipLock = new();
+
     private void ScreenCaptureOnRegionUpdated(Mat image)
     {
-        var old = Interlocked.Exchange(ref _capRegionMat, image);
-        if (old is { IsDisposed: false })
-            old.Dispose();
+        //lock (_screenFlipLock)
+        {
+            var old = Interlocked.Exchange(ref _capRegionMat, image);
+            if (old is { IsDisposed: false })
+                old.Dispose();
+            double threshold = 20; //CurrentThreshold == 0 ? 0.0 : CurrentThreshold / 100;
+            var (capResult, binImage) = ProcessImageOpenCv(_capRegionMat, threshold);
+
+            // This part updates the visual stuff so make sure we launch it on the UIThread.
+            // Push the new image out the first image,  this has the markers and delays
+            Dispatcher.UIThread.Post(() =>
+            {
+                _currentImageRegions.FirstImageRegions.TopRight = capResult.regions.TopRight;
+                _currentImageRegions.FirstImageRegions.TopLeft = capResult.regions.TopLeft;
+                _currentImageRegions.FirstImageRegions.BottomLeft = capResult.regions.BottomLeft;
+                _currentImageRegions.FirstImageRegions.BottomCenter = capResult.regions.BottomCenter;
+                _currentImageRegions.FirstImageRegions.HasTarget = capResult.regions.HasTarget;
+                _currentImageRegions.FirstImageRegions.WaitTime = capResult.regions.WaitTime;
+                _currentImageRegions.FirstImageRegions.GcdTime = capResult.regions.GcdTime;
+                _currentKeyToSend = capResult.CurrentKeyToSend;
+                if (capResult.BarcodeFound)
+                {
+                    if (!binImage.IsDisposed)
+                    {
+                        UpdatePreview(binImage);
+                    }
+                    // Update the label
+
+                    _lastDetectedValue = capResult.CurrentKeyToSend;
+                    _lastDetectedTime = capResult.WaitTime.ToString();
+                    LDetectedValue.Text = _lastDetectedValue;
+                    LDetectedTime.Text = _lastDetectedTime;
+                    LSkew.Text = ((int)avgDelay).ToString() + "MS";
+                    LGcdWait.Text = capResult.regions.GcdTime.ToString();
+                    if (!binImage.IsDisposed)
+                    {
+                        binImage.Dispose();
+                    }
+                }
+                else
+                {
+                    //Cv2.ImShow("Error", _capRegionMat);
+                    if (!_capRegionMat.IsDisposed)
+                    {
+                        UpdatePreview(_capRegionMat);
+                    }
+
+                    // Use our last values.
+                    // Frame doubling or smoothing can cause the barcode to jitter.
+                    // No need to panic the keysend with N/A.
+                    LDetectedValue.Text = _lastDetectedValue;
+                    LDetectedTime.Text = _lastDetectedTime;
+                    LSkew.Text = ((int)avgDelay).ToString() + "MS";
+                    LGcdWait.Text = "0";
+                }
+            });
+            // swap the values and dispose of the old value.  thread-safe
 
 
-             
-             // This part updates the visual stuff so make sure we launch it on the UIThread.
-             // Push the new image out the first image,  this has the markers and delays
-             Dispatcher.UIThread.Post(() =>
-             {
-                 double threshold = 20;//CurrentThreshold == 0 ? 0.0 : CurrentThreshold / 100;
-                 var capResult = ProcessImageOpenCv( _capRegionMat,    threshold);
 
-                 _currentImageRegions.FirstImageRegions.TopRight = capResult.regions.TopRight;
-                 _currentImageRegions.FirstImageRegions.TopLeft = capResult.regions.TopLeft;
-                 _currentImageRegions.FirstImageRegions.BottomLeft = capResult.regions.BottomLeft;
-                 _currentImageRegions.FirstImageRegions.BottomCenter = capResult.regions.BottomCenter;
-                 _currentImageRegions.FirstImageRegions.HasTarget = capResult.regions.HasTarget;
-                 _currentImageRegions.FirstImageRegions.WaitTime = capResult.regions.WaitTime;
-                 _currentImageRegions.FirstImageRegions.GcdTime = capResult.regions.GcdTime;
-                 _currentKeyToSend = capResult.CurrentKeyToSend;
-                 if (capResult.BarcodeFound)
-                 {
-                     UpdatePreview(BinaryMatHoler);
-                     // Update the label
-
-                     _lastDetectedValue = capResult.CurrentKeyToSend;
-                     _lastDetectedTime = capResult.WaitTime.ToString();
-                     LDetectedValue.Text = _lastDetectedValue;
-                     LDetectedTime.Text = _lastDetectedTime;
-                     LSkew.Text = ((int)avgDelay).ToString()+"MS";
-                     LGcdWait.Text = capResult.regions.GcdTime.ToString();
-                 }
-                 else
-                 {
-                     //Cv2.ImShow("Error", _capRegionMat);
-                     if (!_capRegionMat.IsDisposed)
-                     {
-                         UpdatePreview(_capRegionMat);
-                     }
-
-                     // Use our last values.
-                     // Frame doubling or smoothing can cause the barcode to jitter.
-                     // No need to panic the keysend with N/A.
-                     LDetectedValue.Text = _lastDetectedValue;
-                     LDetectedTime.Text = _lastDetectedTime;
-                     LSkew.Text = ((int)avgDelay).ToString()+"MS";
-                     LGcdWait.Text = "0";
-                 }
-             });
-             // swap the values and dispose of the old value.  thread-safe
-     
-        
+        }
 
     }
-    
 
 
     private async Task RunBarcodeMonitorLoopAsync(CancellationToken token)
@@ -886,7 +906,7 @@ public partial class MainWindow : Avalonia.Controls.Window
                 _barCodeFound = false;
             }
 
-            await Task.Delay(TimeSpan.FromSeconds(5), token).ConfigureAwait(false);
+            await Task.Delay(TimeSpan.FromSeconds(5), token).ConfigureAwait(true);
         }
     }
 
@@ -905,7 +925,7 @@ public partial class MainWindow : Avalonia.Controls.Window
                 Debug.WriteLine(ex);
             }
 
-            await Task.Delay(TimeSpan.FromSeconds(5), token).ConfigureAwait(false);
+            await Task.Delay(TimeSpan.FromSeconds(5), token).ConfigureAwait(true);
         }
     }
 
@@ -1110,16 +1130,19 @@ public partial class MainWindow : Avalonia.Controls.Window
         if ((e.Source as CheckBox)!.IsChecked == null)
         {
             AppSettings.IgnoreTargetingInfo = true;
+            _ignoreTargetInfo = true;
         }
         else
         {
             if (((CheckBox)e.Source).IsChecked == true )
             {
                 AppSettings.IgnoreTargetingInfo = true;
+                _ignoreTargetInfo = true;
             }
             else
             {
                 AppSettings.IgnoreTargetingInfo = false;
+                _ignoreTargetInfo = true;
             }
         }
 
@@ -1243,8 +1266,8 @@ public partial class MainWindow : Avalonia.Controls.Window
     {
         if (Design.IsDesignMode) return true;
 
-        GrayMatHolder.Dispose();
-        BinaryMatHoler.Dispose();
+        //GrayMatHolder.Dispose();
+        //BinaryMatHoler.Dispose();
         AppSettings.CapX = _capRegion.Left;
         AppSettings.CapY = _capRegion.Top;
         AppSettings.CapWidth = _capRegion.Width;

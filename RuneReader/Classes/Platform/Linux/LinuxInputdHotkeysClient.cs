@@ -7,7 +7,7 @@ namespace RuneReader.Classes.Platform.Linux;
 public sealed class RunereaderInputdHotkeysClient : IGlobalHotkeys
 {
     private readonly InputdConnection _conn;
-    private readonly string _activationKey;
+    private string _activationKey;
 
     private bool _started;
 
@@ -26,6 +26,13 @@ public sealed class RunereaderInputdHotkeysClient : IGlobalHotkeys
         _activationKey = activationKey;
         _conn = new InputdConnection(socketPath, sharedKey);
         _conn.LineReceived += OnLine;
+    }
+
+    public void SetHotkey(string? s)
+    {
+        _activationKey = string.IsNullOrEmpty(s) ? "1" : s;
+        if (_conn.IsConnected) 
+          _conn.SendAndReadLine($"SET_ACTKEY {_activationKey}", expectOkPrefix: "OK SET_ACTKEY");
     }
 
     public bool isStarted() => _started;

@@ -1,4 +1,5 @@
 ﻿#nullable enable
+using System.Diagnostics;
 using System.Runtime.InteropServices;
 namespace runereader_inputd;
 
@@ -7,11 +8,7 @@ internal static class Program
     public static async Task Main(string[] args)
     {
         var cts = new CancellationTokenSource();
-
-        AppDomain.CurrentDomain.ProcessExit += (s, e) =>
-        {
-            try { cts.Cancel(); } catch { }
-        };
+        
         
         // Socket path: default /run/runereader-inputd.sock
         // You can change this to /run/user/<uid>/... if you want non-root service with udev grants.
@@ -37,14 +34,31 @@ internal static class Program
         // Best-effort cleanup: prevent stuck keys on Ctrl+C / SIGTERM.
         Console.CancelKeyPress += (_, e) =>
         {
-            try { uinput.ReleaseAllEnabled(); } catch { }
-            e.Cancel = true;
-            cts.Cancel();
-            Environment.Exit(0);
+            try
+            {
+                uinput.ReleaseAllEnabled();
+                e.Cancel = true;
+                cts.Cancel();
+                Environment.Exit(0);
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine(ex.Message);
+                
+            }
+
         };
+        
         AppDomain.CurrentDomain.ProcessExit += (s, e) =>
         {
-            try { cts.Cancel(); } catch { }
+            try
+            {
+                cts.Cancel();
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine(ex.Message);
+            }
         };
         
         
