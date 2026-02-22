@@ -331,8 +331,6 @@ public partial class MainWindow : Avalonia.Controls.Window
             height = _capRegion.Height;
 
 
-
-
         // Initialize CaptureScreen with the dispatcher and the UI update action
         var regions = new OpenCvSharp.Rect { X = x, Y = y, Width = width, Height = height };
         if (regions.X + regions.Width > ScreenMaxWidth || regions.Y + regions.Height > ScreenMaxHeight)
@@ -397,7 +395,10 @@ public partial class MainWindow : Avalonia.Controls.Window
             bool keyDown = false;
 
             bool ctrlDown = false, altDown = false, shiftDown = false;
+           
+            // check if were currently processing another key
             if (!TryEnterProcessingKey()) return;
+            
             int vkCode = 0;
             try
             {
@@ -446,11 +447,15 @@ public partial class MainWindow : Avalonia.Controls.Window
 
                 // Wows Default Key behavior is to activate as soon as the key is pressed.   So lets make sure we do not press anything till we have a 0 wait…
                 // Pre-pressing is built into the addon calc  so we don't have to worry about command queuing here.
-                while ((CurrentDelay() > avgDelayLocalized) && ActivationKeyPressed)
+                // 50 seems to be a good magic number.  it stops the rappid key presses and doesn't extend things to long even in linux where it can skew the timeing massivly.
+                while ((CurrentDelay() >= 50) && ActivationKeyPressed)
                 {
-                    await Task.Delay(5).ConfigureAwait(true);
+                    await Task.Delay(10).ConfigureAwait(true);
                 }
 
+
+                
+                
                 // command is tied to CTRL or ALT So have to press them
                 if (currentKey.Ctrl)
                 {
