@@ -120,3 +120,18 @@ Add this to your .csproj so your runtimes/linux-x64/native is always copied to o
   <None Include="runtimes/linux-x64/native/**" CopyToOutputDirectory="PreserveNewest" />
 </ItemGroup>
 ```
+
+
+WOW Game issues under linux:
+Under KDE ctrl-F1 .. ctrl-F4 are mapped to kde short cuts and will interfer with the game
+it is advised to change them to meta-F1 .. meta-F2 to allow for the hotkey desktop switching in kde and not
+interfer with the game.
+
+you can do this in KDE settings -> keyboard -> Shortcuts -> Window Manager
+can change the switch to desktop mappings.
+
+if you do not want to do this,  do not assign those keys to an action bar
+and don't assign spells to them
+
+
+

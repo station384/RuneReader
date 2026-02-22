@@ -45,7 +45,14 @@ internal sealed class InputdConnection : IDisposable
         if (IsConnected) return;
 
         _sock = new Socket(AddressFamily.Unix, SocketType.Stream, ProtocolType.Unspecified);
-        _sock.Connect(new UnixDomainSocketEndPoint(_socketPath));
+        try
+        {
+            _sock.Connect(new UnixDomainSocketEndPoint(_socketPath));
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(String.Concat ("Could not connect to keyboard server\n ", ex.Message));
+        }
 
         _stream = new NetworkStream(_sock, ownsSocket: true);
         _reader = new StreamReader(_stream, Encoding.UTF8, leaveOpen: true);
