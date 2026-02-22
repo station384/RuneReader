@@ -252,7 +252,8 @@ namespace RuneReader
             AutoRotate = false,
             Options = Hints
         };
-        static int NowMsXs() => (int)(Environment.TickCount64 % 5000); // -0..5000
+        static int NowMsXs() => (int)(Environment.TickCount64 % 1000); // -0..1000
+        
         static int DiffWrap(int sent, int recv, int wrap)
         {
             int d = recv - sent;
@@ -358,15 +359,15 @@ namespace RuneReader
                             {
                                 result.TStampAddon = ti;
                                 result.TStampApp =  NowMsXs();
-                                 #if WINDOWS
-                                result.TDiff = DiffWrap(result.TStampAddon, result.TStampApp, 5000);
-                                 #else
-                                // this is a hack to compensate for the resolution difference between linux time being filtered thru wine and native calls.
-                                result.TDiff = DiffWrap(result.TStampAddon, result.TStampApp, 5000) - 100; 
-                                if ( result.TDiff < 100)  result.TDiff = 100;
-                                if ( result.TDiff > 250)  result.TDiff = 250;
-                                
-                                #endif   
+                                 // #if WINDOWS
+                                result.TDiff = DiffWrap(result.TStampApp, result.TStampAddon, 1000);
+                                //  #else
+                                // // this is a hack to compensate for the resolution difference between linux time being filtered thru wine and native calls.
+                                // result.TDiff = DiffWrap(result.TStampAddon, result.TStampApp, 5000) - 100; 
+                                // if ( result.TDiff < 100)  result.TDiff = 100;
+                                // if ( result.TDiff > 250)  result.TDiff = 250;
+                                //
+                                // #endif   
                             }
                         }
 

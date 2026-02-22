@@ -132,7 +132,7 @@ namespace RuneReader // adjust to your current namespace
 
                 try
                 {
-                    await Task.Delay(delay, token).ConfigureAwait(false);
+                    await Task.Delay(delay, token).ConfigureAwait(true);
                 }
                 catch (OperationCanceledException)
                 {

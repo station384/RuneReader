@@ -70,7 +70,7 @@ public partial class MainWindow : Avalonia.Controls.Window
             ValueMs += alpha * (xMs - ValueMs);
         }
     }
-    private static EwmaTimeConstant ewma = new EwmaTimeConstant(tauSeconds: 2.0);
+    private static EwmaTimeConstant ewma = new(tauSeconds: 1.0);
     private static UserSettings AppSettings { get; set; } = new();
     
     private volatile string _currentKeyToSend = string.Empty; // Default key to send, can be changed dynamically
@@ -383,7 +383,7 @@ public partial class MainWindow : Avalonia.Controls.Window
     private async Task ProcessKey(KeyCommand? currentKey)
     {
 
-
+       
             int CurrentDelay()
             {
                 return (int)_currentImageRegions.FirstImageRegions.WaitTime +
@@ -1157,7 +1157,7 @@ public partial class MainWindow : Avalonia.Controls.Window
             else
             {
                 AppSettings.IgnoreTargetingInfo = false;
-                _ignoreTargetInfo = true;
+                _ignoreTargetInfo = false;
             }
         }
 
