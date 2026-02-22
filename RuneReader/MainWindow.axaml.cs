@@ -272,7 +272,7 @@ public partial class MainWindow : Avalonia.Controls.Window
                 // treat negative as jitter/lead and only care about lag:
                 barcodeResult.TDiff = Math.Abs(barcodeResult.TDiff);
                 // Clamp to something sane 
-                double x = Clamp(barcodeResult.TDiff, 0, 999);
+                double x = Clamp(barcodeResult.TDiff, 0, 5000);
 
                 ewma.Add(x);
 
@@ -380,27 +380,29 @@ public partial class MainWindow : Avalonia.Controls.Window
             await Task.Delay(ActivationKeyPressed ? 2 : 10, token).ConfigureAwait(true);
         }
     }
-    
+
 
     private async Task ProcessKey(KeyCommand? currentKey)
     {
-      
-        int  CurrentDelay()
-        {
-            return (int)_currentImageRegions.FirstImageRegions.WaitTime + (int)_currentImageRegions.FirstImageRegions.GcdTime -
-                   (int)avgDelay;
-        }
 
-        
-        bool keyDown = false;
-            
-        bool ctrlDown = false, altDown = false, shiftDown = false;
-        if (!TryEnterProcessingKey()) return;
-        int vkCode = 0;
+
+            int CurrentDelay()
+            {
+                return (int)_currentImageRegions.FirstImageRegions.WaitTime +
+                       (int)_currentImageRegions.FirstImageRegions.GcdTime -
+                       (int)avgDelay;
+            }
+
+
+            bool keyDown = false;
+
+            bool ctrlDown = false, altDown = false, shiftDown = false;
+            if (!TryEnterProcessingKey()) return;
+            int vkCode = 0;
             try
             {
                 if (currentKey is null) return;
-                
+
                 if (UseGse)
                 {
                     if (!_currentImageRegions.FirstImageRegions.HasMultiTarget)
@@ -428,7 +430,7 @@ public partial class MainWindow : Avalonia.Controls.Window
 
                 if (!_platform!.ForegroundWindow.IsActiveWindow())
                     return;
-              
+
 
 
                 if (AltPressed &&
@@ -442,17 +444,18 @@ public partial class MainWindow : Avalonia.Controls.Window
                 // Translate the char to the virtual Key Code
                 vkCode = _platform.Keycodes.GetKeyCode(currentKey.Key);
 
-                 // Wows Default Key behavior is to activate as soon as the key is pressed.   So lets make sure we do not press anything till we have a 0 wait…
-                 // Pre-pressing is built into the addon calc  so we don't have to worry about command queuing here.
-                 while ((CurrentDelay()  > avgDelayLocalized) && ActivationKeyPressed)
-                 {
-                     await Task.Delay(5).ConfigureAwait(true);
-                 }
+                // Wows Default Key behavior is to activate as soon as the key is pressed.   So lets make sure we do not press anything till we have a 0 wait…
+                // Pre-pressing is built into the addon calc  so we don't have to worry about command queuing here.
+                while ((CurrentDelay() > avgDelayLocalized) && ActivationKeyPressed)
+                {
+                    await Task.Delay(5).ConfigureAwait(true);
+                }
 
                 // command is tied to CTRL or ALT So have to press them
                 if (currentKey.Ctrl)
                 {
-                    _platform.Input.TrySendCtrlKey(true); ctrlDown = true;
+                    _platform.Input.TrySendCtrlKey(true);
+                    ctrlDown = true;
                 }
                 else
                 {
@@ -465,7 +468,8 @@ public partial class MainWindow : Avalonia.Controls.Window
 
                 if (currentKey.Alt)
                 {
-                    _platform.Input.TrySendAltKey(true); altDown = true;
+                    _platform.Input.TrySendAltKey(true);
+                    altDown = true;
                 }
                 else
                 {
@@ -475,7 +479,8 @@ public partial class MainWindow : Avalonia.Controls.Window
 
                 if (currentKey.Shift)
                 {
-                    _platform.Input.TrySendShiftKey(true); shiftDown = true;
+                    _platform.Input.TrySendShiftKey(true);
+                    shiftDown = true;
                 }
                 else
                 {
@@ -492,7 +497,8 @@ public partial class MainWindow : Avalonia.Controls.Window
                 // CTRL and ALT do not need to be held down just only pressed initially for the command to be interpreted correctly
                 if (currentKey.Ctrl)
                 {
-                    _platform.Input.TrySendCtrlKey(false); ctrlDown = false;
+                    _platform.Input.TrySendCtrlKey(false);
+                    ctrlDown = false;
                 }
 
                 if (currentKey.Alt)
@@ -503,7 +509,8 @@ public partial class MainWindow : Avalonia.Controls.Window
 
                 if (currentKey.Shift)
                 {
-                    _platform.Input.TrySendShiftKey(false); shiftDown = false;
+                    _platform.Input.TrySendShiftKey(false);
+                    shiftDown = false;
                 }
 
                 // Add the keypress delay while monitoring that the activation key is still pressed (allows interrupting the delay)
@@ -511,10 +518,10 @@ public partial class MainWindow : Avalonia.Controls.Window
 
                 if (_keyPressMode)
                 {
-                    var anticipateWait = CurrentDelay() ;
-                    
+                    var anticipateWait = CurrentDelay();
+
                     // Wait time may be out of sync here.  this re-syncs the wait time.
-                    while ( anticipateWait >= avgDelayLocalized && ActivationKeyPressed)
+                    while (anticipateWait >= avgDelayLocalized && ActivationKeyPressed)
                     {
                         await Task.Delay(5).ConfigureAwait(true);
                         anticipateWait = CurrentDelay();
@@ -522,12 +529,13 @@ public partial class MainWindow : Avalonia.Controls.Window
 
 
 
-                    while ((int)avgDelay < anticipateWait    && ActivationKeyPressed)
+                    while ((int)avgDelay < anticipateWait && ActivationKeyPressed)
                     {
                         await Task.Delay(16).ConfigureAwait(true);
                         anticipateWait = CurrentDelay();
                     }
-                } else
+                }
+                else
 
                     // If where not watching for when things time out, we insert a hard delay
                     // This is no longer need as were putting a hard pause above
@@ -536,7 +544,7 @@ public partial class MainWindow : Avalonia.Controls.Window
                     await Task.Delay(Random.Shared.Next() % 50 + CurrentKeyDownDelayMs);
                 }
 
-              
+
             }
             finally
             {
@@ -548,6 +556,8 @@ public partial class MainWindow : Avalonia.Controls.Window
                 if (shiftDown) _platform!.Input.TrySendShiftKey(false);
                 ExitProcessingKey();
             }
+
+
     }
 
 
@@ -616,7 +626,7 @@ public partial class MainWindow : Avalonia.Controls.Window
         _platform.Hotkeys.ActivateKeyChangedAsync += HotkeysOnActivateKeyChangedAsync;
         _platform.Hotkeys.ShiftChangedAsync += HotkeysOnShiftChangedAsync;
         _platform.Hotkeys.CtrlChangedAsync += HotkeysOnCtrlChangedAsync;
-
+        _platform.Hotkeys.AltChangedAsync += HotkeysOnAltChangedAsync;
         
     }
 
