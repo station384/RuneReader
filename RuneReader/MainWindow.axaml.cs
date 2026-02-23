@@ -70,7 +70,7 @@ public partial class MainWindow : Avalonia.Controls.Window
             ValueMs += alpha * (xMs - ValueMs);
         }
     }
-    private static EwmaTimeConstant ewma = new(tauSeconds: 1.0);
+    private static EwmaTimeConstant ewma = new(tauSeconds: 3.0);
     private static UserSettings AppSettings { get; set; } = new();
     
     private volatile string _currentKeyToSend = string.Empty; // Default key to send, can be changed dynamically
