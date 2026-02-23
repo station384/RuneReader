@@ -252,7 +252,7 @@ namespace RuneReader
             AutoRotate = false,
             Options = Hints
         };
-        static int NowMsXs() => (int)(Environment.TickCount64 % 1000); // -0..1000
+        static int NowMsXs() => (int)(Environment.TickCount64 % 500); // -0..1000
         
         static int DiffWrap(int sent, int recv, int wrap)
         {
@@ -360,7 +360,8 @@ namespace RuneReader
                                 result.TStampAddon = ti;
                                 result.TStampApp =  NowMsXs();
                                  // #if WINDOWS
-                                result.TDiff = DiffWrap(result.TStampApp, result.TStampAddon, 1000);
+                                 //result.TDiff =  result.TStampAddon - result.TStampApp ;
+                                result.TDiff = DiffWrap(result.TStampApp, result.TStampAddon, 500);
                                 //  #else
                                 // // this is a hack to compensate for the resolution difference between linux time being filtered thru wine and native calls.
                                 // result.TDiff = DiffWrap(result.TStampAddon, result.TStampApp, 5000) - 100; 
