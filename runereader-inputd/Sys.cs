@@ -59,7 +59,20 @@ internal static class Sys
 
     [DllImport("libc", SetLastError = true)]
     internal static extern int unlink(string pathname);
+    
+    [StructLayout(LayoutKind.Sequential)]
+    internal struct pollfd
+    {
+        public int fd;
+        public short events;
+        public short revents;
+    }
 
+    internal const short POLLIN = 0x0001;
+
+    [DllImport("libc", SetLastError = true)]
+    internal static extern int poll([In, Out] pollfd[] fds, int nfds, int timeout);
+    
     // optional helper
     internal static void UnlinkNoThrow(string path)
     {

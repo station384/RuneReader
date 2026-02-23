@@ -1,4 +1,5 @@
 #nullable enable
+using System.Diagnostics;
 using System.Net.Sockets;
 using System.Text;
 
@@ -79,10 +80,12 @@ internal sealed class InputDServer
         finally
         {
             // Best effort: release any possibly held keys on daemon exit
-            try { _uinput.ReleaseAllEnabled(); } catch { }
+            try { _uinput.ReleaseAllEnabled(); }
+            catch { }
 
             // Remove socket file on exit
-            try { Sys.unlink(_socketPath); } catch { }
+            try { Sys.unlink(_socketPath); } 
+            catch { }
         }
     }
 
@@ -92,14 +95,14 @@ internal sealed class InputDServer
         if (e.Code == _activationKeyCode)
         {
             Broadcast($"ACT {(e.Pressed ? "DOWN" : "UP")}");
-            Console.WriteLine($" ACT: {(e.Pressed ? "ON" : "OFF")}");
+            Debug.WriteLine($" ACT: {(e.Pressed ? "ON" : "OFF")}");
         }
 
         // Modifiers (optional but useful for parity with your IGlobalHotkeys)
         if (KeyMaps.ModifierCodeToName.TryGetValue(e.Code, out var mod))
         {
             Broadcast($"MOD {mod} {(e.Pressed ? "DOWN" : "UP")}");
-            Console.WriteLine($" MOD: {mod} {(e.Pressed ? "DOWN" : "UP")}");
+            Debug.WriteLine($" MOD: {mod} {(e.Pressed ? "DOWN" : "UP")}");
 
         }
     }
@@ -107,17 +110,41 @@ internal sealed class InputDServer
     private void Broadcast(string line)
     {
         List<ClientConnection> snapshot;
-        lock (_clientGate) snapshot = _clients.ToList();
+        lock (_clientGate) 
+            snapshot = _clients.ToList();
 
         foreach (var c in snapshot)
             c.TrySend(line);
     }
 
+    
+
+static bool TryParse2(string s, out string a, out string b)
+    {
+        s = s.Trim();
+        int i = s.IndexOf(' ');
+        if (i < 0) { a = ""; b = ""; return false; }
+        a = s.Substring(0, i);
+        b = s.Substring(i + 1).Trim();
+        return true;
+    }
+// This is best but only works for c# 13+
+    // static bool TryParse2(string s, out ReadOnlySpan<char> a, out ReadOnlySpan<char> b)
+    // {
+    //     var span = s.AsSpan().Trim();
+    //     int i = span.IndexOf(' ');
+    //     if (i < 0) { a = default; b = default; return false; }
+    //     a = span[..i];
+    //     b = span[(i + 1)..].Trim();
+    //     return true;
+    // }
+    
     private async Task HandleClientAsync(Socket socket)
     {
         var client = new ClientConnection(socket);
 
-        lock (_clientGate) _clients.Add(client);
+        lock (_clientGate) 
+            _clients.Add(client);
 
         Console.WriteLine("Client connected");
 
@@ -127,9 +154,10 @@ internal sealed class InputDServer
             client.TrySend("AUTH_REQUIRED 1");
 
             bool authed = false;
-
+            int cycleCount = 0;
             while (true)
             {
+                cycleCount++;
                 var line = await client.ReadLineAsync();
                 if (line == null) break;
 
@@ -145,19 +173,19 @@ internal sealed class InputDServer
                         {
                             authed = true;
                             client.TrySend("OK AUTH");
-                            Console.WriteLine($"AUTH: OK");
+                            Debug.WriteLine($"AUTH: OK");
                         }
                         else
                         {
                             client.TrySend("ERR AUTH");
-                            Console.WriteLine($"AUTH: ERR");
+                            Debug.WriteLine($"AUTH: ERR");
                             break;
                         }
                     }
                     else
                     {
                         client.TrySend("ERR NOT_AUTHED");
-                        Console.WriteLine($"AUTH: ERR NOT_AUTHED");
+                        Debug.WriteLine($"AUTH: ERR NOT_AUTHED");
 
                     }
 
@@ -180,7 +208,7 @@ internal sealed class InputDServer
                             }
                             _activationKeyCode = code;
                             client.TrySend($"OK SET_ACTKEY {tok.ToUpperInvariant()}");
-                            Console.WriteLine($"OK SET_ACTKEY {tok.ToUpperInvariant()}");
+                            Debug.WriteLine($"OK SET_ACTKEY {tok.ToUpperInvariant()}");
                             break;
                         }
 
@@ -189,13 +217,13 @@ internal sealed class InputDServer
                             if (!TryHandleInject(rest, client, out var err))
                             {
                                 client.TrySend($"ERR INJECT {err}");
-                                Console.WriteLine($"ERR INJECT {err}");
+                                Debug.WriteLine($"ERR INJECT {err}");
 
                             }
                             else
                             {
                                 client.TrySend("OK INJECT");
-                                Console.WriteLine($"OK INJECT");
+                                Debug.WriteLine($"OK INJECT");
 
                             }
                             break;
@@ -203,31 +231,42 @@ internal sealed class InputDServer
                     case "INJECTC":
                     {
                         // INJECTC DOWN <intcode>
-                        var parts = rest.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-                        if (parts.Length != 2)
+                        //var parts = rest.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+                        if (TryParse2(rest, out  var _part1, out  var _part2))
                         {
-                            client.TrySend("ERR INJECTC syntax"); 
-                            Console.WriteLine($"ERR INJECTC syntax");
+                            // if (parts.Length != 2)
+                            // {
+                            //     client.TrySend("ERR INJECTC syntax");
+                            //     Debug.WriteLine($"ERR INJECTC syntax");
+                            //     break;
+                            // }
+
+                            var op = _part1.ToUpperInvariant();
+                            if (!int.TryParse(_part2, out var codeInt) || codeInt < 0 || codeInt > 4096)
+                            {
+                                client.TrySend("ERR INJECTC bad_code");
+                                Debug.WriteLine($"ERR INJECTC bad_code");
+                                break;
+                            }
+
+
+                            bool pressed = op == "DOWN";
+                            _uinput.EmitKey((ushort)codeInt, pressed);
+
+                            // Track for stuck-key safety.
+                            if (pressed) client.MarkPressed((ushort)codeInt);
+                            else client.MarkReleased((ushort)codeInt);
+
+                            client.TrySend("OK INJECTC");
+                            Debug.WriteLine($"OK INJECTC {codeInt} : {op}");
+                        }
+                        else
+                        {
+                            client.TrySend("ERR INJECTC syntax");
+                            Debug.WriteLine($"ERR INJECTC syntax");
                             break;
                         }
 
-                        var op = parts[0].ToUpperInvariant();
-                        if (!int.TryParse(parts[1], out var codeInt) || codeInt < 0 || codeInt > 4096)
-                        { 
-                            client.TrySend("ERR INJECTC bad_code"); 
-                            Console.WriteLine($"ERR INJECTC bad_code");
-                            break; 
-                        }
-
-                        bool pressed = op == "DOWN";
-                        _uinput.EmitKey((ushort)codeInt, pressed);
-
-                        // Track for stuck-key safety.
-                        if (pressed) client.MarkPressed((ushort)codeInt);
-                        else client.MarkReleased((ushort)codeInt);
-
-                        client.TrySend("OK INJECTC");
-                        Console.WriteLine($"OK INJECTC {codeInt} : {op}");
                         break;
                     }
                     case "RESET":
@@ -246,6 +285,12 @@ internal sealed class InputDServer
                         client.TrySend("ERR UNKNOWN_CMD");
                         Console.WriteLine($"ERR UNKNOWN_CMD");
                         break;
+                }
+
+                if (cycleCount >= 50)
+                {
+                    cycleCount = 0;
+                    GC.Collect();
                 }
             }
         }

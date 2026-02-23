@@ -56,36 +56,52 @@ internal sealed class EvdevKeyboardMonitor : IDisposable
         _task = Task.Run(() => LoopAsync(_cts.Token));
     }
 
-    private async Task LoopAsync(CancellationToken ct)
+
+    private Task LoopAsync(CancellationToken ct)
     {
-        // Simple: poll reads in round-robin.
-        // Each evdev read is blocking; we open O_NONBLOCK so we can iterate.
+        // Build poll list once 
+        // this is not optimal.  it will miss if a keybaord is pulled or inserted.
+        // meet to make a note in linux notes.
+        var pfds = _devices.Select(d => new Sys.pollfd
+        {
+            fd = d.Fd,
+            events = Sys.POLLIN,
+            revents = 0
+        }).ToArray();
+
+        // Run as a blocking worker loop
         while (!ct.IsCancellationRequested)
         {
-            bool any = false;
+            // timeoutMs:
+            // -1 blocks forever, but then cancellation won’t break out.
+            // So use a long-ish timeout to check ct occasionally.
+            int rc = Sys.poll(pfds, pfds.Length, 1000); // 1s
 
-            foreach (var d in _devices)
+            if (ct.IsCancellationRequested) break;
+            if (rc <= 0) continue; // timeout or EINTR
+
+            for (int i = 0; i < pfds.Length; i++)
             {
-                while (d.TryReadEvent(out var ev))
+                if ((pfds[i].revents & Sys.POLLIN) == 0)
+                    continue;
+
+                // Drain all queued events from that device (nonblocking read)
+                var dev = _devices[i];
+                while (dev.TryReadEvent(out var ev))
                 {
-                    any = true;
-
-                    // EV_KEY = 0x01
-                    if (ev.type != 0x01) continue;
-
-                    // value: 1 down, 0 up, 2 repeat
-                    if (ev.value == 2) continue;
+                    if (ev.type != 0x01) continue; // EV_KEY
+                    if (ev.value == 2) continue;   // repeat ignore
 
                     bool pressed = ev.value == 1;
                     KeyEvent?.Invoke(this, new KeyEventArgs(ev.code, pressed));
                 }
             }
-
-            if (!any)
-                await Task.Delay(2, ct).ConfigureAwait(false);
         }
+
+        return Task.CompletedTask;
     }
 
+    
     public void Dispose()
     {
         try { _cts?.Cancel(); } catch { }
@@ -116,7 +132,8 @@ internal sealed class EvdevKeyboardMonitor : IDisposable
     {
         private readonly int _fd;
         public string Name { get; }
-
+        public int Fd => _fd;
+        
         private EvdevDevice(int fd, string name)
         {
             _fd = fd;
