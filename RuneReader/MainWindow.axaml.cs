@@ -406,14 +406,14 @@ public partial class MainWindow : Avalonia.Controls.Window
 
                 if (UseGse)
                 {
-                    if (!_currentImageRegions.FirstImageRegions.HasMultiTarget)
+                    if (!AltPressed && !CtrlPressed)//if (!_currentImageRegions.FirstImageRegions.HasMultiTarget)
                     {
                         currentKey = new KeyCommand(_platform.Keycodes.GetTokenFromKeyCode(GseStVkKeyCode),
                             currentKey.MaxWaitTime, currentKey.HasTarget)
                         {
-                            Alt = false,
-                            Ctrl = false,
-                            Shift = false
+                            Alt = AltPressed,
+                            Ctrl = CtrlPressed,
+                            Shift = ShiftPressed
                         };
                     }
                     else
@@ -421,9 +421,9 @@ public partial class MainWindow : Avalonia.Controls.Window
                         currentKey = new KeyCommand(_platform.Keycodes.GetTokenFromKeyCode(GseMtVkKeyCode),
                             currentKey.MaxWaitTime, currentKey.HasTarget)
                         {
-                            Alt = false,
-                            Ctrl = false,
-                            Shift = false
+                            Alt = AltPressed,
+                            Ctrl = CtrlPressed,
+                            Shift = ShiftPressed
                         };
                     }
                 }
@@ -457,7 +457,8 @@ public partial class MainWindow : Avalonia.Controls.Window
                 
                 
                 // command is tied to CTRL or ALT So have to press them
-                if (currentKey.Ctrl)
+                if (!UseGse)
+                if (currentKey.Ctrl )
                 {
                     _platform.Input.TrySendCtrlKey(true);
                     ctrlDown = true;
@@ -470,7 +471,7 @@ public partial class MainWindow : Avalonia.Controls.Window
                     // keyboards are global so that may work.
                     _platform.Input.TrySendCtrlKey(false);
                 }
-
+                if (!UseGse)
                 if (currentKey.Alt)
                 {
                     _platform.Input.TrySendAltKey(true);
@@ -481,7 +482,7 @@ public partial class MainWindow : Avalonia.Controls.Window
                     // See Notes on CTRL.
                     _platform.Input.TrySendAltKey(false);
                 }
-
+                if (!UseGse)
                 if (currentKey.Shift)
                 {
                     _platform.Input.TrySendShiftKey(true);
@@ -500,18 +501,19 @@ public partial class MainWindow : Avalonia.Controls.Window
 
 
                 // CTRL and ALT do not need to be held down just only pressed initially for the command to be interpreted correctly
-                if (currentKey.Ctrl)
+                if (!UseGse)
+                    if (currentKey.Ctrl)
                 {
                     _platform.Input.TrySendCtrlKey(false);
                     ctrlDown = false;
                 }
-
+                if (!UseGse)
                 if (currentKey.Alt)
                 {
                     _platform.Input.TrySendAltKey(false);
                     altDown = false;
                 }
-
+                if (!UseGse)
                 if (currentKey.Shift)
                 {
                     _platform.Input.TrySendShiftKey(false);
@@ -556,8 +558,11 @@ public partial class MainWindow : Avalonia.Controls.Window
 
                 if (keyDown) _platform!.Input.TrySendKey(vkCode, false);
                 // always release modifiers if we put them down and they just so happen to be down still.  
+                if (!UseGse)
                 if (ctrlDown) _platform!.Input.TrySendCtrlKey(false);
+                if (!UseGse)
                 if (altDown) _platform!.Input.TrySendAltKey(false);
+                if (!UseGse)
                 if (shiftDown) _platform!.Input.TrySendShiftKey(false);
                 ExitProcessingKey();
             }
