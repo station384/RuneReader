@@ -359,16 +359,17 @@ namespace RuneReader
                             {
                                 result.TStampAddon = ti;
                                 result.TStampApp =  NowMsXs();
-                                 // #if WINDOWS
+                                  #if WINDOWS
                                  //result.TDiff =  result.TStampAddon - result.TStampApp ;
                                 result.TDiff = DiffWrap(result.TStampApp, result.TStampAddon, 500);
-                                //  #else
-                                // // this is a hack to compensate for the resolution difference between linux time being filtered thru wine and native calls.
-                                // result.TDiff = DiffWrap(result.TStampAddon, result.TStampApp, 5000) - 100; 
-                                // if ( result.TDiff < 100)  result.TDiff = 100;
-                                // if ( result.TDiff > 250)  result.TDiff = 250;
-                                //
-                                // #endif   
+                                 #else
+                                 // this is a hack to compensate for the resolution difference between linux time being filtered thru wine and native calls.
+                                 // there is a drift that happens the longer the system is active.   
+                                 result.TDiff = DiffWrap(result.TStampAddon, result.TStampApp, 500) ; 
+                                 if ( result.TDiff < 100)  result.TDiff = 80;
+                                 if ( result.TDiff > 250)  result.TDiff = 150;
+                                
+                                 #endif   
                             }
                         }
 
