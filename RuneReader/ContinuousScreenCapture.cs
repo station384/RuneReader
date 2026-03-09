@@ -36,7 +36,7 @@ namespace RuneReader // adjust to your current namespace
         {
             get
             {
-                lock (_gate)
+                //lock (_gate)
                     return _captureTask != null && !_captureTask.IsCompleted;
             }
         }
@@ -45,18 +45,20 @@ namespace RuneReader // adjust to your current namespace
         {
             get
             {
-                lock (_gate) return _captureIntervalMs;
+                //lock (_gate) 
+                    return _captureIntervalMs;
             }
             set
             {
-                lock (_gate) _captureIntervalMs = Math.Max(1, value);
+                //lock (_gate) 
+                    _captureIntervalMs = Math.Max(1, value);
             }
         }
 
         public void StartCapture()
         {
             if (IsDisposed) throw new ObjectDisposedException(nameof(ContinuousScreenCapture));
-            lock (_gate)
+            //lock (_gate)
             {
                 if (_captureTask is { IsCompleted: false })
                     return;
@@ -128,11 +130,12 @@ namespace RuneReader // adjust to your current namespace
                 }
 
                 int delay;
-                lock (_gate) delay = _captureIntervalMs;
+                //lock (_gate) 
+                    delay = _captureIntervalMs;
 
                 try
                 {
-                    await Task.Delay(delay, token).ConfigureAwait(true);
+                    await Task.Delay(delay, token).ConfigureAwait(false);
                 }
                 catch (OperationCanceledException)
                 {
