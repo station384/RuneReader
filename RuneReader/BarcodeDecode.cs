@@ -1,6 +1,7 @@
 ﻿using OpenCvSharp;
 using System;
 using System.Collections.Generic;
+using System.Runtime.InteropServices;
 using ZXing;
 using ZXing.Common;
 
@@ -400,10 +401,10 @@ namespace RuneReader
             var result = new BarcodeFindResult();
 
             // Convert the image to grayscale.
-            Mat srcGray = new Mat();
+
             try
             {
-                Cv2.CvtColor(imageMat, srcGray, ColorConversionCodes.BGR2GRAY);
+
 
                 // Create a Mat to hold the binary (thresholded) image.
 
@@ -412,47 +413,57 @@ namespace RuneReader
                 // So with inverting blacks become whites and its becomes easier to filter for white values.
                 // But we cant detect a barcode that is inverted so we have to invert it back.  the result is pure black and white barcode
                 // which is easier to detect and won't get messed up by ZXing's binaryizer.
+                using var gray = imageMat.Channels() == 1 ? imageMat.Clone() : imageMat.CvtColor(ColorConversionCodes.BGR2GRAY);
                 double thresholdValue = 30;
                 double maxValue = 255;
-                // Cv2.BitwiseNot(srcGray, srcGray);
-                Cv2.Threshold(srcGray, srcGray, thresholdValue, maxValue, ThresholdTypes.Binary);
-                // Cv2.BitwiseNot(srcGray, srcGray);
+                using var binaryMat = new Mat();
+                Cv2.Threshold(gray, binaryMat, thresholdValue, maxValue, ThresholdTypes.Binary);
 
 
                 //       Cv2.ImShow("Peek", srcGray);
-                var luminanceSource = new Classes.OpenCV.OpenCvLuminanceSource(srcGray);
-                var decodeResult = BarcodeReaderEngine.Decode(luminanceSource);
+   
 
-                if (decodeResult != null)
+
+                var bytes = new byte[binaryMat.Rows * binaryMat.Cols];
+                Marshal.Copy(binaryMat.Data, bytes, 0, bytes.Length);
+                var luminance = new ZXing.RGBLuminanceSource(bytes, binaryMat.Cols, binaryMat.Rows, ZXing.RGBLuminanceSource.BitmapFormat.Gray8);
+
+                var decodeResults = BarcodeReaderEngine.DecodeMultiple(luminance);
+
+                if (decodeResults != null)
                 {
-                    int minX = int.MaxValue;
-                    int minY = int.MaxValue;
-                    int maxX = int.MinValue;
-                    int maxY = int.MinValue;
-
-                    foreach (var point in decodeResult.ResultPoints)
+                    foreach (var decodeResult in decodeResults)
                     {
-                        if (point.X < minX) minX = (int)point.X;
-                        if (point.Y < minY) minY = (int)point.Y;
-                        if (point.X > maxX) maxX = (int)point.X;
-                        if (point.Y > maxY) maxY = (int)point.Y;
-                    }
+                        if (!(decodeResult.Text.Contains("/B") && decodeResult.Text.Contains("/K") && decodeResult.Text.Contains("/T"))) 
+                            continue;
+                        int minX = int.MaxValue;
+                        int minY = int.MaxValue;
+                        int maxX = int.MinValue;
+                        int maxY = int.MinValue;
+
+                        foreach (var point in decodeResult.ResultPoints)
+                        {
+                            if (point.X < minX) minX = (int)point.X;
+                            if (point.Y < minY) minY = (int)point.Y;
+                            if (point.X > maxX) maxX = (int)point.X;
+                            if (point.Y > maxY) maxY = (int)point.Y;
+                        }
 
                     // Have to pad out the values as the region that is reported is not always exact but close enuf
-                    int paddingW = 0;
-                    int paddingH = 0;
+                        int paddingW = 0;
+                        int paddingH = 0;
 
-                    var rac = new OpenCvSharp.Rect(0, 0, 0, 0);
+                        var rac = new OpenCvSharp.Rect(0, 0, 0, 0);
 
-                    if (decodeResult.BarcodeFormat == BarcodeFormat.QR_CODE)
-                    {
-                        rac = new OpenCvSharp.Rect(
-                            minX - (Math.Max(1, maxX - minX + 1) / 2),
-                            minY - (Math.Max(1, maxY - minY + 1) / 2),
-                            Math.Max(1, maxX - minX + 1) * 2,
-                            Math.Max(1, maxY - minY + 1) * 2
-                        );
-                    }
+                        if (decodeResult.BarcodeFormat == BarcodeFormat.QR_CODE)
+                        {
+                            rac = new OpenCvSharp.Rect(
+                                minX - (Math.Max(1, maxX - minX + 1) / 2),
+                                minY - (Math.Max(1, maxY - minY + 1) / 2),
+                                Math.Max(1, maxX - minX + 1) * 2,
+                                Math.Max(1, maxY - minY + 1) * 2
+                            );
+                        }
 
                     if (decodeResult.BarcodeFormat == BarcodeFormat.CODE_39)
                     {
@@ -465,8 +476,8 @@ namespace RuneReader
                         rac.Width = rac.Width - (rac.Width / 2) + 50;
                         rac.X = rac.X + (rac.Width / 2) - 50;
 
-                        rac.Height = rac.Height ;
-                        
+                        rac.Height = rac.Height;
+
                         // ============================================================
                         // NEW: CODE_39 is often detected as a thin strip near the bottom
                         // of a horizontal barcode. We want to pad "upwards" by 10px,
@@ -488,7 +499,7 @@ namespace RuneReader
                         // If your earlier math makes X negative, clamp it.
                         if (rac.X < 0) rac.X = 0;
                         if (rac.Y < 0) rac.Y = 0;
-                        
+
                     }
 
                     // the screenID should be the actual screenID the barcode is found on,  but that code is not implmeneted 
@@ -498,6 +509,7 @@ namespace RuneReader
                     result.Y = rac.Y;
                     result.Width = rac.Width;
                     result.Height = rac.Height;
+                  }
                 }
                 else
                 {
@@ -511,7 +523,7 @@ namespace RuneReader
             }
             finally
             {
-                srcGray.Dispose();
+                //srcGray.Dispose();
             }
 
             return result;
