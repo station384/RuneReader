@@ -36,7 +36,7 @@ public class WindowsGlobalHotkeys : IGlobalHotkeys
                         _ = Task.Run(() => CtrlChangedAsync(new HotkeyActionResult(state)));
                     // Fire Sync Version
                     CtrlChanged?.Invoke(new HotkeyActionResult(state));
-                    return result = WindowsApiCalls.CallNextHookEx(_hookId, nCode, wParam, lParam); 
+                    //return result = WindowsApiCalls.CallNextHookEx(_hookId, nCode, wParam, lParam); 
                 }
                 
                 if ( vkCode == WindowsApiCalls.VK_LMENU)
@@ -45,7 +45,7 @@ public class WindowsGlobalHotkeys : IGlobalHotkeys
                         _ = Task.Run(() => AltChangedAsync(new HotkeyActionResult(state)));
 
                     AltChanged?.Invoke(new HotkeyActionResult(state));
-                    return result = WindowsApiCalls.CallNextHookEx(_hookId, nCode, wParam, lParam); 
+                    //return result = WindowsApiCalls.CallNextHookEx(_hookId, nCode, wParam, lParam); 
                 }
                 
                 if (vkCode == WindowsApiCalls.VK_LSHIFT)
@@ -53,7 +53,7 @@ public class WindowsGlobalHotkeys : IGlobalHotkeys
                     if (ShiftChangedAsync is not null)
                         _ = Task.Run(() => ShiftChangedAsync(new HotkeyActionResult(state)));
                     ShiftChanged?.Invoke(new HotkeyActionResult(state));
-                    return result = WindowsApiCalls.CallNextHookEx(_hookId, nCode, wParam, lParam); 
+                    //return result = WindowsApiCalls.CallNextHookEx(_hookId, nCode, wParam, lParam); 
                 }
                 
                 if ( vkCode == item)
@@ -61,8 +61,9 @@ public class WindowsGlobalHotkeys : IGlobalHotkeys
                     if (ActivateKeyChangedAsync is not null)
                         _ = Task.Run(() => ActivateKeyChangedAsync(new HotkeyActionResult(state)));
                     ActivateKeyChanged?.Invoke(new HotkeyActionResult(state));
-                    return result = WindowsApiCalls.CallNextHookEx(_hookId, nCode, wParam, lParam); 
+                    //return result = WindowsApiCalls.CallNextHookEx(_hookId, nCode, wParam, lParam); 
                 }
+
             }
 
 
@@ -76,31 +77,31 @@ public class WindowsGlobalHotkeys : IGlobalHotkeys
                     if (CtrlChangedAsync is not null)
                         _ = Task.Run(() => CtrlChangedAsync(new HotkeyActionResult(state)));
                     CtrlChanged?.Invoke(new HotkeyActionResult(state));
-                    return result = WindowsApiCalls.CallNextHookEx(_hookId, nCode, wParam, lParam); 
+                    //return result = WindowsApiCalls.CallNextHookEx(_hookId, nCode, wParam, lParam); 
                 } 
                 if ( vkCode == WindowsApiCalls.VK_LMENU)
                 {
                     if (AltChangedAsync is not null)
                         _ = Task.Run(() => AltChangedAsync(new HotkeyActionResult(state)));
                     AltChanged?.Invoke(new HotkeyActionResult(state));
-                    return result = WindowsApiCalls.CallNextHookEx(_hookId, nCode, wParam, lParam); 
+                    //return result = WindowsApiCalls.CallNextHookEx(_hookId, nCode, wParam, lParam); 
                 }
                 if ( vkCode == WindowsApiCalls.VK_LSHIFT)
                 {
                     if (ShiftChangedAsync is not null)
                         _ = Task.Run(() => ShiftChangedAsync(new HotkeyActionResult(state)));
                     ShiftChanged?.Invoke(new HotkeyActionResult(state));
-                    return result = WindowsApiCalls.CallNextHookEx(_hookId, nCode, wParam, lParam); 
+                    //return result = WindowsApiCalls.CallNextHookEx(_hookId, nCode, wParam, lParam); 
                 }
                 if ( vkCode == item)
                 {
                     if (ActivateKeyChangedAsync is not null)
                         _ = Task.Run(() => ActivateKeyChangedAsync(new HotkeyActionResult(state)));
                     ActivateKeyChanged?.Invoke(new HotkeyActionResult(state));
-                    return result = WindowsApiCalls.CallNextHookEx(_hookId, nCode, wParam, lParam); 
+                    //return result = WindowsApiCalls.CallNextHookEx(_hookId, nCode, wParam, lParam); 
                 }
             }
-            
+            //WindowsApiCalls.CallNextHookEx(_hookId, nCode, wParam, lParam); 
             // NOTES:  For future self -  READ THIS!! DONT SKIM IT.  WILL SAVE TIME!!!!
             // since "return result = WindowsApiCalls.CallNextHookEx(_hookId, nCode, wParam, lParam);" 
             // always confused the crap out of me this is what it does.
@@ -111,8 +112,8 @@ public class WindowsGlobalHotkeys : IGlobalHotkeys
 
  
         }
-        
 
+        WindowsApiCalls.CallNextHookEx(_hookId, nCode, wParam, lParam);
         return result;
 
     }
