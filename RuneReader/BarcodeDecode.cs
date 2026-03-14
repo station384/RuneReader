@@ -363,14 +363,16 @@ namespace RuneReader
                                   #if WINDOWS
                                  //result.TDiff =  result.TStampAddon - result.TStampApp ;
                                 result.TDiff = DiffWrap(result.TStampApp, result.TStampAddon, 500);
-                                 #else
+                                if (result.TDiff < 150) result.TDiff = 150;
+                                if (result.TDiff > 250) result.TDiff = 250;
+#else
                                  // this is a hack to compensate for the resolution difference between linux time being filtered thru wine and native calls.
                                  // there is a drift that happens the longer the system is active.   
                                  result.TDiff = DiffWrap(result.TStampAddon, result.TStampApp, 500) ; 
-                                 if ( result.TDiff < 100)  result.TDiff = 80;
-                                 if ( result.TDiff > 250)  result.TDiff = 150;
+                                 if ( result.TDiff < 150)  result.TDiff = 150;
+                                 if ( result.TDiff > 250)  result.TDiff = 250;
                                 
-                                 #endif   
+#endif
                             }
                         }
 
