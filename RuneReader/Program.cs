@@ -1,6 +1,7 @@
 using System;
 using System.Threading;
 using Avalonia;
+using Velopack;
 
 namespace RuneReader;
 
@@ -11,6 +12,10 @@ internal static class Program
     [STAThread]
     public static int Main(string[] args)
     {
+        // Velopack must run before normal app startup. It applies staged updates
+        // and exits cleanly when launched by the updater.
+        VelopackApp.Build().Run();
+
         // Single-instance guard (matches old WPF behavior)
         const string appName = "RuneReaderAvalonia";
         _mutex = new Mutex(true, appName, out var createdNew);

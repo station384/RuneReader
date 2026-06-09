@@ -1,4 +1,4 @@
-﻿using Avalonia;
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Interactivity;
@@ -14,6 +14,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using RuneReader.Classes.Platform;
+using RuneReader.Classes.Updates;
 using static RuneReader.BarcodeDecode;
 
 
@@ -89,6 +90,7 @@ public partial class MainWindow : Avalonia.Controls.Window
     private bool _barCodeFound;
 
     private IPlatformServices? _platform;
+    private readonly UpdateService _updateService = new();
 
 
     //private MagnifierWindow magnifier;
@@ -755,6 +757,8 @@ public partial class MainWindow : Avalonia.Controls.Window
         _platform.ScreenCapture.EnableFullScreen = true;
 
         Initializing = false;
+
+        InitUpdatePanel();
     }
 
 
@@ -1307,5 +1311,136 @@ public partial class MainWindow : Avalonia.Controls.Window
 
     }
 
+
+
+    private void InitUpdatePanel()
+    {
+        if (UpdateCurrentVersion != null)
+            UpdateCurrentVersion.Text = _updateService.CurrentVersion;
+
+        _updateService.StatusChanged += OnUpdateStatusChanged;
+
+        if (_updateService.State == UpdateState.NotInstalled)
+        {
+            if (ExpanderUpdate != null)
+                ExpanderUpdate.IsVisible = false;
+            if (UpdateBanner != null)
+                UpdateBanner.IsVisible = false;
+        }
+        else
+        {
+            _ = _updateService.CheckSilentlyAsync();
+        }
+
+        OnUpdateStatusChanged(_updateService.State, _updateService.StatusMessage);
+    }
+
+    private void OnUpdateStatusChanged(UpdateState state, string message)
+    {
+        Dispatcher.UIThread.Post(() =>
+        {
+            if (UpdateStatusLabel != null)
+                UpdateStatusLabel.Text = message;
+
+            if (UpdateCheckButton != null)
+            {
+                UpdateCheckButton.IsEnabled = state is
+                    UpdateState.Idle or
+                    UpdateState.UpToDate or
+                    UpdateState.UpdateAvailable or
+                    UpdateState.Error;
+            }
+
+            if (UpdateDownloadButton != null)
+                UpdateDownloadButton.IsVisible = state == UpdateState.UpdateAvailable;
+
+            if (UpdateInstallButton != null)
+                UpdateInstallButton.IsVisible = state == UpdateState.ReadyToInstall;
+
+            if (UpdateProgressBar != null)
+            {
+                UpdateProgressBar.IsVisible = state == UpdateState.Downloading;
+                if (state != UpdateState.Downloading)
+                    UpdateProgressBar.Value = 0;
+            }
+
+            if (UpdateBanner != null)
+            {
+                UpdateBanner.IsVisible = state is
+                    UpdateState.UpdateAvailable or
+                    UpdateState.Downloading or
+                    UpdateState.ReadyToInstall;
+            }
+
+            if (UpdateBannerText != null)
+            {
+                UpdateBannerText.Text = state switch
+                {
+                    UpdateState.UpdateAvailable => message,
+                    UpdateState.Downloading => "Downloading update...",
+                    UpdateState.ReadyToInstall => message,
+                    _ => string.Empty,
+                };
+            }
+
+            if (UpdateBannerActionButton != null)
+            {
+                UpdateBannerActionButton.IsVisible = state is
+                    UpdateState.UpdateAvailable or
+                    UpdateState.ReadyToInstall;
+                UpdateBannerActionButton.IsEnabled = state != UpdateState.Downloading;
+                UpdateBannerActionButton.Content = state == UpdateState.ReadyToInstall
+                    ? "Restart and Install"
+                    : "Download and Install";
+            }
+
+            if (UpdateBannerProgressBar != null)
+            {
+                UpdateBannerProgressBar.IsVisible = state == UpdateState.Downloading;
+                if (state != UpdateState.Downloading)
+                    UpdateBannerProgressBar.Value = 0;
+            }
+        });
+    }
+
+    private async void OnUpdateBannerActionClicked(object? sender, RoutedEventArgs e)
+    {
+        if (_updateService.State == UpdateState.ReadyToInstall)
+        {
+            _updateService.RestartAndInstall();
+            return;
+        }
+
+        if (_updateService.State != UpdateState.UpdateAvailable)
+            return;
+
+        await _updateService.DownloadAndStageAsync(UpdateDownloadProgress);
+    }
+
+    private async void OnUpdateCheckClicked(object? sender, RoutedEventArgs e)
+    {
+        await _updateService.CheckAsync();
+    }
+
+    private async void OnUpdateDownloadClicked(object? sender, RoutedEventArgs e)
+    {
+        await _updateService.DownloadAndStageAsync(UpdateDownloadProgress);
+    }
+
+    private void OnUpdateInstallClicked(object? sender, RoutedEventArgs e)
+    {
+        _updateService.RestartAndInstall();
+    }
+
+    private void UpdateDownloadProgress(int progress)
+    {
+        Dispatcher.UIThread.Post(() =>
+        {
+            if (UpdateProgressBar != null)
+                UpdateProgressBar.Value = progress;
+            if (UpdateBannerProgressBar != null)
+                UpdateBannerProgressBar.Value = progress;
+        });
+    }
 
 }

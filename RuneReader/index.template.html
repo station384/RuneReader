@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Rune Reader Download</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      background: #111318;
+      color: #f4f4f4;
+    }
+    main {
+      max-width: 760px;
+      margin: 0 auto;
+      padding: 36px 20px;
+    }
+    .card {
+      background: #1d212b;
+      border: 1px solid #343b4a;
+      border-radius: 10px;
+      padding: 24px;
+    }
+    .header {
+      display: flex;
+      gap: 16px;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+    .header img {
+      width: 72px;
+      height: 72px;
+      border-radius: 12px;
+    }
+    h1 {
+      margin: 0;
+      font-size: 28px;
+    }
+    .sub {
+      color: #b8c0cc;
+      margin-top: 6px;
+    }
+    .button {
+      display: inline-block;
+      margin-top: 20px;
+      padding: 12px 18px;
+      background: #3d7eff;
+      color: white;
+      text-decoration: none;
+      border-radius: 8px;
+      font-weight: bold;
+    }
+    .meta {
+      margin-top: 18px;
+      color: #b8c0cc;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+    code {
+      color: #d7e3ff;
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <section class="card">
+      <div class="header">
+        <img src="RuneReader_512x512.png" alt="Rune Reader icon">
+        <div>
+          <h1>Rune Reader</h1>
+          <div class="sub">Current version: {{VERSION}}</div>
+        </div>
+      </div>
+
+      <p>Download and install the current Rune Reader desktop app.</p>
+
+      <a class="button" href="{{SETUP_FILE}}">Download Rune Reader</a>
+
+      <div class="meta">
+        Update channel: <code>{{CHANNEL}}</code><br>
+        Update feed: <code>{{FEED_URL}}</code><br>
+        After installation, Rune Reader will check this feed for future updates.
+      </div>
+    </section>
+  </main>
+</body>
+</html>

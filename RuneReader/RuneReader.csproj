@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
@@ -87,6 +87,7 @@
     <PackageReference Include="Tmds.DBus" Version="0.90.3" />
 
     <PackageReference Include="ZXing.Net" Version="0.16.11" />
+    <PackageReference Include="Velopack" Version="1.2.0" />
 
     <!-- Avalonia UI -->
     <PackageReference Include="Avalonia" Version="11.3.11" />
@@ -166,5 +167,32 @@
   <ItemGroup>
     <AdditionalFiles Remove="Classes\Platform\Linux\Wayland\PipeWire.old\**" />
   </ItemGroup>
+
+
+  <!-- Generate UpdateServiceConfig.g.cs with the update feed URL baked in at build time.
+       Override with: dotnet publish -p:UpdateFeedUrl=https://www.mkfam.com/runereader/stable/
+  -->
+  <PropertyGroup>
+    <UpdateFeedUrl Condition="'$(UpdateFeedUrl)' == ''"></UpdateFeedUrl>
+    <GeneratedConfigFile>$(BaseIntermediateOutputPath)UpdateServiceConfig.g.cs</GeneratedConfigFile>
+  </PropertyGroup>
+
+  <Target Name="GenerateUpdateServiceConfig" BeforeTargets="CoreCompile">
+    <MakeDir Directories="$(BaseIntermediateOutputPath)" />
+    <PropertyGroup>
+      <_ConfigContent>
+// &lt;auto-generated /&gt;
+namespace RuneReader.Classes.Updates%3B
+internal static partial class UpdateServiceConfig
+{
+    internal const string UpdateFeedUrl = &quot;$(UpdateFeedUrl)&quot;%3B
+}
+      </_ConfigContent>
+    </PropertyGroup>
+    <WriteLinesToFile File="$(GeneratedConfigFile)" Lines="$(_ConfigContent)" Overwrite="true" WriteOnlyWhenDifferent="true"/>
+    <ItemGroup>
+      <Compile Include="$(GeneratedConfigFile)" />
+    </ItemGroup>
+  </Target>
 
 </Project>
