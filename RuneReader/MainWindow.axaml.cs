@@ -448,7 +448,7 @@ public partial class MainWindow : Avalonia.Controls.Window
                 // Wows Default Key behavior is to activate as soon as the key is pressed.   So lets make sure we do not press anything till we have a 0 wait…
                 // Pre-pressing is built into the addon calc  so we don't have to worry about command queuing here.
                 // 50 seems to be a good magic number.  it stops the rappid key presses and doesn't extend things to long even in linux where it can skew the timeing massivly.
-                while ((CurrentDelay() >= 50) && ActivationKeyPressed)
+                while ((CurrentDelay() >= 150) && ActivationKeyPressed)
                 {
                     await Task.Delay(10).ConfigureAwait(true);
                 }
@@ -458,41 +458,41 @@ public partial class MainWindow : Avalonia.Controls.Window
                 
                 // command is tied to CTRL or ALT So have to press them
                 if (!UseGse)
-                if (currentKey.Ctrl )
-                {
-                    _platform.Input.TrySendCtrlKey(true);
-                    ctrlDown = true;
-                }
-                else
-                {
-                    // Command isn't tied to CTRL so send a CTRL Up.
-                    // This should really be peeking in the message buffer to see if the key is really pressed or not. and only send the up if it is. 
-                    // This could also be accomplished by storing off the value in the message processor and storing a flag local if it saw one or not.
-                    // keyboards are global so that may work.
-                    _platform.Input.TrySendCtrlKey(false);
-                }
+                    if (currentKey.Ctrl )
+                    {
+                        _platform.Input.TrySendCtrlKey(true);
+                        ctrlDown = true;
+                    }
+                    else
+                    {
+                        // Command isn't tied to CTRL so send a CTRL Up.
+                        // This should really be peeking in the message buffer to see if the key is really pressed or not. and only send the up if it is. 
+                        // This could also be accomplished by storing off the value in the message processor and storing a flag local if it saw one or not.
+                        // keyboards are global so that may work.
+                        _platform.Input.TrySendCtrlKey(false);
+                    }
                 if (!UseGse)
-                if (currentKey.Alt)
-                {
-                    _platform.Input.TrySendAltKey(true);
-                    altDown = true;
-                }
-                else
-                {
-                    // See Notes on CTRL.
-                    _platform.Input.TrySendAltKey(false);
-                }
+                    if (currentKey.Alt)
+                    {
+                        _platform.Input.TrySendAltKey(true);
+                        altDown = true;
+                    }
+                    else
+                    {
+                        // See Notes on CTRL.
+                        _platform.Input.TrySendAltKey(false);
+                    }
                 if (!UseGse)
-                if (currentKey.Shift)
-                {
-                    _platform.Input.TrySendShiftKey(true);
-                    shiftDown = true;
-                }
-                else
-                {
-                    // See Notes on CTRL.
-                    _platform.Input.TrySendShiftKey(false);
-                }
+                    if (currentKey.Shift)
+                    {
+                        _platform.Input.TrySendShiftKey(true);
+                        shiftDown = true;
+                    }
+                    else
+                    {
+                        // See Notes on CTRL.
+                        _platform.Input.TrySendShiftKey(false);
+                    }
 
 
                 // Press the command Key Down
@@ -503,22 +503,22 @@ public partial class MainWindow : Avalonia.Controls.Window
                 // CTRL and ALT do not need to be held down just only pressed initially for the command to be interpreted correctly
                 if (!UseGse)
                     if (currentKey.Ctrl)
-                {
-                    _platform.Input.TrySendCtrlKey(false);
-                    ctrlDown = false;
-                }
+                    {
+                        _platform.Input.TrySendCtrlKey(false);
+                        ctrlDown = false;
+                    }
                 if (!UseGse)
-                if (currentKey.Alt)
-                {
-                    _platform.Input.TrySendAltKey(false);
-                    altDown = false;
-                }
+                    if (currentKey.Alt)
+                    {
+                        _platform.Input.TrySendAltKey(false);
+                        altDown = false;
+                    }
                 if (!UseGse)
-                if (currentKey.Shift)
-                {
-                    _platform.Input.TrySendShiftKey(false);
-                    shiftDown = false;
-                }
+                    if (currentKey.Shift)
+                    {
+                        _platform.Input.TrySendShiftKey(false);
+                        shiftDown = false;
+                    }
 
                 // Add the keypress delay while monitoring that the activation key is still pressed (allows interrupting the delay)
                 // Note:  There are 10000 ticks in a millisecond
@@ -559,11 +559,11 @@ public partial class MainWindow : Avalonia.Controls.Window
                 if (keyDown) _platform!.Input.TrySendKey(vkCode, false);
                 // always release modifiers if we put them down and they just so happen to be down still.  
                 if (!UseGse)
-                if (ctrlDown) _platform!.Input.TrySendCtrlKey(false);
+                    if (ctrlDown) _platform!.Input.TrySendCtrlKey(false);
                 if (!UseGse)
-                if (altDown) _platform!.Input.TrySendAltKey(false);
+                    if (altDown) _platform!.Input.TrySendAltKey(false);
                 if (!UseGse)
-                if (shiftDown) _platform!.Input.TrySendShiftKey(false);
+                    if (shiftDown) _platform!.Input.TrySendShiftKey(false);
                 ExitProcessingKey();
             }
 
