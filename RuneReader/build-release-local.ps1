@@ -14,8 +14,8 @@
 
 [CmdletBinding()]
 param(
-    [switch]$Deploy,
-    [switch]$SkipSign,
+    [switch]$Deploy = $true,
+    [switch]$SkipSign = $true,
     [switch]$NoIncrement,
     [string]$Version = "",
     [string]$FeedBaseUrl = "https://www.mkfam.com/runereader/",

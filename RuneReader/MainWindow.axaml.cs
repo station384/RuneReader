@@ -450,9 +450,9 @@ public partial class MainWindow : Avalonia.Controls.Window
                 // Wows Default Key behavior is to activate as soon as the key is pressed.   So lets make sure we do not press anything till we have a 0 wait…
                 // Pre-pressing is built into the addon calc  so we don't have to worry about command queuing here.
                 // 50 seems to be a good magic number.  it stops the rappid key presses and doesn't extend things to long even in linux where it can skew the timeing massivly.
-                while ((CurrentDelay() >= 150) && ActivationKeyPressed)
+                while ((CurrentDelay() >= 300) && ActivationKeyPressed)
                 {
-                    await Task.Delay(10).ConfigureAwait(true);
+                    await Task.Delay(1).ConfigureAwait(true);
                 }
 
 
