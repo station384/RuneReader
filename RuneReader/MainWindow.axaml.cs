@@ -388,9 +388,8 @@ public partial class MainWindow : Avalonia.Controls.Window
        
             int CurrentDelay()
             {
-                return (int)_currentImageRegions.FirstImageRegions.WaitTime +
-                       (int)_currentImageRegions.FirstImageRegions.GcdTime -
-                       (int)avgDelay;
+                return ((int)_currentImageRegions.FirstImageRegions.WaitTime +
+                        (int)_currentImageRegions.FirstImageRegions.GcdTime) - (int)avgDelay;
             }
 
 
@@ -450,8 +449,10 @@ public partial class MainWindow : Avalonia.Controls.Window
                 // Wows Default Key behavior is to activate as soon as the key is pressed.   So lets make sure we do not press anything till we have a 0 wait…
                 // Pre-pressing is built into the addon calc  so we don't have to worry about command queuing here.
                 // 50 seems to be a good magic number.  it stops the rappid key presses and doesn't extend things to long even in linux where it can skew the timeing massivly.
-                while ((CurrentDelay() >= 300) && ActivationKeyPressed)
+                while ((CurrentDelay() >= 100) && ActivationKeyPressed)
                 {
+                    // just exiting here now to make sure we get the proper keypress.   otherwise we can get double casts when it should be single.
+                    return;
                     await Task.Delay(1).ConfigureAwait(true);
                 }
 
@@ -573,8 +574,7 @@ public partial class MainWindow : Avalonia.Controls.Window
     }
 
 
-
-
+ 
     private async Task ProcessBarCodeKey()
     {
         if (!TryEnterBarcodeProcessing()) return;
@@ -589,12 +589,13 @@ public partial class MainWindow : Avalonia.Controls.Window
             // let's just hang out here till we have a key
             var currentD = DateTime.Now;
             var keyToSendFirst = _currentKeyToSend;
-          
+            
             while (String.IsNullOrEmpty(keyToSendFirst) && IsRunning && ActivationKeyPressed)
             {
                 await Task.Delay(5).ConfigureAwait(true);
+                // if (keyToSendFirst == _currentKeyToSend && currentD.AddMilliseconds(300) < DateTime.Now) continue; 
                 keyToSendFirst = _currentKeyToSend;
-            
+                                
                 if (currentD.AddMilliseconds(15000) < DateTime.Now) return;
             }
 
